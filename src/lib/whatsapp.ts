@@ -1,8 +1,15 @@
+export function isWhatsAppConfigured() {
+  return Boolean(
+    process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID,
+  );
+}
+
 export async function sendWhatsAppMessage(phone: string, message: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const apiVersion = process.env.WHATSAPP_API_VERSION || "v22.0";
   if (!token || !phoneNumberId) throw new Error("WhatsApp Cloud API não configurada");
-  const response = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+  const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -12,6 +19,9 @@ export async function sendWhatsAppMessage(phone: string, message: string) {
       text: { body: message },
     }),
   });
-  if (!response.ok) throw new Error(`Falha ao enviar WhatsApp: ${response.status}`);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Falha ao enviar WhatsApp (${response.status}): ${body.slice(0, 300)}`);
+  }
   return response.json();
 }

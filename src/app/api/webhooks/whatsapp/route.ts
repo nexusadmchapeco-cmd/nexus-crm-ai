@@ -1,5 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { processInbound } from "@/lib/inbound";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
+
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -20,14 +23,21 @@ export async function POST(request: Request) {
     if (!incoming || incoming.type !== "text") return NextResponse.json({ received: true });
     const contact = value?.contacts?.[0];
 
-    // O processamento é aguardado no MVP para garantir consistência. Em produção,
-    // mova esta chamada para uma fila e responda à Meta imediatamente.
-    await processInbound({
-      phone: incoming.from,
-      name: contact?.profile?.name,
-      message: incoming.text?.body || "",
-      source: "whatsapp",
-      whatsapp_message_id: incoming.id,
+    after(async () => {
+      try {
+        const result = await processInbound({
+          phone: incoming.from,
+          name: contact?.profile?.name,
+          message: incoming.text?.body || "",
+          source: "whatsapp",
+          whatsapp_message_id: incoming.id,
+        });
+        if (result.ai_reply) {
+          await sendWhatsAppMessage(incoming.from, result.ai_reply);
+        }
+      } catch (error) {
+        console.error("WhatsApp background processing error", error);
+      }
     });
     return NextResponse.json({ received: true });
   } catch (error) {
