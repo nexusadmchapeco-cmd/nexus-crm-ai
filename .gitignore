@@ -4,6 +4,7 @@ node_modules
 .env.local
 work/
 outputs/
+.vercel/
 *.log
 *.tsbuildinfo
 .DS_Store
