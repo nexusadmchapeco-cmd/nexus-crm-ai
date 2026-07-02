@@ -20,6 +20,7 @@ export function LegalShell({
         </Link>
         <nav aria-label="Documentos legais">
           <Link href="/privacy">Privacidade</Link>
+          <Link href="/terms">Termos</Link>
           <Link href="/data-deletion">Exclusão de dados</Link>
         </nav>
       </header>
