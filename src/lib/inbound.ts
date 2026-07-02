@@ -1,0 +1,185 @@
+import { runSdr } from "@/lib/ai/sdr";
+import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { Lead, Message, PipelineStage } from "@/lib/types";
+
+export type InboundPayload = {
+  phone: string;
+  name?: string;
+  message: string;
+  source?: string;
+  campaign?: string;
+  ad_name?: string;
+  whatsapp_message_id?: string;
+};
+
+export async function processInbound(payload: InboundPayload) {
+  const supabase = createAdminClient();
+  const phone = payload.phone.replace(/\D/g, "");
+  if (phone.length < 10) throw new Error("Telefone inválido");
+  if (!payload.message.trim()) throw new Error("Mensagem é obrigatória");
+
+  const { data: stages, error: stagesError } = await supabase
+    .from("pipeline_stages")
+    .select("*")
+    .order("position");
+  if (stagesError) throw stagesError;
+  const stageByName = new Map(
+    (stages as PipelineStage[]).map((stage) => [stage.name, stage]),
+  );
+  const newStage = stageByName.get("Novo lead");
+  if (!newStage) throw new Error("Execute a migration: etapa Novo lead não encontrada");
+
+  const { data: existingLead, error: findError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("phone", phone)
+    .maybeSingle();
+  if (findError) throw findError;
+
+  let lead: Lead;
+  if (!existingLead) {
+    const { data, error } = await supabase
+      .from("leads")
+      .insert({
+        phone,
+        name: payload.name?.trim() || null,
+        stage_id: newStage.id,
+        source: payload.source || "simulador",
+        campaign: payload.campaign || null,
+        ad_name: payload.ad_name || null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    lead = data;
+  } else {
+    const { data, error } = await supabase
+      .from("leads")
+      .update({
+        name: existingLead.name || payload.name?.trim() || null,
+        source: existingLead.source || payload.source || null,
+        campaign: existingLead.campaign || payload.campaign || null,
+        ad_name: existingLead.ad_name || payload.ad_name || null,
+        last_message_at: new Date().toISOString(),
+      })
+      .eq("id", existingLead.id)
+      .select()
+      .single();
+    if (error) throw error;
+    lead = data;
+  }
+
+  let { data: conversation, error: conversationError } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("lead_id", lead.id)
+    .maybeSingle();
+  if (conversationError) throw conversationError;
+  if (!conversation) {
+    const created = await supabase
+      .from("conversations")
+      .insert({ lead_id: lead.id, channel: "whatsapp" })
+      .select()
+      .single();
+    if (created.error) throw created.error;
+    conversation = created.data;
+  }
+
+  const insertedMessage = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversation.id,
+      lead_id: lead.id,
+      sender_type: "lead",
+      content: payload.message.trim(),
+      whatsapp_message_id: payload.whatsapp_message_id || null,
+      status: "received",
+      is_ai: false,
+    })
+    .select()
+    .single();
+  if (insertedMessage.error) throw insertedMessage.error;
+
+  await supabase
+    .from("lead_events")
+    .insert({ lead_id: lead.id, event_type: "message_received", metadata: { channel: "whatsapp" } });
+
+  if (!lead.ai_enabled || lead.human_takeover) {
+    return {
+      lead,
+      conversation,
+      ai_reply: null,
+      stage: stageByName.get("Closer assumiu") || newStage,
+      skipped_ai: true,
+    };
+  }
+
+  const [{ data: settings, error: settingsError }, { data: messages, error: messagesError }] =
+    await Promise.all([
+      supabase.from("ai_settings").select("*").order("created_at").limit(1).single(),
+      supabase
+        .from("messages")
+        .select("*")
+        .eq("lead_id", lead.id)
+        .order("created_at")
+        .limit(20),
+    ]);
+  if (settingsError) throw settingsError;
+  if (messagesError) throw messagesError;
+
+  try {
+    const decision = await runSdr({
+      lead,
+      settings,
+      messages: messages as Message[],
+    });
+    const stageName = resolveSuggestedStage(decision, lead);
+    const targetStage = stageByName.get(stageName) || stageByName.get("IA em atendimento")!;
+    const updates = {
+      ...removeNulls(decision.extracted),
+      temperature: decision.temperature,
+      stage_id: targetStage.id,
+      summary: decision.summary,
+      next_action: decision.next_action,
+      updated_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString(),
+    };
+    const updated = await supabase
+      .from("leads")
+      .update(updates)
+      .eq("id", lead.id)
+      .select()
+      .single();
+    if (updated.error) throw updated.error;
+    lead = updated.data;
+
+    const aiMessage = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversation.id,
+        lead_id: lead.id,
+        sender_type: "ai",
+        content: decision.reply,
+        status: "sent",
+        is_ai: true,
+      })
+      .select()
+      .single();
+    if (aiMessage.error) throw aiMessage.error;
+    await supabase.from("lead_events").insert({
+      lead_id: lead.id,
+      event_type: "ai_qualified",
+      metadata: { stage: stageName, temperature: decision.temperature },
+    });
+
+    return { lead, conversation, ai_reply: decision.reply, stage: targetStage, skipped_ai: false };
+  } catch (error) {
+    await supabase.from("lead_events").insert({
+      lead_id: lead.id,
+      event_type: "ai_error",
+      metadata: { message: error instanceof Error ? error.message : "Erro desconhecido" },
+    });
+    throw error;
+  }
+}
