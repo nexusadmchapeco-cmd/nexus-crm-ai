@@ -18,6 +18,7 @@ const paths: Record<string, React.ReactNode> = {
   menu: <path d="M4 7h16M4 12h16M4 17h16"/>,
   x: <path d="m6 6 12 12M18 6 6 18"/>,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
+  move: <><path d="m12 2 3 3-3 3M12 2 9 5l3 3M12 22l3-3-3-3M12 22l-3-3 3-3M2 12l3-3 3 3M2 12l3 3 3-3M22 12l-3-3-3 3M22 12l-3 3-3-3"/><path d="M12 3v18M3 12h18"/></>,
 };
 
 export function Icon({

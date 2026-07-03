@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type DragEvent } from "react";
 import { Icon } from "@/components/ui/icon";
 import type {
   AiSettings,
@@ -36,6 +36,8 @@ export function PromptStudio({
   const [followup, setFollowup] = useState(initialFollowup);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
+  const [stepDropIndex, setStepDropIndex] = useState<number | null>(null);
   const [notice, setNotice] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   async function save() {
@@ -116,6 +118,33 @@ export function PromptStudio({
         .filter((_, stepIndex) => stepIndex !== index)
         .map((step, position) => ({ ...step, position })),
     }));
+  }
+
+  function reorderStep(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    setFollowup((current) => {
+      const delaySlots = current.steps.map((step) => step.delay_minutes);
+      const next = [...current.steps];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return {
+        ...current,
+        steps: next.map((step, position) => ({
+          ...step,
+          position,
+          delay_minutes: delaySlots[position],
+        })),
+      };
+    });
+    setDraggedStepIndex(null);
+    setStepDropIndex(null);
+  }
+
+  function dropStep(event: DragEvent<HTMLElement>, toIndex: number) {
+    event.preventDefault();
+    const rawIndex = event.dataTransfer.getData("text/plain");
+    const fromIndex = rawIndex === "" ? draggedStepIndex : Number(rawIndex);
+    if (fromIndex !== null && Number.isInteger(fromIndex)) reorderStep(fromIndex, toIndex);
   }
 
   return (
@@ -308,7 +337,13 @@ export function PromptStudio({
 
             <div className="followup-timeline">
               {followup.steps.map((step, index) => (
-                <article className="followup-step" key={`${step.id || "new"}-${index}`}>
+                <article
+                  className={`followup-step ${stepDropIndex === index ? "followup-step-drop" : ""}`}
+                  key={step.id || `new-${step.position}`}
+                  onDragEnter={() => setStepDropIndex(index)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => dropStep(event, index)}
+                >
                   <div className="followup-marker">
                     <span>{delayLabel(step.delay_minutes)}</span>
                     <i />
@@ -318,6 +353,43 @@ export function PromptStudio({
                       <div>
                         <strong>Mensagem {index + 1}</strong>
                         <small>Após a última mensagem do lead</small>
+                      </div>
+                      <div className="followup-order-controls">
+                        <button
+                          type="button"
+                          className="icon-button studio-order"
+                          aria-label={`Mover mensagem ${index + 1} para cima`}
+                          disabled={index === 0}
+                          onClick={() => reorderStep(index, index - 1)}
+                        >
+                          <Icon name="arrow" size={14} className="arrow-up" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button studio-drag"
+                          aria-label={`Arrastar mensagem ${index + 1}`}
+                          draggable
+                          onDragStart={(event) => {
+                            setDraggedStepIndex(index);
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", String(index));
+                          }}
+                          onDragEnd={() => {
+                            setDraggedStepIndex(null);
+                            setStepDropIndex(null);
+                          }}
+                        >
+                          <Icon name="move" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button studio-order"
+                          aria-label={`Mover mensagem ${index + 1} para baixo`}
+                          disabled={index === followup.steps.length - 1}
+                          onClick={() => reorderStep(index, index + 1)}
+                        >
+                          <Icon name="arrow" size={14} className="arrow-down" />
+                        </button>
                       </div>
                       <div className="followup-delay">
                         <label htmlFor={`delay-${index}`}>Prazo (horas)</label>
