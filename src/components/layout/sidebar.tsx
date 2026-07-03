@@ -45,7 +45,11 @@ export function Sidebar() {
             );
           })}
           <span className="nav-label nav-label-spaced">Configurações</span>
-          <Link href="/settings/ai" className={pathname.startsWith("/settings") ? "active" : ""} onClick={() => setOpen(false)}>
+          <Link href="/settings/whatsapp" className={pathname.startsWith("/settings/whatsapp") ? "active" : ""} onClick={() => setOpen(false)}>
+            <Icon name="chat" />
+            Conectar WhatsApp
+          </Link>
+          <Link href="/settings/ai" className={pathname.startsWith("/settings/ai") ? "active" : ""} onClick={() => setOpen(false)}>
             <Icon name="settings" />
             Assistente de IA
           </Link>
