@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useState, type DragEvent } from "react";
 import { Icon } from "@/components/ui/icon";
 import { formatRelative, initials, labelTemperature } from "@/lib/format";
-import type { Lead, PipelineStage } from "@/lib/types";
+import type { FollowupHistoryItem, Lead, PipelineStage } from "@/lib/types";
 
 type Props = {
   initialLeads: Lead[];
   stages: PipelineStage[];
+  followups: FollowupHistoryItem[];
 };
 
-export function KanbanBoard({ initialLeads, stages }: Props) {
+export function KanbanBoard({ initialLeads, stages, followups }: Props) {
   const [leads, setLeads] = useState(initialLeads);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropStageId, setDropStageId] = useState<string | null>(null);
@@ -125,6 +126,16 @@ export function KanbanBoard({ initialLeads, stages }: Props) {
                         <span className={`temperature ${lead.temperature}`}>
                           {labelTemperature(lead.temperature)}
                         </span>
+                        {followups.some((item) => item.lead_id === lead.id) && (
+                          <div className="followup-badges" aria-label="Histórico de follow-up">
+                            {followups
+                              .filter((item) => item.lead_id === lead.id)
+                              .slice(-4)
+                              .map((item) => (
+                                <span key={item.id}>{item.label}</span>
+                              ))}
+                          </div>
+                        )}
                         <div className="lead-card-detail">
                           {lead.objective || "Aguardando identificação do objetivo"}
                         </div>

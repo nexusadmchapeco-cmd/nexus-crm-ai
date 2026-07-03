@@ -2,14 +2,16 @@ import Link from "next/link";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
-import { getLeads, getStages } from "@/lib/data";
+import { getFollowupHistory, getLeads, getStages } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 export default async function KanbanPage() {
   const configured = isSupabaseConfigured();
-  const [stages, leads] = configured ? await Promise.all([getStages(), getLeads()]) : [[], []];
+  const [stages, leads, followups] = configured
+    ? await Promise.all([getStages(), getLeads(), getFollowupHistory()])
+    : [[], [], []];
 
   return (
     <>
@@ -18,7 +20,7 @@ export default async function KanbanPage() {
         <Link href="/test-inbound" className="button button-primary"><Icon name="plus" size={15} /> Novo lead</Link>
       </div>
       {!configured ? <ConfigRequired /> : (
-        <KanbanBoard initialLeads={leads} stages={stages} />
+        <KanbanBoard initialLeads={leads} stages={stages} followups={followups} />
       )}
     </>
   );

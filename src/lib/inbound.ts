@@ -2,7 +2,9 @@ import { runSdr } from "@/lib/ai/sdr";
 import { defaultStagePrompts } from "@/lib/ai/prompt-defaults";
 import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseOperationsSettings } from "@/lib/operations";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
+import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
 export type InboundPayload = {
   phone: string;
@@ -190,6 +192,65 @@ export async function processInbound(payload: InboundPayload) {
       event_type: "ai_qualified",
       metadata: { stage: stageName, temperature: decision.temperature },
     });
+
+    if (decision.should_handoff || stageName === "Enviar para closer") {
+      const { data: operationsRow } = await supabase
+        .from("ai_settings")
+        .select("global_prompt")
+        .eq("name", "__operations__")
+        .maybeSingle();
+      const operations = parseOperationsSettings(operationsRow?.global_prompt);
+      if (
+        operations.closer_enabled &&
+        operations.closer_phone &&
+        operations.closer_template_name
+      ) {
+        const { data: alreadyNotified } = await supabase
+          .from("lead_events")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .eq("event_type", "closer_notified")
+          .limit(1)
+          .maybeSingle();
+        if (!alreadyNotified) {
+          const closerSummary = [
+            `Lead: ${lead.name || "Sem nome"}`,
+            `WhatsApp: +${lead.phone}`,
+            `Cidade: ${lead.city || "Não informada"}`,
+            `Objetivo: ${lead.objective || "Não informado"}`,
+            `Nível: ${lead.level || "Não informado"}`,
+            `Disponibilidade: ${lead.availability || "Não informada"}`,
+            `Temperatura: ${lead.temperature}`,
+            `Resumo: ${lead.summary || decision.summary}`,
+            `Próxima ação: ${lead.next_action || decision.next_action}`,
+          ].join("\n").slice(0, 1000);
+          try {
+            const sent = await sendWhatsAppTemplate(
+              operations.closer_phone,
+              operations.closer_template_name,
+              operations.language_code,
+              [closerSummary],
+            );
+            await supabase.from("lead_events").insert({
+              lead_id: lead.id,
+              event_type: "closer_notified",
+              metadata: {
+                closer_phone: operations.closer_phone,
+                whatsapp_message_id: sent?.messages?.[0]?.id || null,
+              },
+            });
+          } catch (notifyError) {
+            await supabase.from("lead_events").insert({
+              lead_id: lead.id,
+              event_type: "closer_notification_error",
+              metadata: {
+                message: notifyError instanceof Error ? notifyError.message : "Erro desconhecido",
+              },
+            });
+          }
+        }
+      }
+    }
 
     return { lead, conversation, ai_reply: decision.reply, stage: targetStage, skipped_ai: false };
   } catch (error) {

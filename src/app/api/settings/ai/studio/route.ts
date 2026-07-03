@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { defaultOperationsSettings, normalizePhone } from "@/lib/operations";
 
 type StagePromptPayload = {
   stage_id: string;
@@ -23,6 +24,7 @@ export async function PUT(request: Request) {
       active?: boolean;
       steps?: FollowupStepPayload[];
     };
+    const operations = { ...defaultOperationsSettings, ...(body.operations || {}) };
 
     if (
       !body.name?.trim() ||
@@ -134,6 +136,44 @@ export async function PUT(request: Request) {
         })),
       );
     if (insertStepsError) throw insertStepsError;
+
+    const closerPhone = normalizePhone(String(operations.closer_phone || ""));
+    if (operations.closer_enabled && closerPhone.length < 10) {
+      return NextResponse.json({ error: "Informe o WhatsApp completo do closer." }, { status: 400 });
+    }
+    if (operations.closer_enabled && !String(operations.closer_template_name || "").trim()) {
+      return NextResponse.json(
+        { error: "Informe o modelo aprovado para avisar o closer." },
+        { status: 400 },
+      );
+    }
+    const operationsRecord = {
+      name: "__operations__",
+      global_prompt: JSON.stringify({
+        closer_enabled: Boolean(operations.closer_enabled),
+        closer_name: String(operations.closer_name || "").trim(),
+        closer_phone: closerPhone,
+        closer_template_name: String(operations.closer_template_name || "").trim(),
+        followup_template_name: String(operations.followup_template_name || "").trim(),
+        language_code: String(operations.language_code || "pt_BR"),
+      }),
+      model: body.model.trim(),
+      temperature: numericTemperature,
+      updated_at: new Date().toISOString(),
+    };
+    const { data: existingOperations, error: operationsFindError } = await supabase
+      .from("ai_settings")
+      .select("id")
+      .eq("name", "__operations__")
+      .maybeSingle();
+    if (operationsFindError) throw operationsFindError;
+    const operationsResult = existingOperations
+      ? await supabase
+          .from("ai_settings")
+          .update(operationsRecord)
+          .eq("id", existingOperations.id)
+      : await supabase.from("ai_settings").insert(operationsRecord);
+    if (operationsResult.error) throw operationsResult.error;
 
     return NextResponse.json({ ok: true, sequence_id: sequenceId });
   } catch (error) {

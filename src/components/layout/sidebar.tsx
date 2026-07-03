@@ -10,6 +10,7 @@ const nav = [
   { href: "/kanban", label: "Pipeline", icon: "board" as const },
   { href: "/conversations", label: "Conversas", icon: "chat" as const },
   { href: "/test-inbound", label: "Simulador", icon: "flask" as const },
+  { href: "/campaigns", label: "Disparos", icon: "send" as const },
 ];
 
 export function Sidebar() {

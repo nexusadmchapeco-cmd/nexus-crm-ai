@@ -25,6 +25,7 @@ export default async function AiSettingsPage() {
           stages={studio.stages}
           initialStagePrompts={studio.stagePrompts}
           initialFollowup={studio.followup}
+          initialOperations={studio.operations}
         />
       )}
     </>

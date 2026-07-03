@@ -1,0 +1,161 @@
+import { NextResponse } from "next/server";
+import { parseOperationsSettings } from "@/lib/operations";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWhatsAppTemplate } from "@/lib/whatsapp";
+
+function labelForDelay(minutes: number) {
+  if (minutes % 1440 === 0) return `D+${minutes / 1440}`;
+  if (minutes % 60 === 0) return `${minutes / 60}h`;
+  return `${minutes}min`;
+}
+
+function personalize(message: string, lead: Record<string, string | null>) {
+  return message
+    .replaceAll("{{nome}}", lead.name || "tudo bem")
+    .replaceAll("{{objetivo}}", lead.objective || "seu objetivo")
+    .replaceAll("{{cidade}}", lead.city || "sua cidade");
+}
+
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: "CRON_SECRET não configurado" }, { status: 503 });
+  }
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const [
+      { data: sequence, error: sequenceError },
+      { data: operationsRow, error: operationsError },
+    ] = await Promise.all([
+      supabase
+        .from("followup_sequences")
+        .select("*")
+        .eq("active", true)
+        .order("created_at")
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("ai_settings")
+        .select("global_prompt")
+        .eq("name", "__operations__")
+        .maybeSingle(),
+    ]);
+    if (sequenceError) throw sequenceError;
+    if (operationsError) throw operationsError;
+    if (!sequence) return NextResponse.json({ ok: true, sent: 0, reason: "Sequência pausada" });
+
+    const operations = parseOperationsSettings(operationsRow?.global_prompt);
+    if (!operations.followup_template_name) {
+      return NextResponse.json(
+        { error: "Configure o modelo aprovado de follow-up no Estúdio de IA." },
+        { status: 400 },
+      );
+    }
+
+    const [
+      { data: steps, error: stepsError },
+      { data: leads, error: leadsError },
+    ] = await Promise.all([
+      supabase
+        .from("followup_steps")
+        .select("*")
+        .eq("sequence_id", sequence.id)
+        .order("delay_minutes"),
+      supabase
+        .from("leads")
+        .select("*")
+        .eq("stage_id", sequence.trigger_stage_id)
+        .eq("human_takeover", false),
+    ]);
+    if (stepsError) throw stepsError;
+    if (leadsError) throw leadsError;
+
+    let sentCount = 0;
+    const errors: string[] = [];
+    for (const lead of leads || []) {
+      const [
+        { data: lastInbound },
+        { data: sentEvents },
+        { data: conversation },
+      ] = await Promise.all([
+        supabase
+          .from("messages")
+          .select("created_at")
+          .eq("lead_id", lead.id)
+          .eq("sender_type", "lead")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("lead_events")
+          .select("metadata")
+          .eq("lead_id", lead.id)
+          .eq("event_type", "followup_sent"),
+        supabase
+          .from("conversations")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .maybeSingle(),
+      ]);
+      if (!lastInbound || !conversation) continue;
+
+      const completedDelays = new Set(
+        (sentEvents || []).map((event) => Number(event.metadata?.delay_minutes)),
+      );
+      const elapsedMinutes =
+        (Date.now() - new Date(lastInbound.created_at).getTime()) / 60000;
+      const dueStep = (steps || []).find(
+        (step) =>
+          step.delay_minutes <= elapsedMinutes &&
+          !completedDelays.has(Number(step.delay_minutes)),
+      );
+      if (!dueStep) continue;
+
+      const message = personalize(dueStep.message, lead);
+      try {
+        const result = await sendWhatsAppTemplate(
+          lead.phone,
+          operations.followup_template_name,
+          operations.language_code,
+          [message.slice(0, 1000)],
+        );
+        const whatsappMessageId = result?.messages?.[0]?.id || null;
+        await Promise.all([
+          supabase.from("messages").insert({
+            conversation_id: conversation.id,
+            lead_id: lead.id,
+            sender_type: "ai",
+            content: message,
+            whatsapp_message_id: whatsappMessageId,
+            status: "sent",
+            is_ai: true,
+          }),
+          supabase.from("lead_events").insert({
+            lead_id: lead.id,
+            event_type: "followup_sent",
+            metadata: {
+              label: labelForDelay(dueStep.delay_minutes),
+              delay_minutes: dueStep.delay_minutes,
+              message,
+              whatsapp_message_id: whatsappMessageId,
+            },
+          }),
+        ]);
+        sentCount += 1;
+      } catch (error) {
+        errors.push(`${lead.id}: ${error instanceof Error ? error.message : "erro"}`);
+      }
+    }
+
+    return NextResponse.json({ ok: true, sent: sentCount, errors: errors.slice(0, 10) });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro ao processar follow-ups" },
+      { status: 500 },
+    );
+  }
+}

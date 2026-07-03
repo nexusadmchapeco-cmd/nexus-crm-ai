@@ -3,7 +3,7 @@ import { ChatActions } from "@/components/conversations/chat-actions";
 import { Composer } from "@/components/conversations/composer";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
-import { getLeads, getMessages } from "@/lib/data";
+import { getFollowupHistory, getLeads, getMessages } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 import { formatRelative, initials, labelTemperature } from "@/lib/format";
 
@@ -15,7 +15,9 @@ export default async function ConversationsPage({ searchParams }: { searchParams
   const leads = await getLeads();
   const params = await searchParams;
   const selected = leads.find((lead) => lead.id === params.lead) || leads[0];
-  const messages = selected ? await getMessages(selected.id) : [];
+  const [messages, followups] = selected
+    ? await Promise.all([getMessages(selected.id), getFollowupHistory(selected.id)])
+    : [[], []];
 
   return (
     <>
@@ -66,6 +68,28 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 <h3>{selected.name || "Lead sem nome"}</h3><p>+{selected.phone}</p>
               </div>
               <ChatActions leadId={selected.id} humanTakeover={selected.human_takeover} />
+              <div className="detail-section">
+                <h4>Histórico de follow-up</h4>
+                {followups.length ? (
+                  <div className="followup-history">
+                    {followups.map((item) => (
+                      <div key={item.id}>
+                        <span>{item.label}</span>
+                        <strong>
+                          {new Intl.DateTimeFormat("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).format(new Date(item.created_at))}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-detail">Nenhum follow-up enviado.</div>
+                )}
+              </div>
               <div className="detail-section">
                 <h4>Dados do lead</h4>
                 <div className="detail-grid">

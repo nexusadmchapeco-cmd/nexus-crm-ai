@@ -5,17 +5,19 @@ import { Icon } from "@/components/ui/icon";
 import type {
   AiSettings,
   FollowupSequence,
+  OperationsSettings,
   PipelineStage,
   StagePrompt,
 } from "@/lib/types";
 
-type StudioTab = "principal" | "etapas" | "followup";
+type StudioTab = "principal" | "etapas" | "followup" | "encaminhamento";
 
 type Props = {
   settings: AiSettings;
   stages: PipelineStage[];
   initialStagePrompts: StagePrompt[];
   initialFollowup: FollowupSequence;
+  initialOperations: OperationsSettings;
 };
 
 function delayLabel(minutes: number) {
@@ -29,11 +31,13 @@ export function PromptStudio({
   stages,
   initialStagePrompts,
   initialFollowup,
+  initialOperations,
 }: Props) {
   const [tab, setTab] = useState<StudioTab>("principal");
   const [settings, setSettings] = useState(initialSettings);
   const [stagePrompts, setStagePrompts] = useState(initialStagePrompts);
   const [followup, setFollowup] = useState(initialFollowup);
+  const [operations, setOperations] = useState(initialOperations);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
@@ -53,6 +57,7 @@ export function PromptStudio({
         temperature: settings.temperature,
         stage_prompts: stagePrompts.map(({ stage_id, prompt }) => ({ stage_id, prompt })),
         followup,
+        operations,
       }),
     });
     const body = await response.json();
@@ -177,6 +182,10 @@ export function PromptStudio({
           <Icon name="trend" size={15} />
           Follow-up
           <span>{followup.steps.length}</span>
+        </button>
+        <button className={tab === "encaminhamento" ? "active" : ""} onClick={() => setTab("encaminhamento")} type="button">
+          <Icon name="send" size={15} />
+          Encaminhamento
         </button>
       </div>
 
@@ -434,6 +443,97 @@ export function PromptStudio({
               <Icon name="plus" size={14} />
               Adicionar mensagem
             </button>
+          </div>
+        </section>
+      )}
+
+      {tab === "encaminhamento" && (
+        <section className="studio-section">
+          <div className="studio-section-head studio-followup-head">
+            <div>
+              <span>Passagem para o comercial</span>
+              <h2>Resumo automático para o closer</h2>
+              <p>Quando a IA qualificar um lead, o closer recebe o resumo pelo WhatsApp oficial.</p>
+            </div>
+            <label className="studio-switch">
+              <input
+                type="checkbox"
+                checked={operations.closer_enabled}
+                onChange={(event) =>
+                  setOperations({ ...operations, closer_enabled: event.target.checked })
+                }
+              />
+              <span />
+              {operations.closer_enabled ? "Ativo" : "Pausado"}
+            </label>
+          </div>
+          <div className="operations-settings">
+            <div className="operations-callout">
+              <Icon name="check" size={16} />
+              <div>
+                <strong>Envio pela API Cloud oficial</strong>
+                <p>Use um modelo aprovado com uma variável no corpo para receber todo o resumo.</p>
+              </div>
+            </div>
+            <div className="field-grid">
+              <div className="field">
+                <label htmlFor="closer-name">Nome do closer</label>
+                <input
+                  id="closer-name"
+                  value={operations.closer_name}
+                  onChange={(event) =>
+                    setOperations({ ...operations, closer_name: event.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="closer-phone">WhatsApp do closer</label>
+                <input
+                  id="closer-phone"
+                  inputMode="tel"
+                  placeholder="5554999999999"
+                  value={operations.closer_phone}
+                  onChange={(event) =>
+                    setOperations({ ...operations, closer_phone: event.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="closer-template">Modelo aprovado para o resumo</label>
+                <input
+                  id="closer-template"
+                  placeholder="lead_qualificado_closer"
+                  value={operations.closer_template_name}
+                  onChange={(event) =>
+                    setOperations({ ...operations, closer_template_name: event.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="followup-template">Modelo aprovado para follow-up</label>
+                <input
+                  id="followup-template"
+                  placeholder="followup_comercial"
+                  value={operations.followup_template_name}
+                  onChange={(event) =>
+                    setOperations({ ...operations, followup_template_name: event.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="template-language">Idioma dos modelos</label>
+                <select
+                  id="template-language"
+                  value={operations.language_code}
+                  onChange={(event) =>
+                    setOperations({ ...operations, language_code: event.target.value })
+                  }
+                >
+                  <option value="pt_BR">Português (Brasil)</option>
+                  <option value="en_US">Inglês (EUA)</option>
+                </select>
+              </div>
+            </div>
           </div>
         </section>
       )}

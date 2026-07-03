@@ -96,6 +96,43 @@ export type FollowupSequence = {
   steps: FollowupStep[];
 };
 
+export type FollowupHistoryItem = {
+  id: string;
+  lead_id: string;
+  label: string;
+  delay_minutes: number;
+  message: string;
+  created_at: string;
+};
+
+export type OperationsSettings = {
+  closer_enabled: boolean;
+  closer_name: string;
+  closer_phone: string;
+  closer_template_name: string;
+  followup_template_name: string;
+  language_code: string;
+};
+
+export type CampaignFilters = {
+  stage_ids: string[];
+  cities: string[];
+  created_from: string | null;
+  created_to: string | null;
+  interacted_with_ai: boolean;
+  did_not_advance: boolean;
+  never_replied: boolean;
+  exclude_won: boolean;
+};
+
+export type CampaignAudienceLead = Pick<
+  Lead,
+  "id" | "name" | "phone" | "city" | "stage_id" | "created_at" | "last_message_at"
+> & {
+  stage_name: string;
+  reason: string;
+};
+
 export type AiDecision = {
   reply: string;
   extracted: {
