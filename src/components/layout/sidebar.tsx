@@ -51,7 +51,7 @@ export function Sidebar() {
           </Link>
           <Link href="/settings/ai" className={pathname.startsWith("/settings/ai") ? "active" : ""} onClick={() => setOpen(false)}>
             <Icon name="settings" />
-            Assistente de IA
+            Estúdio de IA
           </Link>
         </nav>
         <div className="sidebar-status">

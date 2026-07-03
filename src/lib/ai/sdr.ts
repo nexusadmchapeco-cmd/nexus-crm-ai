@@ -69,10 +69,12 @@ export async function runSdr({
   lead,
   messages,
   settings,
+  stagePrompt,
 }: {
   lead: Lead;
   messages: Message[];
   settings: AiSettings;
+  stagePrompt?: string | null;
 }): Promise<AiDecision> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada");
@@ -107,7 +109,15 @@ export async function runSdr({
       temperature: settings.temperature,
       response_format: { type: "json_schema", json_schema: schema },
       messages: [
-        { role: "system", content: settings.global_prompt },
+        {
+          role: "system",
+          content: [
+            settings.global_prompt,
+            stagePrompt
+              ? `\nINSTRUÇÃO ESPECÍFICA DA ETAPA ATUAL:\n${stagePrompt}`
+              : "",
+          ].join(""),
+        },
         {
           role: "user",
           content: `Analise a conversa e gere a próxima resposta e decisão operacional.\n${JSON.stringify(context)}`,

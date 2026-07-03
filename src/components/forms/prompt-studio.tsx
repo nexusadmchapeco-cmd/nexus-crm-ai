@@ -1,0 +1,378 @@
+"use client";
+
+import { useState } from "react";
+import { Icon } from "@/components/ui/icon";
+import type {
+  AiSettings,
+  FollowupSequence,
+  PipelineStage,
+  StagePrompt,
+} from "@/lib/types";
+
+type StudioTab = "principal" | "etapas" | "followup";
+
+type Props = {
+  settings: AiSettings;
+  stages: PipelineStage[];
+  initialStagePrompts: StagePrompt[];
+  initialFollowup: FollowupSequence;
+};
+
+function delayLabel(minutes: number) {
+  if (minutes % 1440 === 0) return `D+${minutes / 1440}`;
+  if (minutes % 60 === 0) return `${minutes / 60}h`;
+  return `${minutes}min`;
+}
+
+export function PromptStudio({
+  settings: initialSettings,
+  stages,
+  initialStagePrompts,
+  initialFollowup,
+}: Props) {
+  const [tab, setTab] = useState<StudioTab>("principal");
+  const [settings, setSettings] = useState(initialSettings);
+  const [stagePrompts, setStagePrompts] = useState(initialStagePrompts);
+  const [followup, setFollowup] = useState(initialFollowup);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [notice, setNotice] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setNotice(null);
+    const response = await fetch("/api/settings/ai/studio", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: settings.name,
+        model: settings.model,
+        global_prompt: settings.global_prompt,
+        temperature: settings.temperature,
+        stage_prompts: stagePrompts.map(({ stage_id, prompt }) => ({ stage_id, prompt })),
+        followup,
+      }),
+    });
+    const body = await response.json();
+    setSaving(false);
+    if (!response.ok) {
+      setNotice({ type: "error", text: body.error || "Não foi possível salvar." });
+      return;
+    }
+    setFollowup((current) => ({ ...current, id: body.sequence_id }));
+    setNotice({ type: "ok", text: "Configurações salvas no Supabase." });
+  }
+
+  async function testConnection() {
+    setTesting(true);
+    setNotice(null);
+    const response = await fetch("/api/settings/ai/test", { method: "POST" });
+    const body = await response.json();
+    setTesting(false);
+    if (!response.ok) {
+      setNotice({ type: "error", text: body.error || "A OpenAI não respondeu." });
+      return;
+    }
+    setNotice({
+      type: "ok",
+      text: `OpenAI conectada · ${body.model} · ${body.latency_ms} ms`,
+    });
+  }
+
+  function updateStagePrompt(stageId: string, prompt: string) {
+    setStagePrompts((current) =>
+      current.map((item) => (item.stage_id === stageId ? { ...item, prompt } : item)),
+    );
+  }
+
+  function updateStep(index: number, patch: { delay_minutes?: number; message?: string }) {
+    setFollowup((current) => ({
+      ...current,
+      steps: current.steps.map((step, stepIndex) =>
+        stepIndex === index ? { ...step, ...patch } : step,
+      ),
+    }));
+  }
+
+  function addStep() {
+    setFollowup((current) => ({
+      ...current,
+      steps: [
+        ...current.steps,
+        {
+          position: current.steps.length,
+          delay_minutes:
+            (current.steps[current.steps.length - 1]?.delay_minutes || 0) + 24 * 60,
+          message: "Oi, {{nome}}! Ainda posso te ajudar a avançar com seu inglês?",
+        },
+      ],
+    }));
+  }
+
+  function removeStep(index: number) {
+    setFollowup((current) => ({
+      ...current,
+      steps: current.steps
+        .filter((_, stepIndex) => stepIndex !== index)
+        .map((step, position) => ({ ...step, position })),
+    }));
+  }
+
+  return (
+    <div className="prompt-studio">
+      <div className="studio-statusbar">
+        <div>
+          <span className="studio-live-dot" />
+          <div>
+            <strong>OpenAI conectada</strong>
+            <small>Chave validada e pronta para responder</small>
+          </div>
+        </div>
+        <button className="button" type="button" onClick={testConnection} disabled={testing}>
+          <Icon name="flask" size={14} />
+          {testing ? "Testando…" : "Testar conexão"}
+        </button>
+      </div>
+
+      <div className="studio-tabs" role="tablist" aria-label="Configurações da IA">
+        <button className={tab === "principal" ? "active" : ""} onClick={() => setTab("principal")} type="button">
+          <Icon name="bot" size={15} />
+          Prompt principal
+        </button>
+        <button className={tab === "etapas" ? "active" : ""} onClick={() => setTab("etapas")} type="button">
+          <Icon name="board" size={15} />
+          Prompts por etapa
+          <span>{stagePrompts.length}</span>
+        </button>
+        <button className={tab === "followup" ? "active" : ""} onClick={() => setTab("followup")} type="button">
+          <Icon name="trend" size={15} />
+          Follow-up
+          <span>{followup.steps.length}</span>
+        </button>
+      </div>
+
+      {notice && (
+        <div className={`studio-notice ${notice.type}`} role="status">
+          <Icon name={notice.type === "ok" ? "check" : "x"} size={14} />
+          {notice.text}
+        </div>
+      )}
+
+      {tab === "principal" && (
+        <section className="studio-section">
+          <div className="studio-section-head">
+            <div>
+              <span>Base da assistente</span>
+              <h2>Identidade e comportamento</h2>
+              <p>Estas regras valem para todas as conversas automáticas.</p>
+            </div>
+          </div>
+          <div className="studio-grid">
+            <div className="studio-main-editor">
+              <div className="field-grid">
+                <div className="field">
+                  <label htmlFor="assistant-name">Nome da IA</label>
+                  <input
+                    id="assistant-name"
+                    value={settings.name}
+                    onChange={(event) => setSettings({ ...settings, name: event.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="assistant-model">Modelo</label>
+                  <input
+                    id="assistant-model"
+                    value={settings.model}
+                    onChange={(event) => setSettings({ ...settings, model: event.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="assistant-temperature">
+                  Criatividade <b>{Number(settings.temperature).toFixed(1)}</b>
+                </label>
+                <input
+                  className="studio-range"
+                  id="assistant-temperature"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={settings.temperature}
+                  onChange={(event) =>
+                    setSettings({ ...settings, temperature: Number(event.target.value) })
+                  }
+                />
+                <div className="range-labels"><span>Precisa</span><span>Criativa</span></div>
+              </div>
+              <div className="field">
+                <label htmlFor="global-prompt">Prompt principal</label>
+                <textarea
+                  className="studio-prompt"
+                  id="global-prompt"
+                  value={settings.global_prompt}
+                  onChange={(event) =>
+                    setSettings({ ...settings, global_prompt: event.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <aside className="studio-guidance">
+              <span>Checklist</span>
+              <h3>Um prompt comercial seguro</h3>
+              <ul>
+                <li><Icon name="check" size={13} /> Uma pergunta por vez</li>
+                <li><Icon name="check" size={13} /> Sem inventar preços ou vagas</li>
+                <li><Icon name="check" size={13} /> Tom curto e natural</li>
+                <li><Icon name="check" size={13} /> Transferência clara ao humano</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+      )}
+
+      {tab === "etapas" && (
+        <section className="studio-section">
+          <div className="studio-section-head">
+            <div>
+              <span>Contexto do funil</span>
+              <h2>Instruções por etapa</h2>
+              <p>A IA combina o prompt principal com a instrução da etapa atual do lead.</p>
+            </div>
+          </div>
+          <div className="stage-prompt-list">
+            {stagePrompts.map((item, index) => (
+              <article className="stage-prompt-row" key={item.stage_id}>
+                <div className="stage-prompt-meta">
+                  <i style={{ background: item.stage_color }} />
+                  <span>Etapa {index + 1}</span>
+                  <strong>{item.stage_name}</strong>
+                </div>
+                <div className="field">
+                  <label htmlFor={`stage-${item.stage_id}`}>Prompt da etapa</label>
+                  <textarea
+                    id={`stage-${item.stage_id}`}
+                    value={item.prompt}
+                    onChange={(event) => updateStagePrompt(item.stage_id, event.target.value)}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {tab === "followup" && (
+        <section className="studio-section">
+          <div className="studio-section-head studio-followup-head">
+            <div>
+              <span>Cadência comercial</span>
+              <h2>Sequência de follow-up</h2>
+              <p>Defina quando e como cada retomada será enviada.</p>
+            </div>
+            <label className="studio-switch">
+              <input
+                type="checkbox"
+                checked={followup.active}
+                onChange={(event) => setFollowup({ ...followup, active: event.target.checked })}
+              />
+              <span />
+              {followup.active ? "Ativa" : "Pausada"}
+            </label>
+          </div>
+          <div className="followup-config">
+            <div className="field-grid">
+              <div className="field">
+                <label htmlFor="followup-name">Nome da sequência</label>
+                <input
+                  id="followup-name"
+                  value={followup.name}
+                  onChange={(event) => setFollowup({ ...followup, name: event.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="followup-stage">Começar quando o lead entrar em</label>
+                <select
+                  id="followup-stage"
+                  value={followup.trigger_stage_id || ""}
+                  onChange={(event) =>
+                    setFollowup({ ...followup, trigger_stage_id: event.target.value })
+                  }
+                >
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="followup-timeline">
+              {followup.steps.map((step, index) => (
+                <article className="followup-step" key={`${step.id || "new"}-${index}`}>
+                  <div className="followup-marker">
+                    <span>{delayLabel(step.delay_minutes)}</span>
+                    <i />
+                  </div>
+                  <div className="followup-step-editor">
+                    <div className="followup-step-head">
+                      <div>
+                        <strong>Mensagem {index + 1}</strong>
+                        <small>Após a última mensagem do lead</small>
+                      </div>
+                      <div className="followup-delay">
+                        <label htmlFor={`delay-${index}`}>Prazo (horas)</label>
+                        <input
+                          id={`delay-${index}`}
+                          type="number"
+                          min="1"
+                          value={Math.round(step.delay_minutes / 60)}
+                          onChange={(event) =>
+                            updateStep(index, {
+                              delay_minutes: Math.max(1, Number(event.target.value)) * 60,
+                            })
+                          }
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="icon-button studio-remove"
+                        aria-label={`Remover mensagem ${index + 1}`}
+                        onClick={() => removeStep(index)}
+                        disabled={followup.steps.length === 1}
+                      >
+                        <Icon name="x" size={15} />
+                      </button>
+                    </div>
+                    <div className="field">
+                      <label htmlFor={`message-${index}`}>Mensagem ou prompt</label>
+                      <textarea
+                        id={`message-${index}`}
+                        value={step.message}
+                        onChange={(event) => updateStep(index, { message: event.target.value })}
+                      />
+                    </div>
+                    <small className="variable-help">
+                      Variáveis disponíveis: <code>{"{{nome}}"}</code> <code>{"{{objetivo}}"}</code> <code>{"{{cidade}}"}</code>
+                    </small>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <button className="button studio-add-step" type="button" onClick={addStep}>
+              <Icon name="plus" size={14} />
+              Adicionar mensagem
+            </button>
+          </div>
+        </section>
+      )}
+
+      <div className="studio-savebar">
+        <span>As alterações passam a valer nas próximas respostas da IA.</span>
+        <button className="button button-primary" onClick={save} disabled={saving} type="button">
+          <Icon name="check" size={14} />
+          {saving ? "Salvando…" : "Salvar todas as alterações"}
+        </button>
+      </div>
+    </div>
+  );
+}

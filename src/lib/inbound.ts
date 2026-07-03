@@ -1,4 +1,5 @@
 import { runSdr } from "@/lib/ai/sdr";
+import { defaultStagePrompts } from "@/lib/ai/prompt-defaults";
 import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
@@ -115,7 +116,12 @@ export async function processInbound(payload: InboundPayload) {
     };
   }
 
-  const [{ data: settings, error: settingsError }, { data: messages, error: messagesError }] =
+  const stagePromptKey = `__stage__:${lead.stage_id}`;
+  const [
+    { data: settings, error: settingsError },
+    { data: messages, error: messagesError },
+    { data: stagePromptRow, error: stagePromptError },
+  ] =
     await Promise.all([
       supabase.from("ai_settings").select("*").order("created_at").limit(1).single(),
       supabase
@@ -124,15 +130,27 @@ export async function processInbound(payload: InboundPayload) {
         .eq("lead_id", lead.id)
         .order("created_at")
         .limit(20),
+      supabase
+        .from("ai_settings")
+        .select("global_prompt")
+        .eq("name", stagePromptKey)
+        .maybeSingle(),
     ]);
   if (settingsError) throw settingsError;
   if (messagesError) throw messagesError;
+  if (stagePromptError) throw stagePromptError;
 
   try {
     const decision = await runSdr({
       lead,
       settings,
       messages: messages as Message[],
+      stagePrompt:
+        stagePromptRow?.global_prompt ||
+        defaultStagePrompts[
+          (stages as PipelineStage[]).find((stage) => stage.id === lead.stage_id)?.name || ""
+        ] ||
+        null,
     });
     const stageName = resolveSuggestedStage(decision, lead);
     const targetStage = stageByName.get(stageName) || stageByName.get("IA em atendimento")!;

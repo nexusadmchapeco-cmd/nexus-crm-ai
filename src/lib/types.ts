@@ -72,6 +72,30 @@ export type AiSettings = {
   updated_at: string;
 };
 
+export type StagePrompt = {
+  id?: string;
+  stage_id: string;
+  stage_name: string;
+  stage_color: string;
+  prompt: string;
+  active: boolean;
+};
+
+export type FollowupStep = {
+  id?: string;
+  position: number;
+  delay_minutes: number;
+  message: string;
+};
+
+export type FollowupSequence = {
+  id?: string;
+  name: string;
+  trigger_stage_id: string | null;
+  active: boolean;
+  steps: FollowupStep[];
+};
+
 export type AiDecision = {
   reply: string;
   extracted: {
