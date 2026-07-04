@@ -101,6 +101,16 @@ export function PromptStudio({
     }));
   }
 
+  function updateFollowupTemplate(delayMinutes: number, templateName: string) {
+    setOperations((current) => ({
+      ...current,
+      followup_template_names: {
+        ...current.followup_template_names,
+        [String(delayMinutes)]: templateName,
+      },
+    }));
+  }
+
   function addStep() {
     setFollowup((current) => ({
       ...current,
@@ -432,6 +442,19 @@ export function PromptStudio({
                         onChange={(event) => updateStep(index, { message: event.target.value })}
                       />
                     </div>
+                    <div className="field">
+                      <label htmlFor={`template-${index}`}>Modelo oficial aprovado</label>
+                      <input
+                        id={`template-${index}`}
+                        placeholder={`followup_${delayLabel(step.delay_minutes).toLowerCase().replace("+", "")}`}
+                        value={
+                          operations.followup_template_names[String(step.delay_minutes)] || ""
+                        }
+                        onChange={(event) =>
+                          updateFollowupTemplate(step.delay_minutes, event.target.value)
+                        }
+                      />
+                    </div>
                     <small className="variable-help">
                       Variáveis disponíveis: <code>{"{{nome}}"}</code> <code>{"{{objetivo}}"}</code> <code>{"{{cidade}}"}</code>
                     </small>
@@ -510,17 +533,6 @@ export function PromptStudio({
                 />
               </div>
               <div className="field">
-                <label htmlFor="followup-template">Modelo aprovado para follow-up</label>
-                <input
-                  id="followup-template"
-                  placeholder="followup_comercial"
-                  value={operations.followup_template_name}
-                  onChange={(event) =>
-                    setOperations({ ...operations, followup_template_name: event.target.value })
-                  }
-                />
-              </div>
-              <div className="field">
                 <label htmlFor="template-language">Idioma dos modelos</label>
                 <select
                   id="template-language"
@@ -532,6 +544,56 @@ export function PromptStudio({
                   <option value="pt_BR">Português (Brasil)</option>
                   <option value="en_US">Inglês (EUA)</option>
                 </select>
+              </div>
+            </div>
+            <div className="field-grid">
+              <div className="field">
+                <label htmlFor="campaign-reactivation">Modelo de reativação</label>
+                <input
+                  id="campaign-reactivation"
+                  value={operations.campaign_template_names.reactivation}
+                  onChange={(event) =>
+                    setOperations({
+                      ...operations,
+                      campaign_template_names: {
+                        ...operations.campaign_template_names,
+                        reactivation: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="campaign-black-november">Modelo Black November</label>
+                <input
+                  id="campaign-black-november"
+                  value={operations.campaign_template_names.black_november}
+                  onChange={(event) =>
+                    setOperations({
+                      ...operations,
+                      campaign_template_names: {
+                        ...operations.campaign_template_names,
+                        black_november: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="campaign-next-month">Modelo para turmas do próximo mês</label>
+                <input
+                  id="campaign-next-month"
+                  value={operations.campaign_template_names.next_month_classes}
+                  onChange={(event) =>
+                    setOperations({
+                      ...operations,
+                      campaign_template_names: {
+                        ...operations.campaign_template_names,
+                        next_month_classes: event.target.value,
+                      },
+                    })
+                  }
+                />
               </div>
             </div>
           </div>

@@ -143,6 +143,44 @@ export async function processInbound(payload: InboundPayload) {
   if (stagePromptError) throw stagePromptError;
 
   try {
+    const now = new Date().toISOString().slice(0, 10);
+    const [{ data: knowledge }, { data: slots }] = await Promise.all([
+      supabase
+        .from("knowledge_articles")
+        .select("title, category, content, unit, valid_from, valid_until, priority")
+        .eq("status", "published")
+        .eq("visibility", "customer")
+        .order("priority", { ascending: false })
+        .limit(30),
+      supabase
+        .from("availability_slots")
+        .select("weekday, start_time, end_time, type, unit, owner_name")
+        .eq("active", true)
+        .order("weekday")
+        .order("start_time"),
+    ]);
+    const applicableKnowledge = (knowledge || []).filter(
+      (article) =>
+        (!article.valid_from || article.valid_from <= now) &&
+        (!article.valid_until || article.valid_until >= now),
+    );
+    const knowledgeContext = applicableKnowledge
+      .map(
+        (article) =>
+          `[${article.category}] ${article.title}${article.unit ? ` (${article.unit})` : ""}\n${article.content}`,
+      )
+      .join("\n\n")
+      .slice(0, 12000);
+    const weekdays = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+    const availableSlots = (slots || [])
+      .map(
+        (slot) =>
+          `${weekdays[slot.weekday]} ${String(slot.start_time).slice(0, 5)}–${String(slot.end_time).slice(0, 5)} · ${
+            slot.type === "closer_meeting" ? "reunião com closer" : "aula experimental"
+          }${slot.owner_name ? ` · ${slot.owner_name}` : ""}${slot.unit ? ` · ${slot.unit}` : ""}`,
+      )
+      .join("\n")
+      .slice(0, 6000);
     const decision = await runSdr({
       lead,
       settings,
@@ -153,6 +191,8 @@ export async function processInbound(payload: InboundPayload) {
           (stages as PipelineStage[]).find((stage) => stage.id === lead.stage_id)?.name || ""
         ] ||
         null,
+      knowledgeContext: knowledgeContext || null,
+      availableSlots: availableSlots || null,
     });
     const stageName = resolveSuggestedStage(decision, lead);
     const targetStage = stageByName.get(stageName) || stageByName.get("IA em atendimento")!;
@@ -192,6 +232,72 @@ export async function processInbound(payload: InboundPayload) {
       event_type: "ai_qualified",
       metadata: { stage: stageName, temperature: decision.temperature },
     });
+
+    if (
+      decision.appointment?.should_schedule &&
+      decision.appointment.type &&
+      decision.appointment.starts_at
+    ) {
+      const startsAt = new Date(decision.appointment.starts_at);
+      const duration = Math.min(Math.max(decision.appointment.duration_minutes || 30, 15), 120);
+      if (!Number.isNaN(startsAt.getTime()) && startsAt.getTime() > Date.now()) {
+        const endsAt = new Date(startsAt.getTime() + duration * 60_000);
+        const { data: conflict } = await supabase
+          .from("appointments")
+          .select("id")
+          .lt("starts_at", endsAt.toISOString())
+          .gt("ends_at", startsAt.toISOString())
+          .in("status", ["scheduled", "confirmed"])
+          .limit(1)
+          .maybeSingle();
+        if (!conflict) {
+          const { data: appointment } = await supabase
+            .from("appointments")
+            .insert({
+              lead_id: lead.id,
+              type: decision.appointment.type,
+              title:
+                decision.appointment.type === "closer_meeting"
+                  ? "Reunião comercial"
+                  : "Aula experimental",
+              starts_at: startsAt.toISOString(),
+              ends_at: endsAt.toISOString(),
+              status: "confirmed",
+              owner_name:
+                decision.appointment.type === "closer_meeting" ? "Closer Nexus" : "Equipe Nexus",
+              created_by: "ai",
+            })
+            .select()
+            .single();
+          if (appointment) {
+            await Promise.all([
+              supabase.from("notifications").insert({
+                appointment_id: appointment.id,
+                title:
+                  decision.appointment.type === "closer_meeting"
+                    ? "Nova reunião agendada pela IA"
+                    : "Nova aula experimental agendada",
+                body: `${lead.name || lead.phone} · ${startsAt.toLocaleString("pt-BR", {
+                  timeZone: "America/Sao_Paulo",
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}`,
+              }),
+              supabase.from("lead_events").insert({
+                lead_id: lead.id,
+                event_type: "appointment_scheduled",
+                metadata: {
+                  appointment_id: appointment.id,
+                  type: appointment.type,
+                  starts_at: appointment.starts_at,
+                  created_by: "ai",
+                },
+              }),
+            ]);
+          }
+        }
+      }
+    }
 
     if (decision.should_handoff || stageName === "Enviar para closer") {
       const { data: operationsRow } = await supabase

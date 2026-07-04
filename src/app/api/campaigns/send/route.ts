@@ -48,7 +48,7 @@ export async function POST(request: Request) {
           lead.phone,
           body.template_name,
           body.language_code || operations.language_code,
-          [personalizedText],
+          [lead.name || "tudo bem"],
         );
         const whatsappMessageId = sent?.messages?.[0]?.id || null;
         const { data: conversation } = await supabase

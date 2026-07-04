@@ -111,6 +111,12 @@ export type OperationsSettings = {
   closer_phone: string;
   closer_template_name: string;
   followup_template_name: string;
+  followup_template_names: Record<string, string>;
+  campaign_template_names: {
+    reactivation: string;
+    black_november: string;
+    next_month_classes: string;
+  };
   language_code: string;
 };
 
@@ -151,4 +157,29 @@ export type AiDecision = {
   suggested_stage: string;
   summary: string;
   next_action: string;
+  appointment: {
+    should_schedule: boolean;
+    type: "experimental_class" | "closer_meeting" | null;
+    starts_at: string | null;
+    duration_minutes: number | null;
+  };
+};
+
+export type AppointmentStatus = "scheduled" | "confirmed" | "completed" | "no_show" | "cancelled";
+export type Appointment = {
+  id: string; lead_id: string | null; type: "experimental_class" | "closer_meeting";
+  title: string; starts_at: string; ends_at: string; status: AppointmentStatus;
+  owner_name: string | null; meeting_url: string | null; notes: string | null;
+  created_by: "human" | "ai";
+  leads?: Pick<Lead, "id" | "name" | "phone" | "city"> | null;
+};
+export type AvailabilitySlot = {
+  id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  type: "experimental_class" | "closer_meeting";
+  unit: string | null;
+  owner_name: string | null;
+  active: boolean;
 };

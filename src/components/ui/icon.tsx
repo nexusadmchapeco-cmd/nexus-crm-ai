@@ -19,6 +19,9 @@ const paths: Record<string, React.ReactNode> = {
   x: <path d="m6 6 12 12M18 6 6 18"/>,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   move: <><path d="m12 2 3 3-3 3M12 2 9 5l3 3M12 22l3-3-3-3M12 22l-3-3 3-3M2 12l3-3 3 3M2 12l3 3 3-3M22 12l-3-3-3 3M22 12l-3 3-3-3"/><path d="M12 3v18M3 12h18"/></>,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></>,
+  book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13M8 8h8M8 12h6"/></>,
+  report: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>,
 };
 
 export function Icon({
