@@ -26,16 +26,21 @@ export const defaultFollowupSteps = [
   {
     delay_minutes: 24 * 60,
     message:
-      "Oi, {{nome}}! Passando para saber se você conseguiu pensar sobre seu objetivo com o inglês. Posso te ajudar a encontrar a melhor opção?",
+      "Hello, {{nome}}! Tudo bem?\n\nSe quiser agilizar seu atendimento, pode me contar rapidamente o que você está buscando. Assim, já te envio as informações mais importantes.\n\nSe preferir, também podemos combinar um horário melhor para conversarmos. O que fica mais fácil para você?",
   },
   {
     delay_minutes: 3 * 24 * 60,
     message:
-      "Oi, {{nome}}! Lembrei que você quer aprender inglês para {{objetivo}}. Ainda faz sentido começar agora?",
+      "Hello, {{nome}}! Tudo bem?\n\nEstou organizando as vagas dos novos alunos para o início do próximo mês e lembrei de você.\n\nFicou alguma dúvida ou posso retomar seu atendimento por aqui mesmo?",
   },
   {
     delay_minutes: 7 * 24 * 60,
     message:
-      "Oi, {{nome}}! Vou encerrar nosso acompanhamento por enquanto, mas quando quiser retomar é só me chamar por aqui. Posso ajudar em algo antes disso?",
+      "{{nome}}, se preferir, podemos agendar diretamente uma aula experimental.\n\nPercebi que sua rotina está um pouco corrida e, assim, a gente ganha tempo: você conhece nossa escola, entende como as aulas funcionam e vê se faz sentido para você.\n\nO que acha?",
+  },
+  {
+    delay_minutes: 21 * 24 * 60,
+    message:
+      "Oi, {{nome}}! Vou encerrar seu atendimento por enquanto.\n\nMas podemos organizar o início das suas aulas para os próximos meses, caso seja melhor para você. Se quiser, ainda posso te explicar como tudo funciona.\n\nCaso contrário, vou deixar seu contato salvo. Quando quiser retomar ou tiver alguma dúvida, é só chamar a gente por aqui.",
   },
 ];

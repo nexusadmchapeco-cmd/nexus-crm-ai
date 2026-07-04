@@ -49,13 +49,6 @@ export async function GET(request: Request) {
     if (!sequence) return NextResponse.json({ ok: true, sent: 0, reason: "Sequência pausada" });
 
     const operations = parseOperationsSettings(operationsRow?.global_prompt);
-    if (!operations.followup_template_name) {
-      return NextResponse.json(
-        { error: "Configure o modelo aprovado de follow-up no Estúdio de IA." },
-        { status: 400 },
-      );
-    }
-
     const [
       { data: steps, error: stepsError },
       { data: leads, error: leadsError },
@@ -116,12 +109,21 @@ export async function GET(request: Request) {
       if (!dueStep) continue;
 
       const message = personalize(dueStep.message, lead);
+      const templateName =
+        operations.followup_template_names[String(dueStep.delay_minutes)] ||
+        operations.followup_template_name;
+      if (!templateName) {
+        errors.push(
+          `${lead.id}: modelo não configurado para ${labelForDelay(dueStep.delay_minutes)}`,
+        );
+        continue;
+      }
       try {
         const result = await sendWhatsAppTemplate(
           lead.phone,
-          operations.followup_template_name,
+          templateName,
           operations.language_code,
-          [message.slice(0, 1000)],
+          [lead.name || "tudo bem"],
         );
         const whatsappMessageId = result?.messages?.[0]?.id || null;
         await Promise.all([
@@ -140,6 +142,7 @@ export async function GET(request: Request) {
             metadata: {
               label: labelForDelay(dueStep.delay_minutes),
               delay_minutes: dueStep.delay_minutes,
+              template_name: templateName,
               message,
               whatsapp_message_id: whatsappMessageId,
             },

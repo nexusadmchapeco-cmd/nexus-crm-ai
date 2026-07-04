@@ -9,6 +9,8 @@ const nav = [
   { href: "/", label: "Visão geral", icon: "grid" as const },
   { href: "/kanban", label: "Pipeline", icon: "board" as const },
   { href: "/conversations", label: "Conversas", icon: "chat" as const },
+  { href: "/agenda", label: "Agenda", icon: "calendar" as const },
+  { href: "/reports", label: "Relatório diário", icon: "report" as const },
   { href: "/test-inbound", label: "Simulador", icon: "flask" as const },
   { href: "/campaigns", label: "Disparos", icon: "send" as const },
 ];
@@ -53,6 +55,10 @@ export function Sidebar() {
           <Link href="/settings/ai" className={pathname.startsWith("/settings/ai") ? "active" : ""} onClick={() => setOpen(false)}>
             <Icon name="settings" />
             Estúdio de IA
+          </Link>
+          <Link href="/settings/knowledge" className={pathname.startsWith("/settings/knowledge") ? "active" : ""} onClick={() => setOpen(false)}>
+            <Icon name="book" />
+            Base de conhecimento
           </Link>
         </nav>
         <div className="sidebar-status">

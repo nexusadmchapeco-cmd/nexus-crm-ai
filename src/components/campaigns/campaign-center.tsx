@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { emptyCampaignFilters } from "@/lib/campaigns";
+import { campaignTemplates } from "@/lib/template-catalog";
 import type {
   CampaignAudienceLead,
   CampaignFilters,
@@ -16,14 +17,26 @@ type AudienceResponse = {
   summary: string;
 };
 
-export function CampaignCenter({ stages }: { stages: PipelineStage[] }) {
+type CampaignTemplateNames = {
+  reactivation: string;
+  black_november: string;
+  next_month_classes: string;
+};
+
+export function CampaignCenter({
+  stages,
+  templateNames,
+}: {
+  stages: PipelineStage[];
+  templateNames?: CampaignTemplateNames;
+}) {
   const [mode, setMode] = useState<"ai" | "filters">("ai");
   const [instruction, setInstruction] = useState("");
   const [filters, setFilters] = useState<CampaignFilters>(emptyCampaignFilters);
   const [audience, setAudience] = useState<AudienceResponse | null>(null);
   const [campaignName, setCampaignName] = useState("");
   const [templateName, setTemplateName] = useState("");
-  const [message, setMessage] = useState("Oi, {{nome}}! Temos uma condição especial para você retomar seu inglês. Quer saber mais?");
+  const [message, setMessage] = useState("");
   const [adminPin, setAdminPin] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,6 +99,19 @@ export function CampaignCenter({ stages }: { stages: PipelineStage[] }) {
         ? current.stage_ids.filter((id) => id !== stageId)
         : [...current.stage_ids, stageId],
     }));
+  }
+
+  function chooseTemplate(key: string) {
+    const selected = campaignTemplates.find((template) => template.key === key);
+    if (!selected) {
+      setTemplateName("");
+      setMessage("");
+      return;
+    }
+    setTemplateName(
+      templateNames?.[selected.key as keyof CampaignTemplateNames] || selected.name,
+    );
+    setMessage(selected.message);
   }
 
   return (
@@ -217,9 +243,25 @@ export function CampaignCenter({ stages }: { stages: PipelineStage[] }) {
           </div>
           <div className="field-grid">
             <div className="field"><label htmlFor="campaign-name">Nome interno da campanha</label><input id="campaign-name" placeholder="Black November · Passo Fundo" value={campaignName} onChange={(event) => setCampaignName(event.target.value)} /></div>
-            <div className="field"><label htmlFor="campaign-template">Nome do modelo aprovado</label><input id="campaign-template" placeholder="campanha_black_november" value={templateName} onChange={(event) => setTemplateName(event.target.value)} /></div>
+            <div className="field">
+              <label htmlFor="campaign-template">Modelo oficial aprovado</label>
+              <select
+                id="campaign-template"
+                value={
+                  campaignTemplates.find((template) => templateName === (
+                    templateNames?.[template.key as keyof CampaignTemplateNames] || template.name
+                  ))?.key || ""
+                }
+                onChange={(event) => chooseTemplate(event.target.value)}
+              >
+                <option value="">Selecione o modelo</option>
+                {campaignTemplates.map((template) => (
+                  <option key={template.key} value={template.key}>{template.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="field"><label htmlFor="campaign-message">Texto da variável {"{{1}}"}</label><textarea id="campaign-message" value={message} onChange={(event) => setMessage(event.target.value)} /></div>
+          <div className="field"><label htmlFor="campaign-message">Prévia do texto aprovado</label><textarea id="campaign-message" value={message} readOnly /></div>
           <div className="field campaign-pin"><label htmlFor="campaign-pin">PIN de segurança do disparo</label><input id="campaign-pin" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN administrativo" value={adminPin} onChange={(event) => setAdminPin(event.target.value)} /></div>
           <label className="campaign-confirm"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /> Conferi o público de {audience.count} leads e autorizo este disparo oficial.</label>
           <button className="button button-primary" type="button" disabled={!confirmed || !adminPin || sending} onClick={sendCampaign}><Icon name="send" size={14} />{sending ? "Enviando…" : `Enviar para ${audience.count} leads`}</button>

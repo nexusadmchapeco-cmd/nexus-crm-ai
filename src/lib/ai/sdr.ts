@@ -14,6 +14,7 @@ const schema = {
       "suggested_stage",
       "summary",
       "next_action",
+      "appointment",
     ],
     properties: {
       reply: { type: "string" },
@@ -61,6 +62,20 @@ const schema = {
       },
       summary: { type: "string" },
       next_action: { type: "string" },
+      appointment: {
+        type: "object",
+        additionalProperties: false,
+        required: ["should_schedule", "type", "starts_at", "duration_minutes"],
+        properties: {
+          should_schedule: { type: "boolean" },
+          type: {
+            type: ["string", "null"],
+            enum: ["experimental_class", "closer_meeting", null],
+          },
+          starts_at: { type: ["string", "null"] },
+          duration_minutes: { type: ["integer", "null"] },
+        },
+      },
     },
   },
 };
@@ -70,11 +85,15 @@ export async function runSdr({
   messages,
   settings,
   stagePrompt,
+  knowledgeContext,
+  availableSlots,
 }: {
   lead: Lead;
   messages: Message[];
   settings: AiSettings;
   stagePrompt?: string | null;
+  knowledgeContext?: string | null;
+  availableSlots?: string | null;
 }): Promise<AiDecision> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada");
@@ -116,6 +135,13 @@ export async function runSdr({
             stagePrompt
               ? `\nINSTRUÇÃO ESPECÍFICA DA ETAPA ATUAL:\n${stagePrompt}`
               : "",
+            knowledgeContext
+              ? `\n\nBASE DE CONHECIMENTO APROVADA:\n${knowledgeContext}\nResponda informações comerciais somente com base neste conteúdo. Se faltar informação, diga que a equipe confirmará.`
+              : "",
+            availableSlots
+              ? `\n\nJANELAS DE DISPONIBILIDADE:\n${availableSlots}\nUse-as para sugerir opções. Só marque appointment.should_schedule=true quando o lead confirmar explicitamente um dia e horário exatos. Use starts_at em ISO 8601 com fuso -03:00. Reunião comercial é closer_meeting; aula experimental é experimental_class.`
+              : "",
+            "\n\nREGRA DE SEGURANÇA DA AGENDA: nunca invente disponibilidade e nunca confirme um agendamento sem confirmação explícita do cliente. Caso ainda esteja negociando o horário, deixe should_schedule=false e os demais campos de appointment como null.",
           ].join(""),
         },
         {

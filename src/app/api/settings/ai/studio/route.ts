@@ -155,6 +155,21 @@ export async function PUT(request: Request) {
         closer_phone: closerPhone,
         closer_template_name: String(operations.closer_template_name || "").trim(),
         followup_template_name: String(operations.followup_template_name || "").trim(),
+        followup_template_names: Object.fromEntries(
+          Object.entries(operations.followup_template_names || {}).map(([delay, name]) => [
+            delay,
+            String(name || "").trim(),
+          ]),
+        ),
+        campaign_template_names: {
+          reactivation: String(operations.campaign_template_names?.reactivation || "").trim(),
+          black_november: String(
+            operations.campaign_template_names?.black_november || "",
+          ).trim(),
+          next_month_classes: String(
+            operations.campaign_template_names?.next_month_classes || "",
+          ).trim(),
+        },
         language_code: String(operations.language_code || "pt_BR"),
       }),
       model: body.model.trim(),
