@@ -183,3 +183,10 @@ export type AvailabilitySlot = {
   owner_name: string | null;
   active: boolean;
 };
+export type CalendarBlock = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  reason: string;
+  created_at: string;
+};

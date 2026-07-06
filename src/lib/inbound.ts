@@ -239,18 +239,27 @@ export async function processInbound(payload: InboundPayload) {
       decision.appointment.starts_at
     ) {
       const startsAt = new Date(decision.appointment.starts_at);
-      const duration = Math.min(Math.max(decision.appointment.duration_minutes || 30, 15), 120);
+      const duration = 30;
       if (!Number.isNaN(startsAt.getTime()) && startsAt.getTime() > Date.now()) {
         const endsAt = new Date(startsAt.getTime() + duration * 60_000);
-        const { data: conflict } = await supabase
-          .from("appointments")
-          .select("id")
-          .lt("starts_at", endsAt.toISOString())
-          .gt("ends_at", startsAt.toISOString())
-          .in("status", ["scheduled", "confirmed"])
-          .limit(1)
-          .maybeSingle();
-        if (!conflict) {
+        const [{ data: conflict }, { data: closed }] = await Promise.all([
+          supabase
+            .from("appointments")
+            .select("id")
+            .lt("starts_at", endsAt.toISOString())
+            .gt("ends_at", startsAt.toISOString())
+            .in("status", ["scheduled", "confirmed"])
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from("calendar_blocks")
+            .select("id")
+            .lt("starts_at", endsAt.toISOString())
+            .gt("ends_at", startsAt.toISOString())
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        if (!conflict && !closed) {
           const { data: appointment } = await supabase
             .from("appointments")
             .insert({

@@ -73,7 +73,7 @@ const schema = {
             enum: ["experimental_class", "closer_meeting", null],
           },
           starts_at: { type: ["string", "null"] },
-          duration_minutes: { type: ["integer", "null"] },
+          duration_minutes: { type: ["integer", "null"], enum: [30, null] },
         },
       },
     },
@@ -139,7 +139,7 @@ export async function runSdr({
               ? `\n\nBASE DE CONHECIMENTO APROVADA:\n${knowledgeContext}\nResponda informações comerciais somente com base neste conteúdo. Se faltar informação, diga que a equipe confirmará.`
               : "",
             availableSlots
-              ? `\n\nJANELAS DE DISPONIBILIDADE:\n${availableSlots}\nUse-as para sugerir opções. Só marque appointment.should_schedule=true quando o lead confirmar explicitamente um dia e horário exatos. Use starts_at em ISO 8601 com fuso -03:00. Reunião comercial é closer_meeting; aula experimental é experimental_class.`
+              ? `\n\nJANELAS DE DISPONIBILIDADE:\n${availableSlots}\nUse-as para sugerir opções. Só marque appointment.should_schedule=true quando o lead confirmar explicitamente um dia e horário exatos. Use starts_at em ISO 8601 com fuso -03:00 e duration_minutes=30. Reunião comercial é closer_meeting; aula experimental é experimental_class.`
               : "",
             "\n\nREGRA DE SEGURANÇA DA AGENDA: nunca invente disponibilidade e nunca confirme um agendamento sem confirmação explícita do cliente. Caso ainda esteja negociando o horário, deixe should_schedule=false e os demais campos de appointment como null.",
           ].join(""),
