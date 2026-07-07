@@ -94,7 +94,6 @@ export function WhatsappConnection() {
           code: codeRef.current,
           wabaId: signupRef.current.wabaId,
           phoneNumberId: signupRef.current.phoneNumberId,
-          redirectUri: `${window.location.origin}/settings/whatsapp`,
         }),
       });
       const result = await response.json();
@@ -199,7 +198,6 @@ export function WhatsappConnection() {
       },
       {
         config_id: CONFIG_ID,
-        redirect_uri: `${window.location.origin}/settings/whatsapp`,
         response_type: "code",
         override_default_response_type: true,
         extras: {
