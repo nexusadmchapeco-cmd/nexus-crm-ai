@@ -7,67 +7,14 @@ const APP_ID = "1044757988238138";
 const CONFIG_ID = "1739586440707452";
 const DEFAULT_WABA_ID = "2027823187360420";
 const DEFAULT_PHONE_NUMBER_ID = "264496168466367";
+const WHATSAPP_SETTINGS_PATH = "/settings/whatsapp";
 
 type SignupData = {
   wabaId: string;
   phoneNumberId: string;
 };
 
-type FacebookLoginResponse = {
-  authResponse?: { code?: string };
-  status?: string;
-};
-
-function parseJsonPayload(value: unknown) {
-  if (typeof value !== "string") return value;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
-
-function normalizeSignupData(value: unknown): SignupData | null {
-  const payload = parseJsonPayload(value);
-  if (!payload || typeof payload !== "object") return null;
-
-  const envelope = payload as {
-    type?: string;
-    event?: string;
-    data?: unknown;
-  };
-  if (envelope.type !== "WA_EMBEDDED_SIGNUP" || envelope.event !== "FINISH") return null;
-
-  const rawData = parseJsonPayload(envelope.data);
-  if (!rawData || typeof rawData !== "object") return null;
-
-  const data = rawData as {
-    waba_id?: string;
-    whatsapp_business_account_id?: string;
-    phone_number_id?: string;
-  };
-  const wabaId = data.waba_id || data.whatsapp_business_account_id;
-  const phoneNumberId = data.phone_number_id;
-
-  if (!wabaId || !phoneNumberId) return null;
-  return { wabaId, phoneNumberId };
-}
-
-declare global {
-  interface Window {
-    FB?: {
-      init(options: { appId: string; cookie: boolean; xfbml: boolean; version: string }): void;
-      login(
-        callback: (response: FacebookLoginResponse) => void,
-        options: Record<string, unknown>,
-      ): void;
-    };
-    fbAsyncInit?: () => void;
-  }
-}
-
 export function WhatsappConnection() {
-  const [sdkReady, setSdkReady] = useState(false);
   const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
   const [message, setMessage] = useState("");
   const [connection, setConnection] = useState<SignupData | null>(null);
@@ -75,14 +22,9 @@ export function WhatsappConnection() {
   const codeRef = useRef("");
   const signupRef = useRef<SignupData | null>(null);
   const exchangingRef = useRef(false);
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const exchangeCode = useCallback(async () => {
+  const exchangeCode = useCallback(async (redirectUri?: string) => {
     if (!codeRef.current || !signupRef.current || exchangingRef.current) return;
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
-    }
     exchangingRef.current = true;
     setMessage("Finalizando a conexão segura com a Meta…");
 
@@ -94,6 +36,7 @@ export function WhatsappConnection() {
           code: codeRef.current,
           wabaId: signupRef.current.wabaId,
           phoneNumberId: signupRef.current.phoneNumberId,
+          redirectUri,
         }),
       });
       const result = await response.json();
@@ -111,102 +54,77 @@ export function WhatsappConnection() {
   }, []);
 
   useEffect(() => {
-    window.fbAsyncInit = () => {
-      window.FB?.init({ appId: APP_ID, cookie: true, xfbml: true, version: "v25.0" });
-      setSdkReady(true);
-    };
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    const errorDescription = url.searchParams.get("error_description");
+    const legacyConnect = url.searchParams.get("connect");
 
-    if (window.FB) {
-      window.fbAsyncInit();
-    } else if (!document.getElementById("facebook-jssdk")) {
-      const script = document.createElement("script");
-      script.id = "facebook-jssdk";
-      script.async = true;
-      script.defer = true;
-      script.crossOrigin = "anonymous";
-      script.src = "https://connect.facebook.net/pt_BR/sdk.js";
-      document.body.appendChild(script);
+    if (errorDescription) {
+      setStatus("error");
+      setMessage(errorDescription);
+      window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+      return;
     }
 
-    function receiveMessage(event: MessageEvent) {
-      const allowedOrigins = [
-        "https://www.facebook.com",
-        "https://web.facebook.com",
-        "https://business.facebook.com",
-        "https://staticxx.facebook.com",
-      ];
-      if (!allowedOrigins.includes(event.origin)) return;
-
-      const payload = parseJsonPayload(event.data);
-      if (!payload || typeof payload !== "object") return;
-      const data = payload as {
-        type?: string;
-        event?: string;
-      };
-      if (data.type !== "WA_EMBEDDED_SIGNUP") return;
-      const signupData = normalizeSignupData(payload);
-      if (signupData) {
-        signupRef.current = signupData;
-        void exchangeCode();
-      } else if (data.event === "CANCEL") {
+    if (!code) {
+      if (legacyConnect) {
         setStatus("idle");
-        setMessage("Conexão cancelada antes da conclusão.");
-      } else if (data.event === "ERROR") {
-        setStatus("error");
-        setMessage("A Meta informou um erro durante o cadastro do número.");
-      } else if (data.event === "FINISH") {
-        setMessage("Autorização recebida. Finalizando com o número comercial configurado…");
+        setMessage("A Meta retornou pelo fluxo antigo. Clique em conectar novamente para usar o fluxo direto corrigido.");
+        window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
       }
+      return;
     }
 
-    window.addEventListener("message", receiveMessage);
-    return () => {
-      window.removeEventListener("message", receiveMessage);
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    const expectedState = window.sessionStorage.getItem("whatsapp_oauth_state");
+    window.sessionStorage.removeItem("whatsapp_oauth_state");
+    if (expectedState && state && expectedState !== state) {
+      setStatus("error");
+      setMessage("A autorização voltou com uma sessão diferente. Atualize a página e tente conectar novamente.");
+      window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+      return;
+    }
+
+    codeRef.current = code;
+    signupRef.current = {
+      wabaId: DEFAULT_WABA_ID,
+      phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
     };
+    setStatus("connecting");
+    setMessage("Autorização recebida. Finalizando com o número Nexus Comercial…");
+    window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+    void exchangeCode(`${window.location.origin}${WHATSAPP_SETTINGS_PATH}`);
   }, [exchangeCode]);
 
   function connect() {
-    if (!window.FB || !sdkReady) return;
     codeRef.current = "";
     signupRef.current = null;
     setConnection(null);
     setAccessToken("");
     setStatus("connecting");
-    setMessage("Conclua a autorização na janela da Meta.");
+    setMessage("Abrindo a autorização oficial da Meta…");
 
-    window.FB.login(
-      (response) => {
-        const code = response.authResponse?.code;
-        if (!code) {
-          setStatus("idle");
-          setMessage("A autorização não foi concluída.");
-          return;
-        }
-        codeRef.current = code;
-        fallbackTimerRef.current = setTimeout(() => {
-          if (!signupRef.current && codeRef.current && !exchangingRef.current) {
-            signupRef.current = {
-              wabaId: DEFAULT_WABA_ID,
-              phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
-            };
-            setMessage("Autorização recebida. Finalizando com o número Nexus Comercial…");
-            void exchangeCode();
-          }
-        }, 1500);
-        void exchangeCode();
-      },
-      {
-        config_id: CONFIG_ID,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "whatsapp_business_app_onboarding",
-          sessionInfoVersion: "3",
-        },
-      },
+    const redirectUri = `${window.location.origin}${WHATSAPP_SETTINGS_PATH}`;
+    const oauthState = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    window.sessionStorage.setItem("whatsapp_oauth_state", oauthState);
+
+    const authUrl = new URL("https://www.facebook.com/v25.0/dialog/oauth");
+    authUrl.searchParams.set("client_id", APP_ID);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("config_id", CONFIG_ID);
+    authUrl.searchParams.set("state", oauthState);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("override_default_response_type", "true");
+    authUrl.searchParams.set(
+      "extras",
+      JSON.stringify({
+        setup: {},
+        featureType: "whatsapp_business_app_onboarding",
+        sessionInfoVersion: "3",
+      }),
     );
+
+    window.location.assign(authUrl.toString());
   }
 
   async function copyToken() {
@@ -247,9 +165,9 @@ export function WhatsappConnection() {
 
         <div className="connection-actions">
           {status !== "connected" ? (
-            <button className="button button-primary" type="button" onClick={connect} disabled={!sdkReady || status === "connecting"}>
+            <button className="button button-primary" type="button" onClick={connect} disabled={status === "connecting"}>
               <Icon name="chat" size={15} />
-              {!sdkReady ? "Carregando Meta…" : status === "connecting" ? "Aguardando autorização…" : "Conectar WhatsApp Business"}
+              {status === "connecting" ? "Aguardando autorização…" : "Conectar WhatsApp Business"}
             </button>
           ) : (
             <button className="button button-dark" type="button" onClick={copyToken}>
