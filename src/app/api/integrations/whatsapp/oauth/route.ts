@@ -3,7 +3,7 @@ import { requireEnv } from "@/lib/env";
 
 export async function POST(request: Request) {
   try {
-    const { code, wabaId, phoneNumberId } = await request.json();
+    const { code, wabaId, phoneNumberId, redirectUri } = await request.json();
     if (!code || !wabaId || !phoneNumberId) {
       return NextResponse.json({ error: "Dados de autorização incompletos." }, { status: 400 });
     }
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     tokenUrl.searchParams.set("client_id", appId);
     tokenUrl.searchParams.set("client_secret", appSecret);
     tokenUrl.searchParams.set("code", code);
+    if (redirectUri) tokenUrl.searchParams.set("redirect_uri", redirectUri);
 
     const tokenResponse = await fetch(tokenUrl, { method: "GET", cache: "no-store" });
     const tokenResult = await tokenResponse.json();
