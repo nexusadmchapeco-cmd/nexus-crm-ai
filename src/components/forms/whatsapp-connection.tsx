@@ -5,6 +5,8 @@ import { Icon } from "@/components/ui/icon";
 
 const APP_ID = "1044757988238138";
 const CONFIG_ID = "1739586440707452";
+const DEFAULT_WABA_ID = "2027823187360420";
+const DEFAULT_PHONE_NUMBER_ID = "264496168466367";
 
 type SignupData = {
   wabaId: string;
@@ -15,6 +17,41 @@ type FacebookLoginResponse = {
   authResponse?: { code?: string };
   status?: string;
 };
+
+function parseJsonPayload(value: unknown) {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeSignupData(value: unknown): SignupData | null {
+  const payload = parseJsonPayload(value);
+  if (!payload || typeof payload !== "object") return null;
+
+  const envelope = payload as {
+    type?: string;
+    event?: string;
+    data?: unknown;
+  };
+  if (envelope.type !== "WA_EMBEDDED_SIGNUP" || envelope.event !== "FINISH") return null;
+
+  const rawData = parseJsonPayload(envelope.data);
+  if (!rawData || typeof rawData !== "object") return null;
+
+  const data = rawData as {
+    waba_id?: string;
+    whatsapp_business_account_id?: string;
+    phone_number_id?: string;
+  };
+  const wabaId = data.waba_id || data.whatsapp_business_account_id;
+  const phoneNumberId = data.phone_number_id;
+
+  if (!wabaId || !phoneNumberId) return null;
+  return { wabaId, phoneNumberId };
+}
 
 declare global {
   interface Window {
@@ -38,9 +75,14 @@ export function WhatsappConnection() {
   const codeRef = useRef("");
   const signupRef = useRef<SignupData | null>(null);
   const exchangingRef = useRef(false);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const exchangeCode = useCallback(async () => {
     if (!codeRef.current || !signupRef.current || exchangingRef.current) return;
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
     exchangingRef.current = true;
     setMessage("Finalizando a conexão segura com a Meta…");
 
@@ -91,28 +133,20 @@ export function WhatsappConnection() {
         "https://www.facebook.com",
         "https://web.facebook.com",
         "https://business.facebook.com",
+        "https://staticxx.facebook.com",
       ];
       if (!allowedOrigins.includes(event.origin)) return;
-      let payload: unknown = event.data;
-      if (typeof payload === "string") {
-        try {
-          payload = JSON.parse(payload);
-        } catch {
-          return;
-        }
-      }
+
+      const payload = parseJsonPayload(event.data);
       if (!payload || typeof payload !== "object") return;
       const data = payload as {
         type?: string;
         event?: string;
-        data?: { waba_id?: string; phone_number_id?: string };
       };
       if (data.type !== "WA_EMBEDDED_SIGNUP") return;
-      if (data.event === "FINISH" && data.data?.waba_id && data.data?.phone_number_id) {
-        signupRef.current = {
-          wabaId: data.data.waba_id,
-          phoneNumberId: data.data.phone_number_id,
-        };
+      const signupData = normalizeSignupData(payload);
+      if (signupData) {
+        signupRef.current = signupData;
         void exchangeCode();
       } else if (data.event === "CANCEL") {
         setStatus("idle");
@@ -120,11 +154,16 @@ export function WhatsappConnection() {
       } else if (data.event === "ERROR") {
         setStatus("error");
         setMessage("A Meta informou um erro durante o cadastro do número.");
+      } else if (data.event === "FINISH") {
+        setMessage("Autorização recebida. Finalizando com o número comercial configurado…");
       }
     }
 
     window.addEventListener("message", receiveMessage);
-    return () => window.removeEventListener("message", receiveMessage);
+    return () => {
+      window.removeEventListener("message", receiveMessage);
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    };
   }, [exchangeCode]);
 
   function connect() {
@@ -145,6 +184,16 @@ export function WhatsappConnection() {
           return;
         }
         codeRef.current = code;
+        fallbackTimerRef.current = setTimeout(() => {
+          if (!signupRef.current && codeRef.current && !exchangingRef.current) {
+            signupRef.current = {
+              wabaId: DEFAULT_WABA_ID,
+              phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+            };
+            setMessage("Autorização recebida. Finalizando com o número Nexus Comercial…");
+            void exchangeCode();
+          }
+        }, 1500);
         void exchangeCode();
       },
       {
