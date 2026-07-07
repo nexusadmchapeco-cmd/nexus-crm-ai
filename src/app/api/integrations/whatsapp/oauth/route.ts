@@ -11,6 +11,18 @@ type MetaTokenResult = {
   };
 };
 
+type MetaPhoneNumberResult = {
+  whatsapp_business_account?: {
+    id?: string;
+  };
+};
+
+type MetaErrorResult = {
+  error?: {
+    message?: string;
+  };
+};
+
 async function exchangeMetaToken({
   appId,
   appSecret,
@@ -48,6 +60,56 @@ async function exchangeMetaToken({
   throw new Error(lastError);
 }
 
+async function resolveWabaIdFromPhoneNumber({
+  accessToken,
+  phoneNumberId,
+}: {
+  accessToken: string;
+  phoneNumberId: string;
+}) {
+  try {
+    const phoneUrl = new URL(`https://graph.facebook.com/v25.0/${encodeURIComponent(phoneNumberId)}`);
+    phoneUrl.searchParams.set("fields", "whatsapp_business_account");
+
+    const response = await fetch(phoneUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    const result = (await response.json()) as MetaPhoneNumberResult;
+    return response.ok ? result.whatsapp_business_account?.id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function subscribeWabaToWebhooks({
+  accessToken,
+  wabaIds,
+}: {
+  accessToken: string;
+  wabaIds: string[];
+}) {
+  const uniqueWabaIds = Array.from(new Set(wabaIds.filter(Boolean)));
+  let lastWarning = "Não foi possível assinar os webhooks da conta.";
+
+  for (const wabaId of uniqueWabaIds) {
+    const subscriptionResponse = await fetch(
+      `https://graph.facebook.com/v25.0/${encodeURIComponent(wabaId)}/subscribed_apps`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      },
+    );
+    const subscriptionResult = (await subscriptionResponse.json()) as MetaErrorResult;
+    if (subscriptionResponse.ok) return { subscribed: true, wabaId };
+
+    lastWarning = subscriptionResult.error?.message || lastWarning;
+  }
+
+  return { subscribed: false, warning: lastWarning, wabaId: uniqueWabaIds[0] };
+}
+
 export async function POST(request: Request) {
   try {
     const { code, wabaId, phoneNumberId, redirectUri } = await request.json();
@@ -58,25 +120,20 @@ export async function POST(request: Request) {
     const appId = process.env.META_APP_ID || "1044757988238138";
     const appSecret = requireEnv("META_APP_SECRET");
     const accessToken = await exchangeMetaToken({ appId, appSecret, code, redirectUri });
+    const resolvedWabaId = await resolveWabaIdFromPhoneNumber({ accessToken, phoneNumberId });
 
-    const subscriptionResponse = await fetch(
-      `https://graph.facebook.com/v25.0/${encodeURIComponent(wabaId)}/subscribed_apps`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      },
-    );
-    const subscriptionResult = await subscriptionResponse.json();
-    if (!subscriptionResponse.ok) {
-      throw new Error(subscriptionResult.error?.message || "Não foi possível assinar os webhooks da conta.");
-    }
+    const subscription = await subscribeWabaToWebhooks({
+      accessToken,
+      wabaIds: [resolvedWabaId, wabaId],
+    });
 
     return NextResponse.json({
       success: true,
       accessToken,
-      wabaId,
+      wabaId: subscription.wabaId || resolvedWabaId || wabaId,
       phoneNumberId,
+      webhookSubscribed: subscription.subscribed,
+      webhookWarning: subscription.subscribed ? undefined : subscription.warning,
     });
   } catch (error) {
     return NextResponse.json(

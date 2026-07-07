@@ -42,9 +42,16 @@ export function WhatsappConnection() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir a conexão.");
       setAccessToken(result.accessToken);
-      setConnection(signupRef.current);
+      setConnection({
+        wabaId: result.wabaId || signupRef.current.wabaId,
+        phoneNumberId: result.phoneNumberId || signupRef.current.phoneNumberId,
+      });
       setStatus("connected");
-      setMessage("Número conectado. O token está pronto para ser aplicado no ambiente de produção.");
+      setMessage(
+        result.webhookWarning
+          ? `Token gerado. Falta confirmar a assinatura automática do webhook na Meta: ${result.webhookWarning}`
+          : "Número conectado. O token está pronto para ser aplicado no ambiente de produção.",
+      );
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Erro ao concluir a conexão.");
@@ -113,6 +120,10 @@ export function WhatsappConnection() {
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("config_id", CONFIG_ID);
     authUrl.searchParams.set("state", oauthState);
+    authUrl.searchParams.set(
+      "scope",
+      "business_management,whatsapp_business_management,whatsapp_business_messaging",
+    );
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("override_default_response_type", "true");
     authUrl.searchParams.set(
