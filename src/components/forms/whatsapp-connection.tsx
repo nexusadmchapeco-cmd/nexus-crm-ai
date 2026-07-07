@@ -87,7 +87,12 @@ export function WhatsappConnection() {
     }
 
     function receiveMessage(event: MessageEvent) {
-      if (!["https://www.facebook.com", "https://web.facebook.com"].includes(event.origin)) return;
+      const allowedOrigins = [
+        "https://www.facebook.com",
+        "https://web.facebook.com",
+        "https://business.facebook.com",
+      ];
+      if (!allowedOrigins.includes(event.origin)) return;
       let payload: unknown = event.data;
       if (typeof payload === "string") {
         try {
