@@ -79,6 +79,16 @@ function explainWhatsAppPermissionIssue({
   ].join(" ");
 }
 
+function canContinueWithManualAppWebhookSetup(originalError: string) {
+  const normalizedError = originalError.toLowerCase();
+  return (
+    normalizedError.includes("api access blocked") ||
+    normalizedError.includes("missing permissions") ||
+    normalizedError.includes("permission") ||
+    normalizedError.includes("blocked")
+  );
+}
+
 async function configureAppWebhook({
   appId,
   appSecret,
@@ -89,7 +99,7 @@ async function configureAppWebhook({
   appSecret: string;
   callbackUrl: string;
   verifyToken: string;
-}) {
+}): Promise<{ configured: boolean; warning?: string }> {
   const body = new URLSearchParams({
     object: "whatsapp_business_account",
     callback_url: callbackUrl,
@@ -106,8 +116,23 @@ async function configureAppWebhook({
   });
 
   if (!response.ok) {
-    throw new Error(`Webhook do app não configurado: ${await readGraphError(response)}`);
+    const originalError = await readGraphError(response);
+    if (canContinueWithManualAppWebhookSetup(originalError)) {
+      return {
+        configured: false,
+        warning: [
+          "A Meta bloqueou a configuração automática do webhook pelo CRM.",
+          `Configure manualmente no app da Meta: URL ${callbackUrl} e token ${verifyToken}.`,
+          "Depois assine o campo messages e clique em Revalidar entrada de mensagens.",
+          `Erro original da Meta: ${originalError}`,
+        ].join(" "),
+      };
+    }
+
+    throw new Error(`Webhook do app não configurado: ${originalError}`);
   }
+
+  return { configured: true };
 }
 
 async function resolveWabaId({
@@ -231,7 +256,7 @@ export async function POST(request: Request) {
     const configuredWabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
     const callbackUrl = `${getRequestOrigin(request)}/api/webhooks/whatsapp`;
 
-    await configureAppWebhook({ appId, appSecret, callbackUrl, verifyToken });
+    const appWebhook = await configureAppWebhook({ appId, appSecret, callbackUrl, verifyToken });
     const wabaId = await resolveWabaId({
       token,
       fallbackWabaId: configuredWabaId,
@@ -251,6 +276,8 @@ export async function POST(request: Request) {
       wabaId,
       phoneNumberId,
       subscribedField: "messages",
+      webhookConfiguredAutomatically: appWebhook.configured,
+      warning: appWebhook.warning,
     });
   } catch (error) {
     return NextResponse.json(
