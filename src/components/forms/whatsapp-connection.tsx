@@ -5,12 +5,11 @@ import { Icon } from "@/components/ui/icon";
 
 const APP_ID = "1044757988238138";
 const CONFIG_ID = "1739586440707452";
-const DEFAULT_WABA_ID = "2027823187360420";
 const DEFAULT_PHONE_NUMBER_ID = "264496168466367";
 const WHATSAPP_SETTINGS_PATH = "/settings/whatsapp";
 
 type SignupData = {
-  wabaId: string;
+  wabaId?: string;
   phoneNumberId: string;
 };
 
@@ -49,7 +48,6 @@ export function WhatsappConnection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: codeRef.current,
-          wabaId: signupRef.current.wabaId,
           phoneNumberId: signupRef.current.phoneNumberId,
           redirectUri,
         }),
@@ -61,10 +59,10 @@ export function WhatsappConnection({
         wabaId: result.wabaId || signupRef.current.wabaId,
         phoneNumberId: result.phoneNumberId || signupRef.current.phoneNumberId,
       });
-      setStatus("connected");
+      setStatus(result.webhookWarning ? "error" : "connected");
       setMessage(
         result.webhookWarning
-          ? `Token gerado. Falta confirmar a assinatura automática do webhook na Meta: ${result.webhookWarning}`
+          ? `Token gerado, mas a entrada de mensagens ainda não foi liberada pela Meta: ${result.webhookWarning}`
           : "Número conectado. O token está pronto para ser aplicado no ambiente de produção.",
       );
     } catch (error) {
@@ -109,7 +107,6 @@ export function WhatsappConnection({
 
     codeRef.current = code;
     signupRef.current = {
-      wabaId: DEFAULT_WABA_ID,
       phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
     };
     setStatus("connecting");
@@ -238,7 +235,7 @@ export function WhatsappConnection({
 
         {connection && (
           <div className="connection-result">
-            <div><span>WhatsApp Account ID</span><strong>{connection.wabaId}</strong></div>
+            <div><span>WhatsApp Account ID</span><strong>{connection.wabaId || "Aguardando permissão da Meta"}</strong></div>
             <div><span>Phone Number ID</span><strong>{connection.phoneNumberId}</strong></div>
           </div>
         )}

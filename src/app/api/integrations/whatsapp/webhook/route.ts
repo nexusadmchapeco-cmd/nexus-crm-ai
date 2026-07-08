@@ -84,7 +84,7 @@ async function resolveWabaId({
   businessId,
 }: {
   token: string;
-  fallbackWabaId: string;
+  fallbackWabaId?: string;
   phoneNumberId: string;
   businessId: string;
 }) {
@@ -161,7 +161,7 @@ export async function POST(request: Request) {
     const token = requireEnv("WHATSAPP_TOKEN");
     const phoneNumberId = requireEnv("WHATSAPP_PHONE_NUMBER_ID");
     const businessId = process.env.META_BUSINESS_ID || "1048092399063891";
-    const configuredWabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "2027823187360420";
+    const configuredWabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
     const callbackUrl = `${getRequestOrigin(request)}/api/webhooks/whatsapp`;
 
     await configureAppWebhook({ appId, appSecret, callbackUrl, verifyToken });
@@ -171,6 +171,11 @@ export async function POST(request: Request) {
       phoneNumberId,
       businessId,
     });
+    if (!wabaId) {
+      throw new Error(
+        "Não consegui descobrir a conta WhatsApp desse número. Adicione WHATSAPP_BUSINESS_ACCOUNT_ID na Vercel ou autorize o app whats_crm_ai com permissão de gerenciamento da conta WhatsApp no Meta Business.",
+      );
+    }
     await subscribeWaba({ token, wabaId });
 
     return NextResponse.json({

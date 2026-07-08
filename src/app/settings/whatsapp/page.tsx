@@ -2,7 +2,7 @@ import { WhatsappConnection } from "@/components/forms/whatsapp-connection";
 
 export default function WhatsappSettingsPage() {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const wabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "2027823187360420";
+  const wabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
   const isConnected = Boolean(process.env.WHATSAPP_TOKEN && phoneNumberId);
 
   return (

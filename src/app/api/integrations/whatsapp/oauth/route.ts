@@ -131,9 +131,18 @@ async function subscribeWabaToWebhooks({
   wabaIds,
 }: {
   accessToken: string;
-  wabaIds: string[];
+  wabaIds: Array<string | undefined>;
 }) {
-  const uniqueWabaIds = Array.from(new Set(wabaIds.filter(Boolean)));
+  const uniqueWabaIds = Array.from(new Set(wabaIds.filter((wabaId): wabaId is string => Boolean(wabaId))));
+  if (uniqueWabaIds.length === 0) {
+    return {
+      subscribed: false,
+      warning:
+        "Não consegui descobrir a conta WhatsApp vinculada ao número. O token autorizado não trouxe permissão para ler/gerenciar essa conta. Confirme se o app whats_crm_ai tem acesso à conta WhatsApp no Meta Business.",
+      wabaId: undefined,
+    };
+  }
+
   let lastWarning = "Não foi possível assinar os webhooks da conta.";
 
   for (const wabaId of uniqueWabaIds) {
@@ -157,7 +166,7 @@ async function subscribeWabaToWebhooks({
 export async function POST(request: Request) {
   try {
     const { code, wabaId, phoneNumberId, redirectUri } = await request.json();
-    if (!code || !wabaId || !phoneNumberId) {
+    if (!code || !phoneNumberId) {
       return NextResponse.json({ error: "Dados de autorização incompletos." }, { status: 400 });
     }
 
