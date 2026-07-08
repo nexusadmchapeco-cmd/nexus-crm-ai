@@ -36,6 +36,30 @@ type MetaErrorResult = {
   };
 };
 
+function explainWhatsAppPermissionIssue({
+  wabaId,
+  originalError,
+}: {
+  wabaId: string;
+  originalError: string;
+}) {
+  const normalizedError = originalError.toLowerCase();
+  const looksLikePermissionError =
+    normalizedError.includes("does not exist") ||
+    normalizedError.includes("missing permissions") ||
+    normalizedError.includes("cannot be loaded") ||
+    normalizedError.includes("does not support this operation");
+
+  if (!looksLikePermissionError) return originalError;
+
+  return [
+    "A Meta autorizou o fluxo, mas o token retornado não tem permissão para assinar a entrada de mensagens dessa conta WhatsApp.",
+    `Conta WhatsApp Business: ${wabaId}.`,
+    "No Meta Business, atribua o app/usuário do sistema à conta WhatsApp Nexus Comercial com controle total e gere um token com whatsapp_business_management, whatsapp_business_messaging e business_management.",
+    `Erro original da Meta: ${originalError}`,
+  ].join(" ");
+}
+
 async function exchangeMetaToken({
   appId,
   appSecret,
@@ -157,7 +181,10 @@ async function subscribeWabaToWebhooks({
     const subscriptionResult = (await subscriptionResponse.json()) as MetaErrorResult;
     if (subscriptionResponse.ok) return { subscribed: true, wabaId };
 
-    lastWarning = subscriptionResult.error?.message || lastWarning;
+    lastWarning = explainWhatsAppPermissionIssue({
+      wabaId,
+      originalError: subscriptionResult.error?.message || lastWarning,
+    });
   }
 
   return { subscribed: false, warning: lastWarning, wabaId: uniqueWabaIds[0] };

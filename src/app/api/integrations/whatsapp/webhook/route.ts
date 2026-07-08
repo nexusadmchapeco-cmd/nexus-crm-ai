@@ -10,6 +10,11 @@ type GraphError = {
   };
 };
 
+type GraphReadableWabaResult = GraphError & {
+  id?: string;
+  name?: string;
+};
+
 type GraphPhoneResult = GraphError & {
   whatsapp_business_account?: {
     id?: string;
@@ -44,6 +49,34 @@ async function readGraphError(response: Response) {
   } catch {
     return `Erro ${response.status} da Meta.`;
   }
+}
+
+function explainWhatsAppPermissionIssue({
+  wabaId,
+  phoneNumberId,
+  originalError,
+}: {
+  wabaId: string;
+  phoneNumberId: string;
+  originalError: string;
+}) {
+  const normalizedError = originalError.toLowerCase();
+  const looksLikePermissionError =
+    normalizedError.includes("does not exist") ||
+    normalizedError.includes("missing permissions") ||
+    normalizedError.includes("cannot be loaded") ||
+    normalizedError.includes("does not support this operation");
+
+  if (!looksLikePermissionError) return originalError;
+
+  return [
+    "A Meta aceitou o número, mas o token atual não tem permissão para assinar a entrada de mensagens dessa conta WhatsApp.",
+    `Conta WhatsApp Business: ${wabaId}.`,
+    `Phone Number ID: ${phoneNumberId}.`,
+    "No Meta Business, atribua o app/usuário do sistema à conta WhatsApp Nexus Comercial com controle total e gere um novo token com whatsapp_business_management, whatsapp_business_messaging e business_management.",
+    "Depois atualize WHATSAPP_TOKEN na Vercel, faça redeploy e clique em Revalidar entrada de mensagens.",
+    `Erro original da Meta: ${originalError}`,
+  ].join(" ");
 }
 
 async function configureAppWebhook({
@@ -135,10 +168,37 @@ async function resolveWabaId({
 async function subscribeWaba({
   token,
   wabaId,
+  phoneNumberId,
 }: {
   token: string;
   wabaId: string;
+  phoneNumberId: string;
 }) {
+  const readableUrl = new URL(`https://graph.facebook.com/v25.0/${encodeURIComponent(wabaId)}`);
+  readableUrl.searchParams.set("fields", "id,name");
+  const readableResponse = await fetch(readableUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  if (!readableResponse.ok) {
+    const originalError = await readGraphError(readableResponse);
+    throw new Error(
+      `Conta do WhatsApp não acessível: ${explainWhatsAppPermissionIssue({
+        wabaId,
+        phoneNumberId,
+        originalError,
+      })}`,
+    );
+  }
+
+  const readableResult = (await readableResponse.json()) as GraphReadableWabaResult;
+  if (!readableResult.id) {
+    throw new Error(
+      `Conta do WhatsApp não acessível: a Meta não retornou o ID da conta ${wabaId}. Gere novamente o token com permissão de gerenciamento da conta WhatsApp.`,
+    );
+  }
+
   const response = await fetch(
     `https://graph.facebook.com/v25.0/${encodeURIComponent(wabaId)}/subscribed_apps`,
     {
@@ -149,7 +209,14 @@ async function subscribeWaba({
   );
 
   if (!response.ok) {
-    throw new Error(`Conta do WhatsApp não assinada: ${await readGraphError(response)}`);
+    const originalError = await readGraphError(response);
+    throw new Error(
+      `Conta do WhatsApp não assinada: ${explainWhatsAppPermissionIssue({
+        wabaId,
+        phoneNumberId,
+        originalError,
+      })}`,
+    );
   }
 }
 
@@ -176,7 +243,7 @@ export async function POST(request: Request) {
         "Não consegui descobrir a conta WhatsApp desse número. Adicione WHATSAPP_BUSINESS_ACCOUNT_ID na Vercel ou autorize o app whats_crm_ai com permissão de gerenciamento da conta WhatsApp no Meta Business.",
       );
     }
-    await subscribeWaba({ token, wabaId });
+    await subscribeWaba({ token, wabaId, phoneNumberId });
 
     return NextResponse.json({
       success: true,
