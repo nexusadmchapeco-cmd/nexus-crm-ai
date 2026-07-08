@@ -14,10 +14,24 @@ type SignupData = {
   phoneNumberId: string;
 };
 
-export function WhatsappConnection() {
-  const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
-  const [message, setMessage] = useState("");
-  const [connection, setConnection] = useState<SignupData | null>(null);
+type WhatsappConnectionProps = {
+  initialConnection?: SignupData | null;
+  tokenApplied?: boolean;
+};
+
+export function WhatsappConnection({
+  initialConnection = null,
+  tokenApplied = false,
+}: WhatsappConnectionProps) {
+  const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">(
+    initialConnection ? "connected" : "idle",
+  );
+  const [message, setMessage] = useState(
+    initialConnection
+      ? "WhatsApp conectado. O token de produção já está aplicado na Vercel."
+      : "",
+  );
+  const [connection, setConnection] = useState<SignupData | null>(initialConnection);
   const [accessToken, setAccessToken] = useState("");
   const codeRef = useRef("");
   const signupRef = useRef<SignupData | null>(null);
@@ -169,7 +183,7 @@ export function WhatsappConnection() {
           <div className="done"><b>1</b><span><strong>App publicado</strong><small>Meta for Developers</small></span></div>
           <div className="done"><b>2</b><span><strong>Cadastro incorporado</strong><small>Configuração criada</small></span></div>
           <div className={status === "connected" ? "done" : "active"}><b>3</b><span><strong>Autorizar o número</strong><small>Sem migrar o WhatsApp</small></span></div>
-          <div className={status === "connected" ? "active" : ""}><b>4</b><span><strong>Aplicar token</strong><small>Produção na Vercel</small></span></div>
+          <div className={status === "connected" && tokenApplied ? "done" : status === "connected" ? "active" : ""}><b>4</b><span><strong>Aplicar token</strong><small>Produção na Vercel</small></span></div>
         </div>
 
         {message && <div className={`connection-message ${status === "error" ? "error" : ""}`}>{message}</div>}
@@ -179,6 +193,11 @@ export function WhatsappConnection() {
             <button className="button button-primary" type="button" onClick={connect} disabled={status === "connecting"}>
               <Icon name="chat" size={15} />
               {status === "connecting" ? "Aguardando autorização…" : "Conectar WhatsApp Business"}
+            </button>
+          ) : tokenApplied && !accessToken ? (
+            <button className="button button-dark" type="button" onClick={connect}>
+              <Icon name="chat" size={15} />
+              Reconectar ou renovar token
             </button>
           ) : (
             <button className="button button-dark" type="button" onClick={copyToken}>

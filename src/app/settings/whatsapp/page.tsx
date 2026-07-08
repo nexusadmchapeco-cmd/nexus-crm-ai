@@ -1,6 +1,10 @@
 import { WhatsappConnection } from "@/components/forms/whatsapp-connection";
 
 export default function WhatsappSettingsPage() {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const wabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "2027823187360420";
+  const isConnected = Boolean(process.env.WHATSAPP_TOKEN && phoneNumberId);
+
   return (
     <>
       <div className="page-header">
@@ -10,7 +14,17 @@ export default function WhatsappSettingsPage() {
           <p>Conecte o número comercial ao CRM mantendo o atendimento no celular.</p>
         </div>
       </div>
-      <WhatsappConnection />
+      <WhatsappConnection
+        initialConnection={
+          isConnected && phoneNumberId
+            ? {
+                wabaId,
+                phoneNumberId,
+              }
+            : null
+        }
+        tokenApplied={isConnected}
+      />
     </>
   );
 }
