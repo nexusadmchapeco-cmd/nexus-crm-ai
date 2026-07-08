@@ -17,6 +17,19 @@ type MetaPhoneNumberResult = {
   };
 };
 
+type MetaBusinessAccountsResult = MetaErrorResult & {
+  data?: Array<{
+    id?: string;
+    name?: string;
+    phone_numbers?: {
+      data?: Array<{
+        id?: string;
+        display_phone_number?: string;
+      }>;
+    };
+  }>;
+};
+
 type MetaErrorResult = {
   error?: {
     message?: string;
@@ -63,9 +76,11 @@ async function exchangeMetaToken({
 async function resolveWabaIdFromPhoneNumber({
   accessToken,
   phoneNumberId,
+  businessId,
 }: {
   accessToken: string;
   phoneNumberId: string;
+  businessId: string;
 }) {
   try {
     const phoneUrl = new URL(`https://graph.facebook.com/v25.0/${encodeURIComponent(phoneNumberId)}`);
@@ -76,10 +91,39 @@ async function resolveWabaIdFromPhoneNumber({
       cache: "no-store",
     });
     const result = (await response.json()) as MetaPhoneNumberResult;
-    return response.ok ? result.whatsapp_business_account?.id : undefined;
+    if (response.ok && result.whatsapp_business_account?.id) {
+      return result.whatsapp_business_account.id;
+    }
   } catch {
-    return undefined;
+    // Tenta a busca pelo Business abaixo.
   }
+
+  const edges = ["owned_whatsapp_business_accounts", "client_whatsapp_business_accounts"];
+  for (const edge of edges) {
+    try {
+      const accountsUrl = new URL(
+        `https://graph.facebook.com/v25.0/${encodeURIComponent(businessId)}/${edge}`,
+      );
+      accountsUrl.searchParams.set("fields", "id,name,phone_numbers{id,display_phone_number}");
+      accountsUrl.searchParams.set("limit", "100");
+
+      const response = await fetch(accountsUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = (await response.json()) as MetaBusinessAccountsResult;
+      if (!response.ok) continue;
+
+      const matchingAccount = result.data?.find((account) =>
+        account.phone_numbers?.data?.some((phone) => phone.id === phoneNumberId),
+      );
+      if (matchingAccount?.id) return matchingAccount.id;
+    } catch {
+      // Continua tentando outras formas de descoberta.
+    }
+  }
+
+  return undefined;
 }
 
 async function subscribeWabaToWebhooks({
@@ -119,8 +163,13 @@ export async function POST(request: Request) {
 
     const appId = process.env.META_APP_ID || "1044757988238138";
     const appSecret = requireEnv("META_APP_SECRET");
+    const businessId = process.env.META_BUSINESS_ID || "1048092399063891";
     const accessToken = await exchangeMetaToken({ appId, appSecret, code, redirectUri });
-    const resolvedWabaId = await resolveWabaIdFromPhoneNumber({ accessToken, phoneNumberId });
+    const resolvedWabaId = await resolveWabaIdFromPhoneNumber({
+      accessToken,
+      phoneNumberId,
+      businessId,
+    });
 
     const subscription = await subscribeWabaToWebhooks({
       accessToken,

@@ -16,6 +16,19 @@ type GraphPhoneResult = GraphError & {
   };
 };
 
+type GraphBusinessAccountsResult = GraphError & {
+  data?: Array<{
+    id?: string;
+    name?: string;
+    phone_numbers?: {
+      data?: Array<{
+        id?: string;
+        display_phone_number?: string;
+      }>;
+    };
+  }>;
+};
+
 function getRequestOrigin(request: Request) {
   const forwardedHost = request.headers.get("x-forwarded-host");
   const forwardedProto = request.headers.get("x-forwarded-proto");
@@ -68,22 +81,54 @@ async function resolveWabaId({
   token,
   fallbackWabaId,
   phoneNumberId,
+  businessId,
 }: {
   token: string;
   fallbackWabaId: string;
   phoneNumberId: string;
+  businessId: string;
 }) {
-  const url = new URL(`https://graph.facebook.com/v25.0/${encodeURIComponent(phoneNumberId)}`);
-  url.searchParams.set("fields", "whatsapp_business_account");
+  try {
+    const url = new URL(`https://graph.facebook.com/v25.0/${encodeURIComponent(phoneNumberId)}`);
+    url.searchParams.set("fields", "whatsapp_business_account");
 
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  const result = (await response.json()) as GraphPhoneResult;
-  if (response.ok && result.whatsapp_business_account?.id) {
-    return result.whatsapp_business_account.id;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const result = (await response.json()) as GraphPhoneResult;
+    if (response.ok && result.whatsapp_business_account?.id) {
+      return result.whatsapp_business_account.id;
+    }
+  } catch {
+    // Tenta descobrir a WABA pelo Business abaixo.
   }
+
+  const edges = ["owned_whatsapp_business_accounts", "client_whatsapp_business_accounts"];
+  for (const edge of edges) {
+    try {
+      const accountsUrl = new URL(
+        `https://graph.facebook.com/v25.0/${encodeURIComponent(businessId)}/${edge}`,
+      );
+      accountsUrl.searchParams.set("fields", "id,name,phone_numbers{id,display_phone_number}");
+      accountsUrl.searchParams.set("limit", "100");
+
+      const response = await fetch(accountsUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const result = (await response.json()) as GraphBusinessAccountsResult;
+      if (!response.ok) continue;
+
+      const matchingAccount = result.data?.find((account) =>
+        account.phone_numbers?.data?.some((phone) => phone.id === phoneNumberId),
+      );
+      if (matchingAccount?.id) return matchingAccount.id;
+    } catch {
+      // Continua tentando outras formas de descoberta.
+    }
+  }
+
   return fallbackWabaId;
 }
 
@@ -115,11 +160,17 @@ export async function POST(request: Request) {
     const verifyToken = requireEnv("META_VERIFY_TOKEN");
     const token = requireEnv("WHATSAPP_TOKEN");
     const phoneNumberId = requireEnv("WHATSAPP_PHONE_NUMBER_ID");
+    const businessId = process.env.META_BUSINESS_ID || "1048092399063891";
     const configuredWabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "2027823187360420";
     const callbackUrl = `${getRequestOrigin(request)}/api/webhooks/whatsapp`;
 
     await configureAppWebhook({ appId, appSecret, callbackUrl, verifyToken });
-    const wabaId = await resolveWabaId({ token, fallbackWabaId: configuredWabaId, phoneNumberId });
+    const wabaId = await resolveWabaId({
+      token,
+      fallbackWabaId: configuredWabaId,
+      phoneNumberId,
+      businessId,
+    });
     await subscribeWaba({ token, wabaId });
 
     return NextResponse.json({
