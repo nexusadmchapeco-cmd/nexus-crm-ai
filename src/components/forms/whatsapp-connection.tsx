@@ -33,6 +33,7 @@ export function WhatsappConnection({
   );
   const [connection, setConnection] = useState<SignupData | null>(initialConnection);
   const [accessToken, setAccessToken] = useState("");
+  const [repairingWebhook, setRepairingWebhook] = useState(false);
   const codeRef = useRef("");
   const signupRef = useRef<SignupData | null>(null);
   const exchangingRef = useRef(false);
@@ -157,6 +158,34 @@ export function WhatsappConnection({
     setMessage("Token copiado. Ele não será exibido na tela.");
   }
 
+  async function repairWebhook() {
+    setRepairingWebhook(true);
+    setMessage("Conferindo webhook oficial e assinatura de mensagens na Meta…");
+    try {
+      const response = await fetch("/api/integrations/whatsapp/webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Não foi possível ativar o webhook.");
+      }
+      setStatus("connected");
+      setMessage(
+        "Webhook de mensagens confirmado. Envie uma mensagem de outro WhatsApp para testar a entrada no CRM.",
+      );
+    } catch (error) {
+      setStatus("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível confirmar o webhook do WhatsApp.",
+      );
+    } finally {
+      setRepairingWebhook(false);
+    }
+  }
+
   return (
     <div className="whatsapp-connect-layout">
       <section className="whatsapp-connect-card">
@@ -211,6 +240,20 @@ export function WhatsappConnection({
           <div className="connection-result">
             <div><span>WhatsApp Account ID</span><strong>{connection.wabaId}</strong></div>
             <div><span>Phone Number ID</span><strong>{connection.phoneNumberId}</strong></div>
+          </div>
+        )}
+
+        {status === "connected" && (
+          <div className="connection-actions connection-actions-secondary">
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={repairWebhook}
+              disabled={repairingWebhook}
+            >
+              <Icon name="check" size={15} />
+              {repairingWebhook ? "Verificando webhook…" : "Revalidar entrada de mensagens"}
+            </button>
           </div>
         )}
       </section>
