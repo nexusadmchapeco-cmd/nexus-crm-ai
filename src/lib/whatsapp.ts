@@ -7,7 +7,7 @@ export function isWhatsAppConfigured() {
 export async function sendWhatsAppMessage(phone: string, message: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const apiVersion = process.env.WHATSAPP_API_VERSION || "v22.0";
+  const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
   if (!token || !phoneNumberId) throw new Error("WhatsApp Cloud API não configurada");
   const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: "POST",

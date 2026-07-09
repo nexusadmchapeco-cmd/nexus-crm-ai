@@ -5,41 +5,39 @@ import { Icon } from "@/components/ui/icon";
 
 const APP_ID = "1044757988238138";
 const CONFIG_ID = "1739586440707452";
+const DEFAULT_PHONE_NUMBER_ID = "264496168466367";
+const WHATSAPP_SETTINGS_PATH = "/settings/whatsapp";
 
 type SignupData = {
-  wabaId: string;
+  wabaId?: string;
   phoneNumberId: string;
 };
 
-type FacebookLoginResponse = {
-  authResponse?: { code?: string };
-  status?: string;
+type WhatsappConnectionProps = {
+  initialConnection?: SignupData | null;
+  tokenApplied?: boolean;
 };
 
-declare global {
-  interface Window {
-    FB?: {
-      init(options: { appId: string; cookie: boolean; xfbml: boolean; version: string }): void;
-      login(
-        callback: (response: FacebookLoginResponse) => void,
-        options: Record<string, unknown>,
-      ): void;
-    };
-    fbAsyncInit?: () => void;
-  }
-}
-
-export function WhatsappConnection() {
-  const [sdkReady, setSdkReady] = useState(false);
-  const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
-  const [message, setMessage] = useState("");
-  const [connection, setConnection] = useState<SignupData | null>(null);
+export function WhatsappConnection({
+  initialConnection = null,
+  tokenApplied = false,
+}: WhatsappConnectionProps) {
+  const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">(
+    initialConnection ? "connected" : "idle",
+  );
+  const [message, setMessage] = useState(
+    initialConnection
+      ? "WhatsApp conectado. O token de produção já está aplicado na Vercel."
+      : "",
+  );
+  const [connection, setConnection] = useState<SignupData | null>(initialConnection);
   const [accessToken, setAccessToken] = useState("");
+  const [repairingWebhook, setRepairingWebhook] = useState(false);
   const codeRef = useRef("");
   const signupRef = useRef<SignupData | null>(null);
   const exchangingRef = useRef(false);
 
-  const exchangeCode = useCallback(async () => {
+  const exchangeCode = useCallback(async (redirectUri?: string) => {
     if (!codeRef.current || !signupRef.current || exchangingRef.current) return;
     exchangingRef.current = true;
     setMessage("Finalizando a conexão segura com a Meta…");
@@ -50,16 +48,23 @@ export function WhatsappConnection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: codeRef.current,
-          wabaId: signupRef.current.wabaId,
           phoneNumberId: signupRef.current.phoneNumberId,
+          redirectUri,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir a conexão.");
       setAccessToken(result.accessToken);
-      setConnection(signupRef.current);
-      setStatus("connected");
-      setMessage("Número conectado. O token está pronto para ser aplicado no ambiente de produção.");
+      setConnection({
+        wabaId: result.wabaId || signupRef.current.wabaId,
+        phoneNumberId: result.phoneNumberId || signupRef.current.phoneNumberId,
+      });
+      setStatus(result.webhookWarning ? "error" : "connected");
+      setMessage(
+        result.webhookWarning
+          ? `Token gerado, mas a entrada de mensagens ainda não foi liberada pela Meta: ${result.webhookWarning}`
+          : "Número conectado. O token está pronto para ser aplicado no ambiente de produção.",
+      );
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Erro ao concluir a conexão.");
@@ -69,95 +74,113 @@ export function WhatsappConnection() {
   }, []);
 
   useEffect(() => {
-    window.fbAsyncInit = () => {
-      window.FB?.init({ appId: APP_ID, cookie: true, xfbml: true, version: "v25.0" });
-      setSdkReady(true);
-    };
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    const errorDescription = url.searchParams.get("error_description");
+    const legacyConnect = url.searchParams.get("connect");
 
-    if (window.FB) {
-      window.fbAsyncInit();
-    } else if (!document.getElementById("facebook-jssdk")) {
-      const script = document.createElement("script");
-      script.id = "facebook-jssdk";
-      script.async = true;
-      script.defer = true;
-      script.crossOrigin = "anonymous";
-      script.src = "https://connect.facebook.net/pt_BR/sdk.js";
-      document.body.appendChild(script);
+    if (errorDescription) {
+      setStatus("error");
+      setMessage(errorDescription);
+      window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+      return;
     }
 
-    function receiveMessage(event: MessageEvent) {
-      if (!["https://www.facebook.com", "https://web.facebook.com"].includes(event.origin)) return;
-      let payload: unknown = event.data;
-      if (typeof payload === "string") {
-        try {
-          payload = JSON.parse(payload);
-        } catch {
-          return;
-        }
-      }
-      if (!payload || typeof payload !== "object") return;
-      const data = payload as {
-        type?: string;
-        event?: string;
-        data?: { waba_id?: string; phone_number_id?: string };
-      };
-      if (data.type !== "WA_EMBEDDED_SIGNUP") return;
-      if (data.event === "FINISH" && data.data?.waba_id && data.data?.phone_number_id) {
-        signupRef.current = {
-          wabaId: data.data.waba_id,
-          phoneNumberId: data.data.phone_number_id,
-        };
-        void exchangeCode();
-      } else if (data.event === "CANCEL") {
+    if (!code) {
+      if (legacyConnect) {
         setStatus("idle");
-        setMessage("Conexão cancelada antes da conclusão.");
-      } else if (data.event === "ERROR") {
-        setStatus("error");
-        setMessage("A Meta informou um erro durante o cadastro do número.");
+        setMessage("A Meta retornou pelo fluxo antigo. Clique em conectar novamente para usar o fluxo direto corrigido.");
+        window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
       }
+      return;
     }
 
-    window.addEventListener("message", receiveMessage);
-    return () => window.removeEventListener("message", receiveMessage);
+    const expectedState = window.sessionStorage.getItem("whatsapp_oauth_state");
+    window.sessionStorage.removeItem("whatsapp_oauth_state");
+    if (expectedState && state && expectedState !== state) {
+      setStatus("error");
+      setMessage("A autorização voltou com uma sessão diferente. Atualize a página e tente conectar novamente.");
+      window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+      return;
+    }
+
+    codeRef.current = code;
+    signupRef.current = {
+      phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+    };
+    setStatus("connecting");
+    setMessage("Autorização recebida. Finalizando com o número Nexus Comercial…");
+    window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+    void exchangeCode(`${window.location.origin}${WHATSAPP_SETTINGS_PATH}`);
   }, [exchangeCode]);
 
   function connect() {
-    if (!window.FB || !sdkReady) return;
     codeRef.current = "";
     signupRef.current = null;
     setConnection(null);
     setAccessToken("");
     setStatus("connecting");
-    setMessage("Conclua a autorização na janela da Meta.");
+    setMessage("Abrindo a autorização oficial da Meta…");
 
-    window.FB.login(
-      (response) => {
-        const code = response.authResponse?.code;
-        if (!code) {
-          setStatus("idle");
-          setMessage("A autorização não foi concluída.");
-          return;
-        }
-        codeRef.current = code;
-        void exchangeCode();
-      },
-      {
-        config_id: CONFIG_ID,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "whatsapp_business_app_onboarding",
-          sessionInfoVersion: "3",
-        },
-      },
+    const redirectUri = `${window.location.origin}${WHATSAPP_SETTINGS_PATH}`;
+    const oauthState = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    window.sessionStorage.setItem("whatsapp_oauth_state", oauthState);
+
+    const authUrl = new URL("https://www.facebook.com/v25.0/dialog/oauth");
+    authUrl.searchParams.set("client_id", APP_ID);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("config_id", CONFIG_ID);
+    authUrl.searchParams.set("state", oauthState);
+    authUrl.searchParams.set(
+      "scope",
+      "business_management,whatsapp_business_management,whatsapp_business_messaging",
     );
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("override_default_response_type", "true");
+    authUrl.searchParams.set(
+      "extras",
+      JSON.stringify({
+        setup: {},
+        featureType: "whatsapp_business_app_onboarding",
+        sessionInfoVersion: "3",
+      }),
+    );
+
+    window.location.assign(authUrl.toString());
   }
 
   async function copyToken() {
     await navigator.clipboard.writeText(accessToken);
     setMessage("Token copiado. Ele não será exibido na tela.");
+  }
+
+  async function repairWebhook() {
+    setRepairingWebhook(true);
+    setMessage("Conferindo webhook oficial e assinatura de mensagens na Meta…");
+    try {
+      const response = await fetch("/api/integrations/whatsapp/webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Não foi possível ativar o webhook.");
+      }
+      setStatus("connected");
+      setMessage(
+        "Webhook de mensagens confirmado. Envie uma mensagem de outro WhatsApp para testar a entrada no CRM.",
+      );
+    } catch (error) {
+      setStatus("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível confirmar o webhook do WhatsApp.",
+      );
+    } finally {
+      setRepairingWebhook(false);
+    }
   }
 
   return (
@@ -186,16 +209,21 @@ export function WhatsappConnection() {
           <div className="done"><b>1</b><span><strong>App publicado</strong><small>Meta for Developers</small></span></div>
           <div className="done"><b>2</b><span><strong>Cadastro incorporado</strong><small>Configuração criada</small></span></div>
           <div className={status === "connected" ? "done" : "active"}><b>3</b><span><strong>Autorizar o número</strong><small>Sem migrar o WhatsApp</small></span></div>
-          <div className={status === "connected" ? "active" : ""}><b>4</b><span><strong>Aplicar token</strong><small>Produção na Vercel</small></span></div>
+          <div className={status === "connected" && tokenApplied ? "done" : status === "connected" ? "active" : ""}><b>4</b><span><strong>Aplicar token</strong><small>Produção na Vercel</small></span></div>
         </div>
 
         {message && <div className={`connection-message ${status === "error" ? "error" : ""}`}>{message}</div>}
 
         <div className="connection-actions">
           {status !== "connected" ? (
-            <button className="button button-primary" type="button" onClick={connect} disabled={!sdkReady || status === "connecting"}>
+            <button className="button button-primary" type="button" onClick={connect} disabled={status === "connecting"}>
               <Icon name="chat" size={15} />
-              {!sdkReady ? "Carregando Meta…" : status === "connecting" ? "Aguardando autorização…" : "Conectar WhatsApp Business"}
+              {status === "connecting" ? "Aguardando autorização…" : "Conectar WhatsApp Business"}
+            </button>
+          ) : tokenApplied && !accessToken ? (
+            <button className="button button-dark" type="button" onClick={connect}>
+              <Icon name="chat" size={15} />
+              Reconectar ou renovar token
             </button>
           ) : (
             <button className="button button-dark" type="button" onClick={copyToken}>
@@ -207,8 +235,22 @@ export function WhatsappConnection() {
 
         {connection && (
           <div className="connection-result">
-            <div><span>WhatsApp Account ID</span><strong>{connection.wabaId}</strong></div>
+            <div><span>WhatsApp Account ID</span><strong>{connection.wabaId || "Aguardando permissão da Meta"}</strong></div>
             <div><span>Phone Number ID</span><strong>{connection.phoneNumberId}</strong></div>
+          </div>
+        )}
+
+        {status === "connected" && (
+          <div className="connection-actions connection-actions-secondary">
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={repairWebhook}
+              disabled={repairingWebhook}
+            >
+              <Icon name="check" size={15} />
+              {repairingWebhook ? "Verificando webhook…" : "Revalidar entrada de mensagens"}
+            </button>
           </div>
         )}
       </section>
