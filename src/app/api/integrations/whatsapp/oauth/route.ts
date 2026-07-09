@@ -201,16 +201,34 @@ export async function POST(request: Request) {
     const appSecret = requireEnv("META_APP_SECRET");
     const businessId = process.env.META_BUSINESS_ID || "1048092399063891";
     const accessToken = await exchangeMetaToken({ appId, appSecret, code, redirectUri });
-    const resolvedWabaId = await resolveWabaIdFromPhoneNumber({
+    let resolvedWabaId = await resolveWabaIdFromPhoneNumber({
       accessToken,
       phoneNumberId,
       businessId,
     });
 
-    const subscription = await subscribeWabaToWebhooks({
+    // O token de usuário do popup nem sempre enxerga a WABA. O token de
+    // sistema configurado no ambiente é a fonte confiável — usa como reserva.
+    const systemToken = process.env.WHATSAPP_TOKEN;
+    const configuredWabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+    if (!resolvedWabaId && systemToken) {
+      resolvedWabaId = await resolveWabaIdFromPhoneNumber({
+        accessToken: systemToken,
+        phoneNumberId,
+        businessId,
+      });
+    }
+
+    let subscription = await subscribeWabaToWebhooks({
       accessToken,
-      wabaIds: [resolvedWabaId, wabaId],
+      wabaIds: [resolvedWabaId, wabaId, configuredWabaId],
     });
+    if (!subscription.subscribed && systemToken) {
+      subscription = await subscribeWabaToWebhooks({
+        accessToken: systemToken,
+        wabaIds: [resolvedWabaId, wabaId, configuredWabaId],
+      });
+    }
 
     return NextResponse.json({
       success: true,
