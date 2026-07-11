@@ -87,6 +87,7 @@ export function AgendaBoard({
   const [modal, setModal] = useState<"appointment" | "block" | null>(null);
   const [notice, setNotice] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [slotMenu, setSlotMenu] = useState<{ day: string; time: string } | null>(null);
   const [form, setForm] = useState({
     type: "closer_meeting",
     lead_id: "",
@@ -171,6 +172,24 @@ export function AgendaBoard({
     setBlocks((current) => [...current, body]);
     setModal(null);
     setNotice(allDay ? "Dia fechado para atendimentos." : "Horário bloqueado.");
+  }
+
+  async function quickBlock(date: string, time: string) {
+    const starts = new Date(isoAt(date, time));
+    const ends = new Date(starts.getTime() + 30 * 60_000);
+    const response = await fetch("/api/calendar-blocks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+        reason: "Agenda fechada",
+      }),
+    });
+    const body = await response.json();
+    if (!response.ok) return setNotice(body.error);
+    setBlocks((current) => [...current, body]);
+    setNotice("Horário bloqueado.");
   }
 
   async function removeBlock(id: string) {
@@ -277,7 +296,50 @@ export function AgendaBoard({
                         <button onClick={() => removeBlock(block.id)} aria-label="Reabrir horário">×</button>
                       </div>
                     ) : (
-                      <button className="week-empty-slot" onClick={() => openAppointment(day, time)} aria-label={`Agendar ${day} às ${time}`}>+</button>
+                      <>
+                        <button
+                          className="week-empty-slot"
+                          onClick={() =>
+                            setSlotMenu((current) =>
+                              current?.day === day && current?.time === time ? null : { day, time },
+                            )
+                          }
+                          aria-label={`Opções para ${day} às ${time}`}
+                        >
+                          +
+                        </button>
+                        {slotMenu?.day === day && slotMenu?.time === time && (
+                          <>
+                            <button
+                              type="button"
+                              className="week-slot-menu-backdrop"
+                              onClick={() => setSlotMenu(null)}
+                              aria-label="Fechar menu"
+                            />
+                            <div className="week-slot-menu">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSlotMenu(null);
+                                  openAppointment(day, time);
+                                }}
+                              >
+                                <Icon name="calendar" size={12} /> Agendar compromisso
+                              </button>
+                              <button
+                                type="button"
+                                className="week-slot-menu-close"
+                                onClick={() => {
+                                  setSlotMenu(null);
+                                  void quickBlock(day, time);
+                                }}
+                              >
+                                <Icon name="x" size={12} /> Fechar horário
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
                 );
