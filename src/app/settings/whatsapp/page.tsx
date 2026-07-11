@@ -1,9 +1,31 @@
 import { WhatsappConnection } from "@/components/forms/whatsapp-connection";
 
-export default function WhatsappSettingsPage() {
+export const dynamic = "force-dynamic";
+
+async function fetchDisplayPhoneNumber(phoneNumberId: string, token: string) {
+  try {
+    const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
+    const response = await fetch(
+      `https://graph.facebook.com/${apiVersion}/${phoneNumberId}?fields=display_phone_number,verified_name`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return (data.display_phone_number as string | undefined) || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function WhatsappSettingsPage() {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const wabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
-  const isConnected = Boolean(process.env.WHATSAPP_TOKEN && phoneNumberId);
+  const token = process.env.WHATSAPP_TOKEN;
+  const isConnected = Boolean(token && phoneNumberId);
+  const displayPhoneNumber =
+    isConnected && phoneNumberId && token
+      ? await fetchDisplayPhoneNumber(phoneNumberId, token)
+      : null;
 
   return (
     <>
@@ -20,6 +42,7 @@ export default function WhatsappSettingsPage() {
             ? {
                 wabaId,
                 phoneNumberId,
+                displayPhoneNumber,
               }
             : null
         }
