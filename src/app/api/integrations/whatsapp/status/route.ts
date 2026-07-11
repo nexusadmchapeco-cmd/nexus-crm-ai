@@ -23,16 +23,20 @@ async function graphGet(path: string, token: string) {
   }
 }
 
+const TEMPLATE_FIELDS = "name,status,category,language,quality_score";
+
 async function inspectWaba(wabaId: string, wabaName: string | undefined, token: string) {
-  const [numbers, subscribedApps] = await Promise.all([
+  const [numbers, subscribedApps, templates] = await Promise.all([
     graphGet(`/${wabaId}/phone_numbers?fields=${PHONE_FIELDS}`, token),
     graphGet(`/${wabaId}/subscribed_apps`, token),
+    graphGet(`/${wabaId}/message_templates?fields=${TEMPLATE_FIELDS}&limit=100`, token),
   ]);
   return {
     wabaId,
     wabaName: wabaName || null,
     numbers: numbers.data ?? numbers,
     subscribedApps: subscribedApps.data ?? subscribedApps,
+    templates: templates.data ?? templates,
   };
 }
 
