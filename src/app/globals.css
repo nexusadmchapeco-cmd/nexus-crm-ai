@@ -183,11 +183,14 @@ a { color: inherit; text-decoration: none; }
 .lead-card-delete:hover { color: #c0392b; border-color: #f0c4bd; background: #fdf3f1; }
 .kanban-empty { height: 45px; display: grid; place-items: center; color: #a2a3a6; font-size: 9px; border: 1px dashed #d3d3d0; border-radius: 6px; }
 
-.chat-layout { height: calc(100vh - 130px); min-height: 600px; display: grid; grid-template-columns: 280px minmax(360px, 1fr) 290px; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.conversation-list { border-right: 1px solid var(--line); min-width: 0; }
-.chat-section-head { height: 59px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.conversations-shell { display: flex; flex-direction: column; height: calc(100dvh - 65px - 78px); min-height: 0; }
+.conversations-shell .page-header { flex: 0 0 auto; }
+.chat-layout { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 280px minmax(360px, 1fr) 290px; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.conversation-list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); min-width: 0; }
+.chat-section-head { flex: 0 0 auto; height: 59px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--line); }
 .chat-section-head h2 { font-size: 13px; margin: 0; }
-.conversation-search { margin: 11px; height: 34px; border-radius: 6px; background: #f4f4f2; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: #999; font-size: 9px; }
+.conversation-search { flex: 0 0 auto; margin: 11px; height: 34px; border-radius: 6px; background: #f4f4f2; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: #999; font-size: 9px; }
+.conversation-list-items { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .conversation-item { display: flex; align-items: center; gap: 9px; padding: 12px 11px; border-bottom: 1px solid #f0f0ee; position: relative; }
 .conversation-item:hover, .conversation-item.active { background: #faf7f5; }
 .conversation-item.active::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--orange); }
@@ -217,7 +220,9 @@ a { color: inherit; text-decoration: none; }
 .composer textarea { flex: 1; resize: none; height: 42px; max-height: 90px; border: 1px solid #dededb; border-radius: 7px; padding: 11px; outline: none; font-size: 10px; }
 .composer textarea:focus { border-color: #a5a5a2; box-shadow: 0 0 0 3px #00000008; }
 .composer button { width: 42px; height: 42px; border: 0; border-radius: 7px; background: var(--orange); color: white; display: grid; place-items: center; cursor: pointer; }
-.lead-panel { border-left: 1px solid var(--line); overflow-y: auto; background: white; }
+.lead-panel { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: white; }
+.lead-panel-header { flex: 0 0 auto; }
+.lead-panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .lead-panel-profile { padding: 20px 17px 17px; text-align: center; border-bottom: 1px solid var(--line); }
 .lead-panel-profile .avatar { margin: auto; width: 48px; height: 48px; font-size: 14px; }
 .lead-panel-profile h3 { font-size: 13px; margin: 10px 0 3px; }
@@ -372,6 +377,7 @@ a { color: inherit; text-decoration: none; }
   .topbar-search { width: auto; }
   .page-content { padding: 23px 16px 38px; }
   .legal-page { margin: -23px -16px -38px; }
+  .conversations-shell { height: calc(100dvh - 65px - 61px); }
   .page-header { align-items: flex-start; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .dashboard-grid { grid-template-columns: 1fr; }
@@ -381,7 +387,7 @@ a { color: inherit; text-decoration: none; }
   .whatsapp-connect-layout { grid-template-columns: 1fr; }
   .helper-card { display: none; }
   .whatsapp-safety-card { display: none; }
-  .chat-layout { height: calc(100vh - 110px); min-height: 560px; grid-template-columns: 1fr; }
+  .chat-layout { grid-template-columns: 1fr; }
   .conversation-list { display: none; }
   .chat-empty { grid-column: 1; }
 }
