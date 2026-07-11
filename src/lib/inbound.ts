@@ -330,6 +330,9 @@ export async function processInbound(payload: InboundPayload) {
           .limit(1)
           .maybeSingle();
         if (!alreadyNotified) {
+          // Modelos do WhatsApp rejeitam quebra de linha/tab e 4+ espaços seguidos
+          // dentro de uma variável -- por isso usamos " · " em vez de "\n" e
+          // normalizamos qualquer espaço em branco remanescente.
           const closerSummary = [
             `Lead: ${lead.name || "Sem nome"}`,
             `WhatsApp: +${lead.phone}`,
@@ -340,7 +343,10 @@ export async function processInbound(payload: InboundPayload) {
             `Temperatura: ${lead.temperature}`,
             `Resumo: ${lead.summary || decision.summary}`,
             `Próxima ação: ${lead.next_action || decision.next_action}`,
-          ].join("\n").slice(0, 1000);
+          ]
+            .join(" · ")
+            .replace(/\s+/g, " ")
+            .slice(0, 1000);
           try {
             const sent = await sendWhatsAppTemplate(
               operations.closer_phone,
