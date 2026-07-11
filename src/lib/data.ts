@@ -1,11 +1,12 @@
 import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { defaultFollowupSteps, defaultStagePrompts, editableStageNames } from "@/lib/ai/prompt-defaults";
+import { defaultFollowupSteps, defaultStagePrompts, editableStageRoles } from "@/lib/ai/prompt-defaults";
 import { defaultOperationsSettings, parseOperationsSettings } from "@/lib/operations";
 import type {
   AiSettings,
   FollowupSequence,
   Lead,
+  LeadEvent,
   Message,
   PipelineStage,
   StagePrompt,
@@ -109,7 +110,7 @@ export async function getPromptStudioData(): Promise<{
     promptRows.map((row) => [row.name.replace("__stage__:", ""), row]),
   );
   const stagePrompts = stages
-    .filter((stage) => editableStageNames.includes(stage.name as (typeof editableStageNames)[number]))
+    .filter((stage) => stage.role && editableStageRoles.includes(stage.role as (typeof editableStageRoles)[number]))
     .map((stage) => {
       const row = promptByStage.get(stage.id);
       return {
@@ -117,7 +118,7 @@ export async function getPromptStudioData(): Promise<{
         stage_id: stage.id,
         stage_name: stage.name,
         stage_color: stage.color,
-        prompt: row?.global_prompt || defaultStagePrompts[stage.name] || "",
+        prompt: row?.global_prompt || defaultStagePrompts[stage.role || ""] || "",
         active: true,
       };
     });
@@ -145,7 +146,7 @@ export async function getPromptStudioData(): Promise<{
   } else {
     followup = {
       name: "Follow-up comercial",
-      trigger_stage_id: stages.find((stage) => stage.name === "Follow-up")?.id || null,
+      trigger_stage_id: stages.find((stage) => stage.role === "followup")?.id || null,
       active: false,
       steps: defaultFollowupSteps.map((step, position) => ({ ...step, position })),
     };
@@ -158,6 +159,22 @@ export async function getPromptStudioData(): Promise<{
     followup,
     operations: parseOperationsSettings(operationsResult.data?.global_prompt),
   };
+}
+
+export async function getLeadEventsMap(leadIds: string[]): Promise<Record<string, LeadEvent[]>> {
+  if (!isSupabaseConfigured() || !leadIds.length) return {};
+  const { data, error } = await createAdminClient()
+    .from("lead_events")
+    .select("id,lead_id,event_type,metadata,created_at")
+    .in("lead_id", leadIds)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const map: Record<string, LeadEvent[]> = {};
+  for (const event of data || []) {
+    if (!map[event.lead_id]) map[event.lead_id] = [];
+    if (map[event.lead_id].length < 6) map[event.lead_id].push(event);
+  }
+  return map;
 }
 
 export async function getFollowupHistory(leadId?: string): Promise<FollowupHistoryItem[]> {

@@ -12,6 +12,8 @@ const schema = {
       "temperature",
       "should_handoff",
       "suggested_stage",
+      "should_disqualify",
+      "disqualify_reason",
       "summary",
       "next_action",
       "appointment",
@@ -53,12 +55,12 @@ const schema = {
       should_handoff: { type: "boolean" },
       suggested_stage: {
         type: "string",
-        enum: [
-          "IA em atendimento",
-          "Qualificando",
-          "Lead quente",
-          "Enviar para closer",
-        ],
+        enum: ["ai_service", "qualifying", "hot_lead", "handoff"],
+      },
+      should_disqualify: { type: "boolean" },
+      disqualify_reason: {
+        type: ["string", "null"],
+        enum: ["explicit_no", "out_of_profile", "invalid_contact", null],
       },
       summary: { type: "string" },
       next_action: { type: "string" },
@@ -142,6 +144,11 @@ export async function runSdr({
               ? `\n\nJANELAS DE DISPONIBILIDADE:\n${availableSlots}\nUse-as para sugerir opções. Só marque appointment.should_schedule=true quando o lead confirmar explicitamente um dia e horário exatos. Use starts_at em ISO 8601 com fuso -03:00 e duration_minutes=30. Reunião comercial é closer_meeting; aula experimental é experimental_class.`
               : "",
             "\n\nREGRA DE SEGURANÇA DA AGENDA: nunca invente disponibilidade e nunca confirme um agendamento sem confirmação explícita do cliente. Caso ainda esteja negociando o horário, deixe should_schedule=false e os demais campos de appointment como null.",
+            "\n\nDESQUALIFICAÇÃO: marque should_disqualify=true apenas quando UM destes casos ficar claro na conversa, e preencha disqualify_reason:\n" +
+              '- explicit_no: o lead recusou explicitamente ("não tenho interesse", "para de mandar mensagem", "não quero", etc.).\n' +
+              "- out_of_profile: o lead não se encaixa no público da Nexus (cidade fora das unidades atendidas, sem qualquer condição de pagar, ou fora do perfil de idade/objetivo do curso).\n" +
+              "- invalid_contact: o contato é claramente inválido, spam, teste ou sem sentido (nome falso óbvio, mensagem incoerente).\n" +
+              "Na dúvida, NÃO desqualifique: deixe should_disqualify=false e disqualify_reason=null, e continue qualificando normalmente. Nunca desqualifique só por o lead demorar para responder.",
           ].join(""),
         },
         {

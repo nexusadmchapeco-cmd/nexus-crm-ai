@@ -54,7 +54,7 @@ export function buildCampaignAudience({
       if (filters.interacted_with_ai && !(aiCount > 0 && inboundCount > 0)) return false;
       if (filters.never_replied && !(aiCount > 0 && inboundCount <= 1)) return false;
       if (filters.did_not_advance && (stage?.position || 99) > 3) return false;
-      if (filters.exclude_won && stage?.name === "Matrícula fechada") return false;
+      if (filters.exclude_won && stage?.role === "won") return false;
       return true;
     })
     .map((lead) => {

@@ -3,23 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
-import { protectedStageNames } from "@/lib/ai/prompt-defaults";
+import { protectedStageRoles } from "@/lib/ai/prompt-defaults";
 import type { PipelineStage } from "@/lib/types";
+
+function isProtected(stage: PipelineStage) {
+  return Boolean(
+    stage.role && protectedStageRoles.includes(stage.role as (typeof protectedStageRoles)[number]),
+  );
+}
 
 export function StageEditor({ initialStages }: { initialStages: PipelineStage[] }) {
   const router = useRouter();
-  const [stages, setStages] = useState(initialStages);
+  const [stages, setStages] = useState(initialStages.filter((stage) => stage.board_visible));
   const [busyId, setBusyId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#64748b");
+  const [newGroup, setNewGroup] = useState<"ia" | "closer">("ia");
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
-  function isProtected(name: string) {
-    return protectedStageNames.includes(name as (typeof protectedStageNames)[number]);
-  }
-
-  async function saveStage(id: string, patch: { name?: string; color?: string }) {
+  async function saveStage(id: string, patch: { name?: string; color?: string; board_group?: string }) {
     setBusyId(id);
     setNotice(null);
     try {
@@ -39,19 +42,23 @@ export function StageEditor({ initialStages }: { initialStages: PipelineStage[] 
     }
   }
 
-  async function reorder(fromIndex: number, toIndex: number) {
-    if (toIndex < 0 || toIndex >= stages.length) return;
-    const next = [...stages];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    setStages(next);
+  async function reorder(group: "ia" | "closer", fromIndex: number, toIndex: number) {
+    const groupStages = stages.filter((stage) => stage.board_group === group);
+    if (toIndex < 0 || toIndex >= groupStages.length) return;
+    const reordered = [...groupStages];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setStages((current) => [
+      ...current.filter((stage) => stage.board_group !== group),
+      ...reordered,
+    ]);
     setBusyId(moved.id);
     setNotice(null);
     try {
       const response = await fetch("/api/stages/reorder", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage_ids: next.map((stage) => stage.id) }),
+        body: JSON.stringify({ stage_ids: reordered.map((stage) => stage.id) }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Não foi possível reordenar.");
@@ -91,7 +98,7 @@ export function StageEditor({ initialStages }: { initialStages: PipelineStage[] 
       const response = await fetch("/api/stages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim(), color: newColor }),
+        body: JSON.stringify({ name: newName.trim(), color: newColor, board_group: newGroup }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Não foi possível criar a etapa.");
@@ -106,6 +113,79 @@ export function StageEditor({ initialStages }: { initialStages: PipelineStage[] 
     }
   }
 
+  function renderGroup(group: "ia" | "closer", label: string) {
+    const groupStages = stages
+      .filter((stage) => stage.board_group === group)
+      .sort((a, b) => a.position - b.position);
+    return (
+      <div className="stage-editor-group">
+        <h3 className="stage-editor-group-title">{label}</h3>
+        <div className="stage-editor-list">
+          {groupStages.map((stage, index) => {
+            const locked = isProtected(stage);
+            const busy = busyId === stage.id;
+            return (
+              <article className="stage-editor-row" key={stage.id}>
+                <div className="stage-editor-order">
+                  <button
+                    type="button"
+                    className="icon-button studio-order"
+                    aria-label={`Mover ${stage.name} para cima`}
+                    disabled={index === 0 || busy}
+                    onClick={() => void reorder(group, index, index - 1)}
+                  >
+                    <Icon name="arrow" size={14} className="arrow-up" />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button studio-order"
+                    aria-label={`Mover ${stage.name} para baixo`}
+                    disabled={index === groupStages.length - 1 || busy}
+                    onClick={() => void reorder(group, index, index + 1)}
+                  >
+                    <Icon name="arrow" size={14} className="arrow-down" />
+                  </button>
+                </div>
+                <input
+                  type="color"
+                  className="stage-editor-color"
+                  value={stage.color}
+                  disabled={busy}
+                  onChange={(event) => saveStage(stage.id, { color: event.target.value })}
+                />
+                <input
+                  type="text"
+                  className="stage-editor-name"
+                  defaultValue={stage.name}
+                  disabled={busy}
+                  onBlur={(event) => {
+                    const value = event.target.value.trim();
+                    if (value && value !== stage.name) saveStage(stage.id, { name: value });
+                  }}
+                />
+                {locked && (
+                  <span className="stage-editor-lock" title="Uma automação da IA depende desta etapa; pode renomear, mas não excluir.">
+                    <Icon name="lock" size={13} /> Fixa
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="icon-button lead-card-delete"
+                  aria-label={`Excluir etapa ${stage.name}`}
+                  disabled={locked || busy}
+                  onClick={() => void deleteStage(stage)}
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </article>
+            );
+          })}
+          {!groupStages.length && <div className="kanban-empty">Nenhuma etapa nesta seção.</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="stage-editor">
       {notice && (
@@ -114,67 +194,8 @@ export function StageEditor({ initialStages }: { initialStages: PipelineStage[] 
           {notice.text}
         </div>
       )}
-      <div className="stage-editor-list">
-        {stages.map((stage, index) => {
-          const locked = isProtected(stage.name);
-          const busy = busyId === stage.id;
-          return (
-            <article className="stage-editor-row" key={stage.id}>
-              <div className="stage-editor-order">
-                <button
-                  type="button"
-                  className="icon-button studio-order"
-                  aria-label={`Mover ${stage.name} para cima`}
-                  disabled={index === 0 || busy}
-                  onClick={() => void reorder(index, index - 1)}
-                >
-                  <Icon name="arrow" size={14} className="arrow-up" />
-                </button>
-                <button
-                  type="button"
-                  className="icon-button studio-order"
-                  aria-label={`Mover ${stage.name} para baixo`}
-                  disabled={index === stages.length - 1 || busy}
-                  onClick={() => void reorder(index, index + 1)}
-                >
-                  <Icon name="arrow" size={14} className="arrow-down" />
-                </button>
-              </div>
-              <input
-                type="color"
-                className="stage-editor-color"
-                value={stage.color}
-                disabled={busy}
-                onChange={(event) => saveStage(stage.id, { color: event.target.value })}
-              />
-              <input
-                type="text"
-                className="stage-editor-name"
-                defaultValue={stage.name}
-                disabled={locked || busy}
-                onBlur={(event) => {
-                  const value = event.target.value.trim();
-                  if (value && value !== stage.name) saveStage(stage.id, { name: value });
-                }}
-              />
-              {locked && (
-                <span className="stage-editor-lock" title="Usada pela automação da IA, não pode ser renomeada ou excluída.">
-                  <Icon name="lock" size={13} /> Fixa
-                </span>
-              )}
-              <button
-                type="button"
-                className="icon-button lead-card-delete"
-                aria-label={`Excluir etapa ${stage.name}`}
-                disabled={locked || busy}
-                onClick={() => void deleteStage(stage)}
-              >
-                <Icon name="x" size={14} />
-              </button>
-            </article>
-          );
-        })}
-      </div>
+      {renderGroup("ia", "Atendimento da IA")}
+      {renderGroup("closer", "Closer (manual)")}
       <div className="stage-editor-add">
         <input
           type="color"
@@ -189,6 +210,10 @@ export function StageEditor({ initialStages }: { initialStages: PipelineStage[] 
           value={newName}
           onChange={(event) => setNewName(event.target.value)}
         />
+        <select value={newGroup} onChange={(event) => setNewGroup(event.target.value as "ia" | "closer")}>
+          <option value="ia">Atendimento da IA</option>
+          <option value="closer">Closer (manual)</option>
+        </select>
         <button className="button button-primary" type="button" disabled={creating || !newName.trim()} onClick={createStage}>
           <Icon name="plus" size={14} />
           {creating ? "Criando…" : "Adicionar etapa"}

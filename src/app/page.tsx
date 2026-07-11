@@ -11,14 +11,14 @@ export default async function DashboardPage() {
   const configured = isSupabaseConfigured();
   const leads = configured ? await getLeads() : [];
   const today = new Date().toDateString();
-  const count = (stage: string) => leads.filter((lead) => lead.pipeline_stages?.name === stage).length;
+  const count = (role: string) => leads.filter((lead) => lead.pipeline_stages?.role === role).length;
   const metrics = [
     { label: "Novos hoje", value: leads.filter((l) => new Date(l.created_at).toDateString() === today).length, color: "#64748b", note: "Entradas nas últimas 24h" },
-    { label: "IA atendendo", value: count("IA em atendimento") + count("Qualificando"), color: "#0ea5e9", note: "Conversas automáticas" },
-    { label: "Leads quentes", value: count("Lead quente"), color: "#f59e0b", note: "Alta intenção" },
-    { label: "Para o closer", value: count("Enviar para closer"), color: "#f97316", note: "Aguardando consultor" },
-    { label: "Matrículas", value: count("Matrícula fechada"), color: "#16a34a", note: "Conversões registradas" },
-    { label: "Em follow-up", value: count("Follow-up"), color: "#d97706", note: "Precisam de retorno" },
+    { label: "IA atendendo", value: count("ai_service") + count("qualifying"), color: "#0ea5e9", note: "Conversas automáticas" },
+    { label: "Leads quentes", value: count("hot_lead"), color: "#f59e0b", note: "Alta intenção" },
+    { label: "Reunião agendada", value: count("handoff"), color: "#f97316", note: "Aguardando consultor" },
+    { label: "Matrículas", value: count("won"), color: "#16a34a", note: "Conversões registradas" },
+    { label: "Não qualificados", value: count("not_qualified"), color: "#94a3b8", note: "Desqualificados pela IA" },
   ];
 
   return (

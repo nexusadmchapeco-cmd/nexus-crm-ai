@@ -27,11 +27,13 @@ export async function processInbound(payload: InboundPayload) {
     .select("*")
     .order("position");
   if (stagesError) throw stagesError;
-  const stageByName = new Map(
-    (stages as PipelineStage[]).map((stage) => [stage.name, stage]),
+  const stageByRole = new Map(
+    (stages as PipelineStage[])
+      .filter((stage) => stage.role)
+      .map((stage) => [stage.role as string, stage]),
   );
-  const newStage = stageByName.get("Novo lead");
-  if (!newStage) throw new Error("Execute a migration: etapa Novo lead não encontrada");
+  const newStage = stageByRole.get("new_lead");
+  if (!newStage) throw new Error("Execute a migration: etapa com role new_lead não encontrada");
 
   const { data: existingLead, error: findError } = await supabase
     .from("leads")
@@ -113,7 +115,7 @@ export async function processInbound(payload: InboundPayload) {
       lead,
       conversation,
       ai_reply: null,
-      stage: stageByName.get("Closer assumiu") || newStage,
+      stage: stageByRole.get("closer_owns") || newStage,
       skipped_ai: true,
     };
   }
@@ -188,14 +190,14 @@ export async function processInbound(payload: InboundPayload) {
       stagePrompt:
         stagePromptRow?.global_prompt ||
         defaultStagePrompts[
-          (stages as PipelineStage[]).find((stage) => stage.id === lead.stage_id)?.name || ""
+          (stages as PipelineStage[]).find((stage) => stage.id === lead.stage_id)?.role || ""
         ] ||
         null,
       knowledgeContext: knowledgeContext || null,
       availableSlots: availableSlots || null,
     });
-    const stageName = resolveSuggestedStage(decision, lead);
-    const targetStage = stageByName.get(stageName) || stageByName.get("IA em atendimento")!;
+    const stageRole = resolveSuggestedStage(decision, lead);
+    const targetStage = stageByRole.get(stageRole) || stageByRole.get("ai_service")!;
     const updates = {
       ...removeNulls(decision.extracted),
       temperature: decision.temperature,
@@ -230,7 +232,7 @@ export async function processInbound(payload: InboundPayload) {
     await supabase.from("lead_events").insert({
       lead_id: lead.id,
       event_type: "ai_qualified",
-      metadata: { stage: stageName, temperature: decision.temperature },
+      metadata: { stage: targetStage.name, stage_role: stageRole, temperature: decision.temperature },
     });
 
     if (
@@ -308,7 +310,7 @@ export async function processInbound(payload: InboundPayload) {
       }
     }
 
-    if (decision.should_handoff || stageName === "Enviar para closer") {
+    if (decision.should_handoff || stageRole === "handoff") {
       const { data: operationsRow } = await supabase
         .from("ai_settings")
         .select("global_prompt")

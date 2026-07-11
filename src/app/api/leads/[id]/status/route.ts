@@ -6,10 +6,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const value = new URL(request.url).searchParams.get("value");
     if (value !== "won" && value !== "lost") return NextResponse.json({ error: "Status inválido" }, { status: 400 });
-    const stageName = value === "won" ? "Matrícula fechada" : "Perdido";
+    const stageRole = value === "won" ? "won" : "lost";
     const temperature = value === "won" ? "cliente" : "perdido";
     const supabase = createAdminClient();
-    const { data: stage, error: stageError } = await supabase.from("pipeline_stages").select("id").eq("name", stageName).single();
+    const { data: stage, error: stageError } = await supabase.from("pipeline_stages").select("id").eq("role", stageRole).single();
     if (stageError) throw stageError;
     const { data, error } = await supabase.from("leads").update({
       stage_id: stage.id, temperature, ai_enabled: false, updated_at: new Date().toISOString(),
