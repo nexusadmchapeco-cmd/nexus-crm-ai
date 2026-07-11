@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ChatActions } from "@/components/conversations/chat-actions";
 import { Composer } from "@/components/conversations/composer";
+import { MessageList } from "@/components/conversations/message-list";
+import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
 import { getFollowupHistory, getLeads, getMessages } from "@/lib/data";
@@ -21,6 +23,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
 
   return (
     <>
+      <AutoRefresh />
       <div className="page-header">
         <div><div className="eyebrow">Caixa de entrada</div><h1>Conversas</h1><p>Atendimento em tempo real entre IA, lead e equipe comercial.</p></div>
       </div>
@@ -48,18 +51,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 <div><strong>{selected.name || selected.phone}</strong><span>{selected.city || "Local não informado"} · WhatsApp</span></div>
                 <span className={`mode-pill ${selected.human_takeover ? "human" : ""}`}>{selected.human_takeover ? "Humano assumiu" : "IA automática"}</span>
               </div>
-              <div className="messages">
-                {messages.map((message) => (
-                  <div className={`message ${message.sender_type}`} key={message.id}>
-                    <div className="bubble">{message.content}</div>
-                    <div className="message-meta">
-                      <span>{message.sender_type === "lead" ? "Lead" : message.sender_type === "ai" ? "Nina · IA" : "Equipe Nexus"}</span>
-                      <span>· {new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.created_at))}</span>
-                      {message.sender_type !== "lead" && <Icon name="check" size={10} />}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <MessageList messages={messages} />
               <Composer leadId={selected.id} />
             </section>
             <aside className="lead-panel">
@@ -67,7 +59,11 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 <div className="avatar">{initials(selected.name, selected.phone)}</div>
                 <h3>{selected.name || "Lead sem nome"}</h3><p>+{selected.phone}</p>
               </div>
-              <ChatActions leadId={selected.id} humanTakeover={selected.human_takeover} />
+              <ChatActions
+                leadId={selected.id}
+                humanTakeover={selected.human_takeover}
+                leadLabel={selected.name || selected.phone}
+              />
               <div className="detail-section">
                 <h4>Histórico de follow-up</h4>
                 {followups.length ? (
