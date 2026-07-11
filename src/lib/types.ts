@@ -6,11 +6,26 @@ export type Temperature =
   | "perdido"
   | "cliente";
 
+export type StageRole =
+  | "new_lead"
+  | "ai_service"
+  | "qualifying"
+  | "hot_lead"
+  | "not_qualified"
+  | "handoff"
+  | "closer_owns"
+  | "followup"
+  | "won"
+  | "lost";
+
 export type PipelineStage = {
   id: string;
   name: string;
   position: number;
   color: string;
+  role: StageRole | null;
+  board_group: "ia" | "closer";
+  board_visible: boolean;
   created_at: string;
 };
 
@@ -48,6 +63,14 @@ export type Conversation = {
   channel: string;
   created_at: string;
   updated_at: string;
+};
+
+export type LeadEvent = {
+  id: string;
+  lead_id: string;
+  event_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
 };
 
 export type Message = {
@@ -155,6 +178,8 @@ export type AiDecision = {
   temperature: Temperature;
   should_handoff: boolean;
   suggested_stage: string;
+  should_disqualify: boolean;
+  disqualify_reason: string | null;
   summary: string;
   next_action: string;
   appointment: {

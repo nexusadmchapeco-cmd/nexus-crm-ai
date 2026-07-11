@@ -1,15 +1,16 @@
-import type { AiDecision, Lead } from "@/lib/types";
+import type { AiDecision, Lead, StageRole } from "@/lib/types";
 
-export function resolveSuggestedStage(decision: AiDecision, lead: Lead) {
+export function resolveSuggestedStage(decision: AiDecision, lead: Lead): StageRole {
+  if (decision.should_disqualify && decision.disqualify_reason) return "not_qualified";
   const merged = { ...lead, ...removeNulls(decision.extracted) };
   if (decision.should_handoff || decision.temperature === "pronto_para_closer") {
-    return "Enviar para closer";
+    return "handoff";
   }
   if (merged.objective && (merged.city || merged.unit_interest) && merged.availability) {
-    return "Lead quente";
+    return "hot_lead";
   }
-  if (merged.city || merged.unit_interest || merged.objective) return "Qualificando";
-  return decision.suggested_stage || "IA em atendimento";
+  if (merged.city || merged.unit_interest || merged.objective) return "qualifying";
+  return (decision.suggested_stage as StageRole) || "ai_service";
 }
 
 export function removeNulls<T extends Record<string, unknown>>(value: T) {

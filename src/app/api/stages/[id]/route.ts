@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { protectedStageNames } from "@/lib/ai/prompt-defaults";
+import { protectedStageRoles } from "@/lib/ai/prompt-defaults";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -8,29 +8,20 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const body = await request.json();
     const supabase = createAdminClient();
 
-    const { data: current, error: currentError } = await supabase
-      .from("pipeline_stages")
-      .select("name")
-      .eq("id", id)
-      .single();
-    if (currentError) throw currentError;
-
-    const update: { name?: string; color?: string } = {};
+    const update: { name?: string; color?: string; board_group?: string } = {};
     if (body.name !== undefined) {
       const nextName = String(body.name).trim();
       if (!nextName) return NextResponse.json({ error: "Informe um nome para a etapa." }, { status: 400 });
-      if (
-        nextName !== current.name &&
-        protectedStageNames.includes(current.name as (typeof protectedStageNames)[number])
-      ) {
-        return NextResponse.json(
-          { error: `"${current.name}" é usada pela automação da IA e não pode ser renomeada.` },
-          { status: 400 },
-        );
-      }
+      // Renomear é seguro: a automação da IA casa por `role`, não por `name`.
       update.name = nextName;
     }
     if (body.color !== undefined) update.color = String(body.color).trim();
+    if (body.board_group !== undefined) {
+      if (body.board_group !== "ia" && body.board_group !== "closer") {
+        return NextResponse.json({ error: "Seção inválida." }, { status: 400 });
+      }
+      update.board_group = body.board_group;
+    }
 
     if (!Object.keys(update).length) {
       return NextResponse.json({ error: "Nada para atualizar." }, { status: 400 });
@@ -59,11 +50,14 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
     const { data: current, error: currentError } = await supabase
       .from("pipeline_stages")
-      .select("name")
+      .select("name, role")
       .eq("id", id)
       .single();
     if (currentError) throw currentError;
-    if (protectedStageNames.includes(current.name as (typeof protectedStageNames)[number])) {
+    if (
+      current.role &&
+      protectedStageRoles.includes(current.role as (typeof protectedStageRoles)[number])
+    ) {
       return NextResponse.json(
         { error: `"${current.name}" é usada pela automação da IA e não pode ser excluída.` },
         { status: 400 },

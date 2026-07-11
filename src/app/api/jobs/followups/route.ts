@@ -52,6 +52,7 @@ export async function GET(request: Request) {
     const [
       { data: steps, error: stepsError },
       { data: leads, error: leadsError },
+      { data: notQualifiedStage, error: notQualifiedError },
     ] = await Promise.all([
       supabase
         .from("followup_steps")
@@ -63,11 +64,14 @@ export async function GET(request: Request) {
         .select("*")
         .eq("stage_id", sequence.trigger_stage_id)
         .eq("human_takeover", false),
+      supabase.from("pipeline_stages").select("id").eq("role", "not_qualified").maybeSingle(),
     ]);
     if (stepsError) throw stepsError;
     if (leadsError) throw leadsError;
+    if (notQualifiedError) throw notQualifiedError;
 
     let sentCount = 0;
+    let disqualifiedCount = 0;
     const errors: string[] = [];
     for (const lead of leads || []) {
       const [
@@ -106,7 +110,24 @@ export async function GET(request: Request) {
           step.delay_minutes <= elapsedMinutes &&
           !completedDelays.has(Number(step.delay_minutes)),
       );
-      if (!dueStep) continue;
+      if (!dueStep) {
+        const exhausted = (steps || []).length > 0 && completedDelays.size >= (steps || []).length;
+        if (exhausted && notQualifiedStage) {
+          const { error: disqualifyError } = await supabase
+            .from("leads")
+            .update({ stage_id: notQualifiedStage.id, updated_at: new Date().toISOString() })
+            .eq("id", lead.id);
+          if (!disqualifyError) {
+            await supabase.from("lead_events").insert({
+              lead_id: lead.id,
+              event_type: "ai_disqualified",
+              metadata: { reason: "no_response", followups_sent: completedDelays.size },
+            });
+            disqualifiedCount += 1;
+          }
+        }
+        continue;
+      }
 
       const message = personalize(dueStep.message, lead);
       const templateName =
@@ -154,7 +175,12 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, sent: sentCount, errors: errors.slice(0, 10) });
+    return NextResponse.json({
+      ok: true,
+      sent: sentCount,
+      disqualified: disqualifiedCount,
+      errors: errors.slice(0, 10),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro ao processar follow-ups" },

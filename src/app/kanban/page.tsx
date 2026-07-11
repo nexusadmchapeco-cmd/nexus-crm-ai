@@ -3,7 +3,7 @@ import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
-import { getFollowupHistory, getLeads, getStages } from "@/lib/data";
+import { getFollowupHistory, getLeadEventsMap, getLeads, getStages } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,7 @@ export default async function KanbanPage() {
   const [stages, leads, followups] = configured
     ? await Promise.all([getStages(), getLeads(), getFollowupHistory()])
     : [[], [], []];
+  const events = configured ? await getLeadEventsMap(leads.map((lead) => lead.id)) : {};
 
   return (
     <>
@@ -22,7 +23,7 @@ export default async function KanbanPage() {
         <Link href="/test-inbound" className="button button-primary"><Icon name="plus" size={15} /> Novo lead</Link>
       </div>
       {!configured ? <ConfigRequired /> : (
-        <KanbanBoard initialLeads={leads} stages={stages} followups={followups} />
+        <KanbanBoard initialLeads={leads} stages={stages} followups={followups} events={events} />
       )}
     </>
   );

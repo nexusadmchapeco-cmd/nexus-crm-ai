@@ -144,6 +144,16 @@ a { color: inherit; text-decoration: none; }
 .kanban-board { display: flex; gap: 12px; min-width: max-content; align-items: flex-start; }
 .kanban-column { width: 268px; min-height: 116px; background: #efefed; border: 1px solid #e1e1df; border-radius: 9px; padding: 10px; transition: .16s ease; }
 .kanban-column-drop { border-color: #ff9b62; background: #fff6f0; box-shadow: inset 0 0 0 1px #ffd4bc; }
+.kanban-section-label { margin: 22px 0 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: #86878b; }
+.kanban-section-label:first-of-type { margin-top: 0; }
+.kanban-section-label-closer { color: var(--orange); padding-top: 14px; border-top: 1px solid var(--line); }
+.lead-card-history { border-top: 1px solid #f0f0ee; }
+.lead-card-history-toggle { width: 100%; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 0; background: transparent; color: #8b8c90; font-size: 8px; font-weight: 700; cursor: pointer; }
+.lead-card-history-toggle svg:last-child { margin-left: auto; }
+.lead-card-history-toggle:hover { color: #55565a; }
+.lead-card-history-list { list-style: none; margin: 0; padding: 0 10px 9px; display: flex; flex-direction: column; gap: 5px; }
+.lead-card-history-list li { display: flex; justify-content: space-between; gap: 8px; font-size: 8px; color: #77787c; }
+.lead-card-history-list time { color: #a2a3a6; white-space: nowrap; }
 .kanban-head { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 3px 9px; }
 .kanban-head i { width: 7px; height: 7px; border-radius: 50%; background: var(--stage-color); }
 .kanban-head strong { font-size: 10px; text-transform: uppercase; letter-spacing: .4px; }
@@ -506,6 +516,8 @@ a { color: inherit; text-decoration: none; }
 .variable-help { display: block; margin: -6px 0 13px; color: #95969a; font-size: 8px; }
 
 .stage-editor { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+.stage-editor-group { margin-bottom: 22px; }
+.stage-editor-group-title { margin: 0 0 10px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--orange); }
 .stage-editor-list { display: flex; flex-direction: column; gap: 8px; }
 .stage-editor-row { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fcfcfb; }
 .stage-editor-order { display: flex; }
@@ -514,6 +526,7 @@ a { color: inherit; text-decoration: none; }
 .stage-editor-name:disabled { background: #f4f4f2; color: #9a9b9f; cursor: not-allowed; }
 .stage-editor-lock { display: flex; align-items: center; gap: 4px; color: #98999d; font-size: 8px; font-weight: 700; white-space: nowrap; }
 .stage-editor-add { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.stage-editor-add select { height: 32px; padding: 0 8px; border: 1px solid #dededb; border-radius: 6px; font-size: 10px; color: #55565a; background: #fafaf9; }
 .variable-help code { margin-left: 4px; padding: 2px 4px; border-radius: 3px; background: #efefed; color: #66676b; }
 .studio-add-step { margin: 8px 0 2px 81px; border-style: dashed; background: #fbfbfa; }
 .operations-settings { padding: 20px; }
