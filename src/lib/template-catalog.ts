@@ -8,7 +8,7 @@ export const campaignTemplates = [
   },
   {
     key: "black_november",
-    name: "black_november_nexus",
+    name: "black_november",
     label: "Black November",
     message:
       "Olá, {{nome}}! Tudo bem?\n\nDurante o ano você conversou com a gente sobre as aulas de inglês, mas acabou não realizando sua matrícula. A gente entende — às vezes a rotina fica corrida mesmo.\n\nAgora estamos com a nossa melhor campanha do ano: você garante sua vaga, começa as aulas e os pagamentos somente no próximo ano, além de receber:\n\n• Primeiro material grátis\n• Desconto na matrícula\n• Desconto em todas as parcelas\n\nAssim, você já começa o próximo ano com tudo organizado. Posso te enviar mais informações sobre a promoção?",
