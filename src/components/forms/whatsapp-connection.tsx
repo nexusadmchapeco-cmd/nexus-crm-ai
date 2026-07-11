@@ -5,12 +5,12 @@ import { Icon } from "@/components/ui/icon";
 
 const APP_ID = "1044757988238138";
 const CONFIG_ID = "1739586440707452";
-const DEFAULT_PHONE_NUMBER_ID = "264496168466367";
 const WHATSAPP_SETTINGS_PATH = "/settings/whatsapp";
 
 type SignupData = {
   wabaId?: string;
   phoneNumberId: string;
+  displayPhoneNumber?: string | null;
 };
 
 type WhatsappConnectionProps = {
@@ -105,15 +105,24 @@ export function WhatsappConnection({
       return;
     }
 
+    if (!initialConnection?.phoneNumberId) {
+      setStatus("error");
+      setMessage(
+        "Autorização recebida, mas não sei qual número aplicar. Configure WHATSAPP_PHONE_NUMBER_ID e tente novamente.",
+      );
+      window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
+      return;
+    }
+
     codeRef.current = code;
     signupRef.current = {
-      phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+      phoneNumberId: initialConnection.phoneNumberId,
     };
     setStatus("connecting");
-    setMessage("Autorização recebida. Finalizando com o número Nexus Comercial…");
+    setMessage("Autorização recebida. Finalizando com o número já configurado…");
     window.history.replaceState({}, "", WHATSAPP_SETTINGS_PATH);
     void exchangeCode(`${window.location.origin}${WHATSAPP_SETTINGS_PATH}`);
-  }, [exchangeCode]);
+  }, [exchangeCode, initialConnection?.phoneNumberId]);
 
   function connect() {
     codeRef.current = "";
@@ -201,7 +210,9 @@ export function WhatsappConnection({
 
         <div className="whatsapp-number">
           <span>Número selecionado</span>
-          <strong>+55 54 9676-2019</strong>
+          <strong>
+            {connection?.displayPhoneNumber || connection?.phoneNumberId || "Nenhum número conectado"}
+          </strong>
           <small>O histórico e o aplicativo móvel permanecem disponíveis.</small>
         </div>
 
