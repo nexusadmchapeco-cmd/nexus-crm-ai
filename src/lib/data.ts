@@ -7,6 +7,7 @@ import type {
   FollowupSequence,
   Lead,
   LeadEvent,
+  LevelTest,
   Message,
   PipelineStage,
   StagePrompt,
@@ -175,6 +176,19 @@ export async function getLeadEventsMap(leadIds: string[]): Promise<Record<string
     if (map[event.lead_id].length < 6) map[event.lead_id].push(event);
   }
   return map;
+}
+
+export async function getLevelTests(): Promise<LevelTest[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await createAdminClient()
+    .from("level_tests")
+    .select("*, leads(id,name,phone,city)")
+    .order("created_at", { ascending: false });
+  if (error) {
+    if (error.code === "42P01") return [];
+    throw error;
+  }
+  return data as LevelTest[];
 }
 
 export async function getFollowupHistory(leadId?: string): Promise<FollowupHistoryItem[]> {

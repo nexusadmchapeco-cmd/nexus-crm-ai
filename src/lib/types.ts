@@ -198,6 +198,20 @@ export type Appointment = {
   created_by: "human" | "ai";
   leads?: Pick<Lead, "id" | "name" | "phone" | "city"> | null;
 };
+export type LevelTestStatus = "pending" | "in_progress" | "completed" | "abandoned";
+export type LevelTest = {
+  id: string;
+  lead_id: string;
+  status: LevelTestStatus;
+  cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+  score: number | null;
+  answers: unknown[];
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  leads?: Pick<Lead, "id" | "name" | "phone" | "city"> | null;
+};
+
 export type AvailabilitySlot = {
   id: string;
   weekday: number;
