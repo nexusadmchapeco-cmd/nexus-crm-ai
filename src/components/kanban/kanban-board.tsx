@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type DragEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { Icon } from "@/components/ui/icon";
 import { formatRelative, initials, labelTemperature } from "@/lib/format";
 import type { FollowupHistoryItem, Lead, PipelineStage } from "@/lib/types";
@@ -17,7 +17,36 @@ export function KanbanBoard({ initialLeads, stages, followups }: Props) {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropStageId, setDropStageId] = useState<string | null>(null);
   const [movingLeadId, setMovingLeadId] = useState<string | null>(null);
+  const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // initialLeads muda a cada AutoRefresh (novo fetch no servidor); não mexe
+    // durante um drag/exclusão em andamento para não sobrescrever a ação local.
+    if (movingLeadId || deletingLeadId || draggedLeadId) return;
+    setLeads(initialLeads);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLeads]);
   const [notice, setNotice] = useState<string | null>(null);
+
+  async function deleteLead(lead: Lead) {
+    const confirmed = window.confirm(
+      `Excluir o lead ${lead.name || lead.phone}? Isso apaga a conversa e o histórico. Não pode ser desfeito.`,
+    );
+    if (!confirmed) return;
+    setDeletingLeadId(lead.id);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Não foi possível excluir o lead.");
+      setLeads((current) => current.filter((item) => item.id !== lead.id));
+      setNotice(`Lead ${lead.name || lead.phone} excluído.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Não foi possível excluir o lead.");
+    } finally {
+      setDeletingLeadId(null);
+    }
+  }
 
   async function moveLead(leadId: string, stageId: string) {
     const lead = leads.find((item) => item.id === leadId);
@@ -144,18 +173,29 @@ export function KanbanBoard({ initialLeads, stages, followups }: Props) {
                           <span>{formatRelative(lead.last_message_at)}</span>
                         </div>
                       </Link>
-                      <label className="lead-stage-select">
-                        <span>Mover para</span>
-                        <select
-                          value={lead.stage_id}
-                          disabled={movingLeadId === lead.id}
-                          onChange={(event) => void moveLead(lead.id, event.target.value)}
+                      <div className="lead-card-controls">
+                        <label className="lead-stage-select">
+                          <span>Mover para</span>
+                          <select
+                            value={lead.stage_id}
+                            disabled={movingLeadId === lead.id}
+                            onChange={(event) => void moveLead(lead.id, event.target.value)}
+                          >
+                            {stages.map((option) => (
+                              <option key={option.id} value={option.id}>{option.name}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="icon-button lead-card-delete"
+                          aria-label={`Excluir lead ${lead.name || lead.phone}`}
+                          disabled={deletingLeadId === lead.id}
+                          onClick={() => void deleteLead(lead)}
                         >
-                          {stages.map((option) => (
-                            <option key={option.id} value={option.id}>{option.name}</option>
-                          ))}
-                        </select>
-                      </label>
+                          <Icon name="x" size={13} />
+                        </button>
+                      </div>
                     </article>
                   ))}
                   {!stageLeads.length && (

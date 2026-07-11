@@ -7,6 +7,23 @@ export const editableStageNames = [
   "Follow-up",
 ] as const;
 
+// Nomes usados por comparação literal de string na lógica de roteamento da IA
+// (src/lib/inbound.ts, src/lib/ai/stages.ts, src/lib/leads.ts, src/lib/campaigns.ts,
+// src/app/api/leads/[id]/status/route.ts, src/app/page.tsx). Renomear ou excluir
+// qualquer um deles quebra esse fluxo automático -- por isso ficam bloqueados no
+// editor de etapas do pipeline.
+export const protectedStageNames = [
+  "Novo lead",
+  "IA em atendimento",
+  "Qualificando",
+  "Lead quente",
+  "Enviar para closer",
+  "Closer assumiu",
+  "Follow-up",
+  "Matrícula fechada",
+  "Perdido",
+] as const;
+
 export const defaultStagePrompts: Record<string, string> = {
   "Novo lead":
     "Receba o lead com naturalidade, identifique o nome e descubra o principal objetivo com o inglês. Faça somente uma pergunta por vez.",

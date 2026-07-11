@@ -52,6 +52,10 @@ export function Sidebar() {
             <Icon name="chat" />
             Conectar WhatsApp
           </Link>
+          <Link href="/settings/pipeline" className={pathname.startsWith("/settings/pipeline") ? "active" : ""} onClick={() => setOpen(false)}>
+            <Icon name="board" />
+            Etapas do pipeline
+          </Link>
           <Link href="/settings/ai" className={pathname.startsWith("/settings/ai") ? "active" : ""} onClick={() => setOpen(false)}>
             <Icon name="settings" />
             Estúdio de IA

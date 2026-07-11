@@ -4,7 +4,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/ui/icon";
 
-export function ChatActions({ leadId, humanTakeover }: { leadId: string; humanTakeover: boolean }) {
+export function ChatActions({
+  leadId,
+  humanTakeover,
+  leadLabel,
+}: {
+  leadId: string;
+  humanTakeover: boolean;
+  leadLabel: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -13,6 +21,22 @@ export function ChatActions({ leadId, humanTakeover }: { leadId: string; humanTa
     const response = await fetch(path, { method: "POST" });
     setLoading(false);
     if (!response.ok) alert((await response.json()).error || "Não foi possível concluir a ação");
+    router.refresh();
+  }
+
+  async function deleteLead() {
+    const confirmed = window.confirm(
+      `Excluir o lead ${leadLabel}? Isso apaga a conversa e o histórico. Não pode ser desfeito.`,
+    );
+    if (!confirmed) return;
+    setLoading(true);
+    const response = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+    if (!response.ok) {
+      setLoading(false);
+      alert((await response.json()).error || "Não foi possível excluir o lead.");
+      return;
+    }
+    router.push("/conversations");
     router.refresh();
   }
 
@@ -29,6 +53,9 @@ export function ChatActions({ leadId, humanTakeover }: { leadId: string; humanTa
       )}
       <button disabled={loading} className="button" onClick={() => action(`/api/leads/${leadId}/status?value=won`)}>Matrícula</button>
       <button disabled={loading} className="button button-danger" onClick={() => action(`/api/leads/${leadId}/status?value=lost`)}>Perdido</button>
+      <button disabled={loading} className="button button-danger primary-action" onClick={deleteLead}>
+        <Icon name="x" size={14} /> Excluir lead
+      </button>
     </div>
   );
 }
