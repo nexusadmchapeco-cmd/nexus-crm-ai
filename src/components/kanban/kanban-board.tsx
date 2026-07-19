@@ -104,6 +104,7 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
       <section
         className={`kanban-column ${isDropTarget ? "kanban-column-drop" : ""}`}
         key={stage.id}
+        style={{ "--stage-color": stage.color } as React.CSSProperties}
         onDragEnter={() => setDropStageId(stage.id)}
         onDragOver={(event) => {
           event.preventDefault();
@@ -116,7 +117,7 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
         }}
         onDrop={(event) => dropLead(event, stage.id)}
       >
-        <div className="kanban-head" style={{ "--stage-color": stage.color } as React.CSSProperties}>
+        <div className="kanban-head">
           <i />
           <strong>{stage.name}</strong>
           <span className="kanban-count">{stageLeads.length}</span>
@@ -230,20 +231,29 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
   const closerStages = visibleStages.filter((stage) => stage.board_group === "closer");
 
   return (
-    <>
-      <div className="kanban-helper">
-        <Icon name="move" size={14} />
-        Arraste um cartão para outra coluna ou use o seletor “Mover para”.
-      </div>
+    <div className="kanban-sections">
       {notice && <div className="kanban-notice" role="status">{notice}</div>}
-      <div className="kanban-section-label">Atendimento da IA</div>
-      <div className="kanban-wrap">
-        <div className="kanban-board">{iaStages.map(renderColumn)}</div>
+      <div className="kanban-section kanban-section-ia">
+        <div className="kanban-section-label">
+          Atendimento da IA
+          <em>arraste um cartão ou use “Mover para”</em>
+        </div>
+        <div
+          className="kanban-grid"
+          style={{ "--kanban-cols": iaStages.length } as React.CSSProperties}
+        >
+          {iaStages.map(renderColumn)}
+        </div>
       </div>
-      <div className="kanban-section-label kanban-section-label-closer">Closer</div>
-      <div className="kanban-wrap">
-        <div className="kanban-board">{closerStages.map(renderColumn)}</div>
+      <div className="kanban-section kanban-section-closer">
+        <div className="kanban-section-label kanban-section-label-closer">Closer · manual</div>
+        <div
+          className="kanban-grid"
+          style={{ "--kanban-cols": closerStages.length } as React.CSSProperties}
+        >
+          {closerStages.map(renderColumn)}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
