@@ -143,6 +143,7 @@ export type OperationsSettings = {
   language_code: string;
   voice_reply_enabled: boolean;
   voice_name: string;
+  elevenlabs_voice_id: string;
 };
 
 export type CampaignFilters = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { conversationModels } from "@/lib/ai/openai";
 import { voiceOptions } from "@/lib/voice";
 import { Icon } from "@/components/ui/icon";
@@ -41,6 +41,23 @@ export function PromptStudio({
   const [followup, setFollowup] = useState(initialFollowup);
   const [operations, setOperations] = useState(initialOperations);
   const [previewingVoice, setPreviewingVoice] = useState(false);
+  const [voiceCatalog, setVoiceCatalog] = useState<{
+    provider: string;
+    voices: { id: string; name: string }[];
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings/voices")
+      .then(async (response) => {
+        const data = await response.json();
+        if (active && response.ok && data.voices?.length) setVoiceCatalog(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
@@ -542,19 +559,32 @@ export function PromptStudio({
                 <label htmlFor="voice-name">Voz da Nina nos áudios</label>
                 <select
                   id="voice-name"
-                  value={operations.voice_name}
+                  value={
+                    voiceCatalog?.provider === "elevenlabs"
+                      ? operations.elevenlabs_voice_id
+                      : operations.voice_name
+                  }
                   onChange={(event) =>
-                    setOperations({ ...operations, voice_name: event.target.value })
+                    setOperations(
+                      voiceCatalog?.provider === "elevenlabs"
+                        ? { ...operations, elevenlabs_voice_id: event.target.value }
+                        : { ...operations, voice_name: event.target.value },
+                    )
                   }
                 >
-                  {voiceOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  {(voiceCatalog?.voices || voiceOptions.map((option) => ({ id: option.value, name: option.label }))).map(
+                    (option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name}
+                      </option>
+                    ),
+                  )}
                 </select>
                 <span className="variable-help">
-                  Ouça a amostra, escolha a voz e clique em salvar para aplicar.
+                  {voiceCatalog?.provider === "elevenlabs"
+                    ? "Voz premium ElevenLabs ativa — as vozes acima vêm da sua conta (adicione novas no VoiceLab do ElevenLabs)."
+                    : "Usando as vozes da OpenAI. Para voz ultra natural em pt-BR, adicione a variável ELEVENLABS_API_KEY na Vercel — o sistema troca sozinho."}
+                  {" "}Ouça a amostra, escolha e salve para aplicar.
                 </span>
               </div>
               <div className="field">
@@ -565,9 +595,11 @@ export function PromptStudio({
                   disabled={previewingVoice}
                   onClick={() => {
                     setPreviewingVoice(true);
-                    const audio = new Audio(
-                      `/api/settings/voice-preview?voice=${operations.voice_name}`,
-                    );
+                    const selected =
+                      voiceCatalog?.provider === "elevenlabs"
+                        ? operations.elevenlabs_voice_id
+                        : operations.voice_name;
+                    const audio = new Audio(`/api/settings/voice-preview?voice=${selected}`);
                     audio.onended = () => setPreviewingVoice(false);
                     audio.onerror = () => setPreviewingVoice(false);
                     void audio.play().catch(() => setPreviewingVoice(false));

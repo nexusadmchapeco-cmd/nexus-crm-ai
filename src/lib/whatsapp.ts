@@ -26,6 +26,35 @@ export async function sendWhatsAppMessage(phone: string, message: string) {
   return response.json();
 }
 
+/**
+ * Marca a mensagem recebida como lida e mostra "digitando…" para o cliente
+ * (o indicador some sozinho quando a resposta é enviada, ou após ~25s).
+ */
+export async function sendTypingIndicator(messageId: string) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
+  if (!token || !phoneNumberId) throw new Error("WhatsApp Cloud API não configurada");
+  const response = await fetch(
+    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        status: "read",
+        message_id: messageId,
+        typing_indicator: { type: "text" },
+      }),
+    },
+  );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Falha no indicador de digitação (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
 /** Baixa uma mídia recebida pelo webhook (áudio, imagem etc.) pelo media id. */
 export async function downloadWhatsAppMedia(mediaId: string) {
   const token = process.env.WHATSAPP_TOKEN;
