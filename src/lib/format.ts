@@ -40,6 +40,11 @@ const eventLabels: Record<string, string> = {
   enrollment_won: "Matrícula fechada",
   lead_lost: "Marcado como perdido",
   ai_disqualified: "IA desqualificou o lead",
+  level_test_sent: "Teste de nível enviado",
+  level_test_completed: "Teste de nível concluído",
+  level_test_reminder: "Lembrete do teste de nível",
+  level_test_reminder_error: "Erro no lembrete do teste",
+  level_test_error: "Erro ao enviar teste de nível",
 };
 
 export function labelEventType(eventType: string) {
