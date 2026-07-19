@@ -1,3 +1,4 @@
+import { chatCompletionWithFallback, FALLBACK_MODEL } from "@/lib/ai/openai";
 import type { AiDecision, AiSettings, Lead, Message } from "@/lib/types";
 
 const schema = {
@@ -119,15 +120,11 @@ export async function runSdr({
     })),
   };
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: settings.model || process.env.OPENAI_MODEL || "gpt-4.1-mini",
-      temperature: settings.temperature,
+  const { payload } = await chatCompletionWithFallback({
+    apiKey,
+    model: settings.model || process.env.OPENAI_MODEL || FALLBACK_MODEL,
+    temperature: settings.temperature,
+    body: {
       response_format: { type: "json_schema", json_schema: schema },
       messages: [
         {
@@ -156,15 +153,9 @@ export async function runSdr({
           content: `Analise a conversa e gere a próxima resposta e decisão operacional.\n${JSON.stringify(context)}`,
         },
       ],
-    }),
+    },
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI respondeu ${response.status}: ${body.slice(0, 300)}`);
-  }
-
-  const payload = await response.json();
   const content = payload.choices?.[0]?.message?.content;
   if (!content) throw new Error("A OpenAI não retornou uma decisão");
   return JSON.parse(content) as AiDecision;

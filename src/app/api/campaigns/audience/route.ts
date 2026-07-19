@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { chatCompletionWithFallback, FALLBACK_MODEL } from "@/lib/ai/openai";
 import {
   buildCampaignAudience,
   emptyCampaignFilters,
@@ -11,15 +12,11 @@ import type { CampaignFilters, Message } from "@/lib/types";
 async function interpretWithAi(instruction: string) {
   const stages = await getStages();
   const settings = await getAiSettings();
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: settings?.model || "gpt-4.1-mini",
-      temperature: 0,
+  const { payload: body } = await chatCompletionWithFallback({
+    apiKey: process.env.OPENAI_API_KEY || "",
+    model: settings?.model || FALLBACK_MODEL,
+    temperature: 0,
+    body: {
       response_format: { type: "json_object" },
       messages: [
         {
@@ -32,10 +29,8 @@ async function interpretWithAi(instruction: string) {
         },
         { role: "user", content: instruction.slice(0, 1200) },
       ],
-    }),
+    },
   });
-  if (!response.ok) throw new Error("A IA não conseguiu interpretar esse público.");
-  const body = await response.json();
   const parsed = JSON.parse(body.choices?.[0]?.message?.content || "{}");
   const stageIds = stages
     .filter((stage) =>
