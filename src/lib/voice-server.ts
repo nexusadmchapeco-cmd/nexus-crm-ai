@@ -1,16 +1,36 @@
 // Geração da voz da Nina (lado servidor).
-// Com ELEVENLABS_API_KEY configurada usa o ElevenLabs (voz muito mais natural
-// em pt-BR); sem a chave, cai para a OpenAI TTS com instruções de estilo.
+// A chave do ElevenLabs pode vir do banco (app_secrets.elevenlabs_api_key,
+// prioridade) ou da env ELEVENLABS_API_KEY. Com a chave presente usa o
+// ElevenLabs (voz muito mais natural em pt-BR); sem ela, cai para a OpenAI
+// TTS com instruções de estilo.
 
 import { synthesizeSpeech } from "@/lib/level-test-ai";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ninaVoiceInstructions } from "@/lib/voice";
 
-export function elevenLabsConfigured() {
-  return Boolean(process.env.ELEVENLABS_API_KEY);
+let cachedKey: { value: string | null; fetchedAt: number } | null = null;
+const KEY_CACHE_MS = 60_000;
+
+export async function resolveElevenLabsKey(): Promise<string | null> {
+  if (cachedKey && Date.now() - cachedKey.fetchedAt < KEY_CACHE_MS) return cachedKey.value;
+  let value: string | null = null;
+  try {
+    const { data } = await createAdminClient()
+      .from("app_secrets")
+      .select("value")
+      .eq("name", "elevenlabs_api_key")
+      .maybeSingle();
+    value = data?.value?.trim() || null;
+  } catch {
+    value = null;
+  }
+  if (!value) value = process.env.ELEVENLABS_API_KEY?.trim() || null;
+  cachedKey = { value, fetchedAt: Date.now() };
+  return value;
 }
 
 export async function listElevenLabsVoices(): Promise<{ voice_id: string; name: string }[]> {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const apiKey = await resolveElevenLabsKey();
   if (!apiKey) return [];
   const response = await fetch("https://api.elevenlabs.io/v1/voices", {
     headers: { "xi-api-key": apiKey },
@@ -24,9 +44,11 @@ export async function listElevenLabsVoices(): Promise<{ voice_id: string; name: 
   }));
 }
 
-async function synthesizeWithElevenLabs(text: string, voiceId: string): Promise<ArrayBuffer> {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  if (!apiKey) throw new Error("ELEVENLABS_API_KEY não configurada");
+async function synthesizeWithElevenLabs(
+  text: string,
+  voiceId: string,
+  apiKey: string,
+): Promise<ArrayBuffer> {
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
     {
@@ -56,9 +78,10 @@ export async function synthesizeNinaVoice(
   text: string,
   options: { openAiVoice?: string; elevenVoiceId?: string },
 ): Promise<ArrayBuffer> {
-  if (elevenLabsConfigured() && options.elevenVoiceId) {
+  const apiKey = await resolveElevenLabsKey();
+  if (apiKey && options.elevenVoiceId) {
     try {
-      return await synthesizeWithElevenLabs(text, options.elevenVoiceId);
+      return await synthesizeWithElevenLabs(text, options.elevenVoiceId, apiKey);
     } catch (error) {
       console.error("ElevenLabs falhou; caindo para OpenAI TTS", error);
     }

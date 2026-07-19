@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { voiceOptions } from "@/lib/voice";
-import { elevenLabsConfigured, listElevenLabsVoices } from "@/lib/voice-server";
+import { listElevenLabsVoices, resolveElevenLabsKey } from "@/lib/voice-server";
 
 export async function GET() {
-  if (!elevenLabsConfigured()) {
+  if (!(await resolveElevenLabsKey())) {
     return NextResponse.json({
       provider: "openai",
       voices: voiceOptions.map((option) => ({ id: option.value, name: option.label })),
