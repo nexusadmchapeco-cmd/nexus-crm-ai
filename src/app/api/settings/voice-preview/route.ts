@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { synthesizeSpeech } from "@/lib/level-test-ai";
-import { ninaVoiceInstructions, voiceOptions, voicePreviewText } from "@/lib/voice";
+import { voicePreviewText } from "@/lib/voice";
+import { elevenLabsConfigured, synthesizeNinaVoice } from "@/lib/voice-server";
 
 export const maxDuration = 30;
 
 export async function GET(request: Request) {
-  const requested = new URL(request.url).searchParams.get("voice") || "nova";
-  const voice = voiceOptions.some((option) => option.value === requested) ? requested : "nova";
+  const voice = new URL(request.url).searchParams.get("voice") || "nova";
   try {
-    const audio = await synthesizeSpeech(voicePreviewText, {
-      voice,
-      format: "mp3",
-      instructions: ninaVoiceInstructions,
+    const audio = await synthesizeNinaVoice(voicePreviewText, {
+      openAiVoice: elevenLabsConfigured() ? undefined : voice,
+      elevenVoiceId: elevenLabsConfigured() ? voice : undefined,
     });
     return new Response(audio, {
       headers: {

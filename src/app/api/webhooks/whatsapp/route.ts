@@ -1,11 +1,16 @@
 import { after, NextResponse } from "next/server";
 import { toWhatsAppVoice } from "@/lib/audio";
 import { processInbound } from "@/lib/inbound";
-import { synthesizeSpeech, transcribeAudio } from "@/lib/level-test-ai";
+import { transcribeAudio } from "@/lib/level-test-ai";
 import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ninaVoiceInstructions } from "@/lib/voice";
-import { downloadWhatsAppMedia, sendWhatsAppAudio, sendWhatsAppMessage } from "@/lib/whatsapp";
+import { synthesizeNinaVoice } from "@/lib/voice-server";
+import {
+  downloadWhatsAppMedia,
+  sendTypingIndicator,
+  sendWhatsAppAudio,
+  sendWhatsAppMessage,
+} from "@/lib/whatsapp";
 
 export const maxDuration = 60;
 
@@ -32,6 +37,8 @@ export async function POST(request: Request) {
 
     after(async () => {
       try {
+        // Marca como lida e mostra "digitando…" enquanto a Nina pensa.
+        await sendTypingIndicator(incoming.id).catch(() => {});
         const isAudio = incoming.type === "audio";
         let messageText = incoming.text?.body || "";
         if (isAudio) {
@@ -59,6 +66,11 @@ export async function POST(request: Request) {
         });
         if (!result.ai_reply) return;
 
+        // Delay humanizado: ninguém digita uma resposta inteira em 1 segundo.
+        // Proporcional ao tamanho da resposta, entre 1,5s e 4,5s.
+        const humanDelay = Math.min(1500 + result.ai_reply.length * 30, 4500);
+        await new Promise((resolve) => setTimeout(resolve, humanDelay));
+
         // Lead mandou áudio -> Nina responde com áudio (se habilitado);
         // qualquer falha na voz cai para texto, o atendimento nunca para.
         let voiceSent = false;
@@ -71,10 +83,9 @@ export async function POST(request: Request) {
               .maybeSingle();
             const operations = parseOperationsSettings(operationsRow?.global_prompt);
             if (operations.voice_reply_enabled) {
-              const speech = await synthesizeSpeech(result.ai_reply, {
-                voice: operations.voice_name || "nova",
-                format: "mp3",
-                instructions: ninaVoiceInstructions,
+              const speech = await synthesizeNinaVoice(result.ai_reply, {
+                openAiVoice: operations.voice_name || "nova",
+                elevenVoiceId: operations.elevenlabs_voice_id,
               });
               // WhatsApp só renderiza como mensagem de voz (bolha com
               // waveform) se o áudio for OGG/Opus mono.

@@ -23,6 +23,8 @@ export const defaultOperationsSettings: OperationsSettings = {
   // Quando o lead manda áudio, a Nina responde com áudio (voz gerada por IA).
   voice_reply_enabled: true,
   voice_name: "nova",
+  // Voz do ElevenLabs (usada quando ELEVENLABS_API_KEY está configurada).
+  elevenlabs_voice_id: "21m00Tcm4TlvDq8ikWAM",
 };
 
 export function parseOperationsSettings(value?: string | null): OperationsSettings {
