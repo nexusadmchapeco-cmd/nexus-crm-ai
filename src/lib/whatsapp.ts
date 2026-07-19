@@ -104,19 +104,25 @@ export async function sendWhatsAppAudio(phone: string, audio: ArrayBuffer, mimeT
   }
   const { id: mediaId } = await uploadResponse.json();
 
-  const response = await fetch(
-    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
-    {
+  const sendAudio = (asVoice: boolean) =>
+    fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         messaging_product: "whatsapp",
         to: phone,
         type: "audio",
-        audio: { id: mediaId },
+        // voice:true é o que faz o WhatsApp renderizar como mensagem de voz
+        // (bolha com waveform) em vez de arquivo de áudio.
+        audio: asVoice ? { id: mediaId, voice: true } : { id: mediaId },
       }),
-    },
-  );
+    });
+
+  let response = await sendAudio(true);
+  if (!response.ok) {
+    // Se a versão da API rejeitar o campo voice, reenvia como áudio comum.
+    response = await sendAudio(false);
+  }
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`Falha ao enviar áudio (${response.status}): ${body.slice(0, 300)}`);

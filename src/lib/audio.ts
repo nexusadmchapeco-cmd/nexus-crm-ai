@@ -25,7 +25,8 @@ export async function toWhatsAppVoice(input: ArrayBuffer): Promise<Buffer> {
       "-c:a", "libopus",
       "-ac", "1",
       "-ar", "48000",
-      "-b:a", "32k",
+      "-b:a", "24k",
+      "-application", "voip",
       "-f", "ogg",
       outputPath,
     ]);
