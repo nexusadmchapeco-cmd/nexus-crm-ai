@@ -1268,6 +1268,140 @@ h1, h2, h3,
 .level-test-link { margin-top: 11px; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #cfe9dc; border-radius: 9px; background: #f1faf6; }
 .level-test-link a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #17734e; font-size: 11px; font-weight: 700; }
 
+/* ==========================================================================
+   IDENTIDADE NEXUS — paleta e tipografia oficiais da Nexus English Center
+   Montserrat 800/600/500 · Laranja #d85b24 · Grafite #232526 · Azul #3a4a9a
+   · Teal #35b7bb · Off-white #faf6f1. Sem gradientes chamativos nem sombras
+   pesadas: esta camada sobrepõe os efeitos anteriores que fugiam da marca.
+   ========================================================================== */
+
+:root {
+  --ink: #232526;
+  --orange: #d85b24;
+  --orange-dark: #b64a1b;
+  --blue: #3a4a9a;
+  --teal: #35b7bb;
+  --canvas: #faf6f1;
+  --line: #eae3d9;
+  --glow-orange: 0 5px 14px -7px rgba(216, 91, 36, .45);
+  --shadow-card: 0 1px 2px rgba(35, 37, 38, .04), 0 8px 22px -16px rgba(35, 37, 38, .14);
+  --shadow-float: 0 3px 8px rgba(35, 37, 38, .05), 0 14px 30px -18px rgba(35, 37, 38, .18);
+}
+
+body,
+h1, h2, h3,
+.brand strong, .metric-value, .agenda-event time, .agenda-kpis strong,
+.whatsapp-number strong, .legal-hero h1 {
+  font-family: var(--font-nexus), Montserrat, "Segoe UI", system-ui, sans-serif;
+}
+body { font-weight: 500; background: var(--canvas); }
+h1 { font-weight: 800; }
+h2, h3 { font-weight: 600; }
+strong, b { font-weight: 600; }
+.ambient-backdrop { display: none; }
+
+/* H1 com borda inferior laranja; H2 estruturais com barra lateral teal */
+.page-header h1 {
+  display: inline-block; padding-bottom: 7px; border-bottom: 3px solid var(--orange);
+}
+.panel-head h2, .studio-section-head h2, .campaign-section-title h2, .chat-section-head h2,
+.knowledge-toolbar h2, .week-selected h2, .agenda-modal-head h2, .form-card-head h2 {
+  border-left: 3px solid var(--teal); padding-left: 9px;
+}
+.eyebrow { color: var(--orange); }
+
+/* Botões: laranja sólido, sem varredura de brilho */
+.button-primary { background: var(--orange); box-shadow: var(--glow-orange); }
+.button-primary::before { display: none; }
+.button-primary:hover { background: #c04f1e; box-shadow: 0 8px 18px -8px rgba(216, 91, 36, .5); }
+.button-secondary { background: #faf1ea; border-color: #ecc9b4; color: var(--orange-dark); }
+.button-secondary:hover { background: #f7e8dd; border-color: #e0b394; }
+.composer button { background: var(--orange); box-shadow: var(--glow-orange); }
+
+/* Sidebar: grafite sólido, sem glow */
+.sidebar { background: var(--ink); border-right: 0; }
+.sidebar::before { display: none; }
+.brand-mark { background: var(--orange); box-shadow: 0 4px 10px -4px rgba(216, 91, 36, .5); }
+.main-nav a:hover { background: #2e3132; }
+.main-nav a.active {
+  background: rgba(216, 91, 36, .16);
+  box-shadow: inset 3px 0 var(--orange);
+}
+.main-nav a.active svg { color: var(--orange); }
+.sidebar-status { background: #2b2e2f; border-color: #383c3d; }
+.avatar { background: #f4ddcf; color: var(--orange-dark); }
+
+/* Topbar limpa com detalhe teal */
+.topbar { background: rgba(255, 255, 255, .82); border-bottom-color: var(--line); }
+.topbar::after { background: rgba(53, 183, 187, .35); }
+
+/* Superfícies: sombras suaves, sem vidro colorido */
+.metric-card { background: #fff; }
+.metric-value { background: none; -webkit-background-clip: initial; background-clip: initial; -webkit-text-fill-color: initial; color: var(--ink); font-weight: 800; }
+.metric-card:hover { transform: translateY(-3px); }
+.helper-card, .whatsapp-safety-card { background: var(--ink); box-shadow: var(--shadow-card); }
+.ai-summary { background: #faf6f1; border-left: 4px solid var(--orange); border-radius: 0 8px 8px 0; }
+
+/* Números de passo em badges circulares laranjas */
+.config-steps b, .connection-steps .active b { background: var(--orange); color: #fff; box-shadow: none; }
+.connection-steps b { border-radius: 50%; }
+
+/* Chips e bolhas: tintas sólidas da paleta */
+.temperature.quente, .temperature.pronto_para_closer { background: #f8e4d7; color: var(--orange-dark); }
+.temperature.cliente { background: #dff2f2; color: #1d7276; }
+.message.ai .bubble { background: #faeade; border-color: #efd0ba; }
+.mode-pill { color: #1d7276; background: #e2f4f4; }
+.followup-badges span { border-color: #ecc9b4; color: var(--orange-dark); background: #faf1ea; }
+.stage-badge { font-weight: 800; }
+
+/* Tabelas: cabeçalho azul com texto branco; linhas alternadas off-white */
+.week-grid-header, .week-grid-header > div, .week-grid-header .week-corner { background: var(--blue); border-color: #4d5ca8; }
+.week-grid-header span, .week-grid-header strong, .week-grid-header small { color: #fff; }
+.week-grid-header .today { background: rgba(255, 255, 255, .18); color: #fff; }
+.week-grid-header .today span, .week-grid-header .today small { color: #ffe0cf; }
+.lead-row:nth-child(even), .audience-list > div:nth-child(even),
+.report-row:nth-child(even), .level-test-row:nth-child(even) { background: #f6f4f1; }
+
+/* Kanban: mantém a cor funcional da etapa, sem excesso */
+.kanban-section-label-closer { color: var(--orange); }
+.kanban-notice { border-color: #bfe6e7; color: #1d7276; background: #eefafa; }
+
+/* Simulador e Estúdio: acentos na paleta */
+.simulator-flag { background: #faf1ea; border-color: #ecc9b4; color: var(--orange-dark); }
+.studio-tabs button.active svg { color: var(--orange); }
+.studio-live-dot, .status-dot, .live-pill i { background: var(--teal); }
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(53, 183, 187, .4); }
+  55% { box-shadow: 0 0 0 7px rgba(53, 183, 187, 0); }
+}
+
+/* Inputs: foco laranja da marca */
+.field input:focus, .field textarea:focus, .field select:focus, .composer textarea:focus,
+.level-test-open textarea:focus {
+  border-color: #e08a5c; box-shadow: 0 0 0 3px rgba(216, 91, 36, .13);
+}
+:focus-visible { outline: 2px solid rgba(216, 91, 36, .55); }
+
+/* Teste de nível público na identidade */
+.level-test-page { background: var(--ink); }
+.level-test-card { background: #fff; box-shadow: 0 30px 70px -28px rgba(0, 0, 0, .5); }
+.level-test-mark { background: var(--orange); box-shadow: 0 4px 10px -4px rgba(216, 91, 36, .5); }
+.level-test-start { background: var(--orange); box-shadow: var(--glow-orange); }
+.level-test-start:hover { transform: translateY(-1px); }
+.level-test-progress-bar i { background: var(--orange); }
+.level-test-chip { color: var(--orange-dark); background: #faf1ea; }
+.level-test-options button:hover { border-color: #e08a5c; background: #faf3ed; }
+.level-test-options button:hover b { background: #f4ddcf; color: var(--orange-dark); }
+.level-test-options button.picked { border-color: var(--orange); background: #faf1ea; box-shadow: 0 0 0 3px rgba(216, 91, 36, .14); }
+.level-test-result-badge { background: var(--orange); box-shadow: 0 14px 32px -12px rgba(216, 91, 36, .55); }
+.level-test-result-kicker { color: var(--orange-dark); }
+.level-test-skill-bar i { background: var(--orange); }
+.level-test-record { background: var(--ink); }
+.level-test-record.recording { background: #c93338; }
+.level-test-result-note { background: #eefafa; border-color: #bfe6e7; color: #1d7276; }
+.level-test-audio { border-left: 4px solid var(--teal); border-radius: 0 11px 11px 0; }
+.level-test-link { border-left: 4px solid var(--teal); }
+
 /* Acessibilidade: respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1275,5 +1409,4 @@ h1, h2, h3,
     animation-iteration-count: 1 !important;
     transition-duration: .001s !important;
   }
-  .ambient-backdrop::before { animation: none; }
 }
