@@ -4,7 +4,8 @@ import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseOperationsSettings } from "@/lib/operations";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
-import { sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { appBaseUrl } from "@/lib/level-test";
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from "@/lib/whatsapp";
 
 export type InboundPayload = {
   phone: string;
@@ -307,6 +308,54 @@ export async function processInbound(payload: InboundPayload) {
             ]);
           }
         }
+      }
+    }
+
+    // Lead contou que já tem algum nível de inglês -> dispara o teste de nível
+    // (uma única vez por lead; o lembrete de quem não fez fica no cron diário).
+    if (removeNulls(decision.extracted).level && payload.source !== "simulador") {
+      try {
+        const { data: existingTest } = await supabase
+          .from("level_tests")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .limit(1)
+          .maybeSingle();
+        if (!existingTest) {
+          const { data: test } = await supabase
+            .from("level_tests")
+            .insert({ lead_id: lead.id, status: "pending" })
+            .select("id")
+            .single();
+          if (test) {
+            const testUrl = `${appBaseUrl()}/teste/${test.id}`;
+            const testMessage = `Ah, e pra gente confirmar seu nível certinho, preparei um teste rápido de inglês — leva uns 2 minutinhos: ${testUrl}`;
+            await sendWhatsAppMessage(lead.phone, testMessage);
+            await Promise.all([
+              supabase.from("messages").insert({
+                conversation_id: conversation.id,
+                lead_id: lead.id,
+                sender_type: "ai",
+                content: testMessage,
+                status: "sent",
+                is_ai: true,
+              }),
+              supabase.from("lead_events").insert({
+                lead_id: lead.id,
+                event_type: "level_test_sent",
+                metadata: { level_test_id: test.id, url: testUrl },
+              }),
+            ]);
+          }
+        }
+      } catch (testError) {
+        await supabase.from("lead_events").insert({
+          lead_id: lead.id,
+          event_type: "level_test_error",
+          metadata: {
+            message: testError instanceof Error ? testError.message : "Erro ao enviar o teste",
+          },
+        });
       }
     }
 

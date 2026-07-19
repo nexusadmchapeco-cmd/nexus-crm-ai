@@ -1149,6 +1149,85 @@ h1, h2, h3,
 .temperature.quente, .temperature.pronto_para_closer { background: linear-gradient(90deg, #ffe9d6, #ffd9c0); }
 .temperature.cliente { background: linear-gradient(90deg, #e4f7ee, #d2f2e2); }
 
+/* ==========================================================================
+   TESTE DE NÍVEL — página pública enviada ao lead (cobre o CRM inteiro)
+   ========================================================================== */
+
+.level-test-page {
+  position: fixed; inset: 0; z-index: 100; overflow-y: auto;
+  display: grid; place-items: center; padding: 22px;
+  background:
+    radial-gradient(720px 460px at 85% -80px, rgba(255, 107, 24, .16), transparent 65%),
+    radial-gradient(600px 420px at -80px 100%, rgba(118, 87, 232, .1), transparent 65%),
+    linear-gradient(180deg, #141416, #1d1d21);
+}
+.level-test-card {
+  width: min(520px, 100%); border-radius: 18px; padding: 26px 26px 28px;
+  background: #fff; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .55);
+  animation: modal-in .4s var(--ease-spring) both;
+}
+.level-test-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid #efefec; }
+.level-test-mark {
+  width: 38px; height: 38px; display: grid; place-items: center; border-radius: 9px;
+  background: linear-gradient(145deg, #ff9349, #ff5f08 60%, #e64b00); color: #fff;
+  font-size: 21px; font-weight: 900; transform: skew(-5deg);
+  box-shadow: var(--glow-orange), inset 0 1px 0 rgba(255, 255, 255, .38);
+  font-family: var(--font-display), sans-serif;
+}
+.level-test-brand strong, .level-test-brand small { display: block; }
+.level-test-brand strong { font-size: 13px; font-family: var(--font-display), sans-serif; }
+.level-test-brand small { margin-top: 2px; color: #96979b; font-size: 9px; text-transform: uppercase; letter-spacing: .8px; font-weight: 700; }
+.level-test-loading { margin: 34px 0 20px; text-align: center; color: #8b8c90; font-size: 12px; }
+.level-test-error { margin-top: 16px; padding: 11px 13px; border: 1px solid #f3cccc; border-radius: 9px; color: #a02c2c; background: #fdeeee; font-size: 11px; }
+.level-test-intro { padding-top: 22px; text-align: center; }
+.level-test-intro h1 { margin: 0 0 10px; font-size: 23px; letter-spacing: -.6px; line-height: 1.2; }
+.level-test-intro p { margin: 0 auto; max-width: 380px; color: #6f7177; font-size: 12px; line-height: 1.65; }
+.level-test-start {
+  margin-top: 22px; min-height: 46px; padding: 0 26px; border: 0; border-radius: 11px; cursor: pointer;
+  background: linear-gradient(180deg, #ff8232, #f25a00); color: #fff; font-size: 13px; font-weight: 800;
+  box-shadow: var(--glow-orange), inset 0 1px 0 rgba(255, 255, 255, .28);
+  transition: transform .2s var(--ease-spring), box-shadow .2s;
+}
+.level-test-start:hover { transform: translateY(-2px) scale(1.02); }
+.level-test-question { padding-top: 20px; animation: rise .35s var(--ease-out) both; }
+.level-test-progress-bar { height: 6px; border-radius: 4px; background: #f0efec; overflow: hidden; }
+.level-test-progress-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8232, #f25a00); transition: width .45s var(--ease-out); }
+.level-test-progress-meta { display: flex; align-items: center; justify-content: space-between; margin: 9px 0 0; color: #96979b; font-size: 10px; font-weight: 700; }
+.level-test-chip { padding: 4px 8px; border-radius: 10px; color: #b8490b; background: #fff1e8; font-size: 9px; font-weight: 800; }
+.level-test-question h2 { margin: 18px 0 16px; font-size: 17px; line-height: 1.35; letter-spacing: -.3px; }
+.level-test-options { display: grid; gap: 8px; }
+.level-test-options button {
+  display: flex; align-items: center; gap: 11px; text-align: left; cursor: pointer;
+  min-height: 48px; padding: 10px 13px; border: 1px solid #e4e3e0; border-radius: 11px; background: #fbfbfa;
+  font-size: 12.5px; color: #2b2b2e; transition: .18s var(--ease-out);
+}
+.level-test-options button b {
+  width: 26px; height: 26px; flex: 0 0 auto; display: grid; place-items: center;
+  border-radius: 7px; background: #efeeeb; color: #77787c; font-size: 11px;
+}
+.level-test-options button:hover { border-color: #ff9457; background: #fff7f2; transform: translateX(3px); }
+.level-test-options button:hover b { background: #ffe3d0; color: #c24c0a; }
+.level-test-options button.picked { border-color: var(--orange); background: #fff1e8; box-shadow: 0 0 0 3px rgba(255, 107, 24, .14); }
+.level-test-options button:disabled { cursor: wait; opacity: .75; }
+.level-test-result { padding-top: 24px; text-align: center; animation: rise .4s var(--ease-out) both; }
+.level-test-result-kicker { color: #b8490b; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.4px; }
+.level-test-result-badge {
+  width: 92px; height: 92px; margin: 14px auto 4px; display: grid; place-items: center;
+  border-radius: 26px; color: #fff; font-size: 34px; font-weight: 800;
+  font-family: var(--font-display), sans-serif;
+  background: linear-gradient(150deg, #ff9349, #f25a00 65%, #d94d00);
+  box-shadow: 0 18px 40px -12px rgba(255, 107, 24, .55), inset 0 2px 0 rgba(255, 255, 255, .35);
+  animation: floaty 3.4s ease-in-out infinite;
+}
+.level-test-result h1 { margin: 10px 0 8px; font-size: 24px; letter-spacing: -.5px; }
+.level-test-result > p { margin: 0 auto; max-width: 390px; color: #6f7177; font-size: 12px; line-height: 1.65; }
+.level-test-result-stats { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+.level-test-result-stats > div { min-width: 110px; padding: 12px; border: 1px solid #eeede9; border-radius: 12px; background: #fbfaf8; }
+.level-test-result-stats strong { display: block; font-size: 20px; font-family: var(--font-display), sans-serif; }
+.level-test-result-stats span { display: block; margin-top: 3px; color: #96979b; font-size: 9px; text-transform: uppercase; letter-spacing: .7px; font-weight: 700; }
+.level-test-result-note { padding: 12px; border-radius: 10px; background: #f2faf6; border: 1px solid #d3ecdf; color: #1d7350; font-size: 11px; line-height: 1.6; }
+.level-test-row a { color: var(--orange-dark); font-weight: 700; }
+
 /* Acessibilidade: respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

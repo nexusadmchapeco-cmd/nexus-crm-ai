@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { appBaseUrl } from "@/lib/level-test";
 import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from "@/lib/whatsapp";
 
 function labelForDelay(minutes: number) {
   if (minutes % 1440 === 0) return `D+${minutes / 1440}`;
@@ -27,6 +28,73 @@ export async function GET(request: Request) {
 
   try {
     const supabase = createAdminClient();
+
+    // Lembrete do teste de nível: quem recebeu o link há 18h+ e não concluiu
+    // ganha um único lembrete. Mensagem livre: se a janela de 24h do WhatsApp
+    // já fechou, a Meta rejeita e registramos o erro sem travar o job.
+    let testRemindersSent = 0;
+    try {
+      const reminderWindowStart = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
+      const reminderDue = new Date(Date.now() - 18 * 60 * 60_000).toISOString();
+      const { data: pendingTests } = await supabase
+        .from("level_tests")
+        .select("id, lead_id, created_at, leads(id, name, phone)")
+        .in("status", ["pending", "in_progress"])
+        .gte("created_at", reminderWindowStart)
+        .lte("created_at", reminderDue);
+      for (const test of pendingTests || []) {
+        const leadRow = test.leads as unknown as { id: string; name: string | null; phone: string | null } | null;
+        if (!leadRow?.phone) continue;
+        const { data: alreadyReminded } = await supabase
+          .from("lead_events")
+          .select("id")
+          .eq("lead_id", test.lead_id)
+          .eq("event_type", "level_test_reminder")
+          .limit(1)
+          .maybeSingle();
+        if (alreadyReminded) continue;
+        const testUrl = `${appBaseUrl()}/teste/${test.id}`;
+        const reminderMessage = `Oi${leadRow.name ? `, ${String(leadRow.name).split(" ")[0]}` : ""}! Você chegou a fazer o teste de nível de inglês? É rapidinho (2 min) e ajuda a gente a montar o plano ideal pra você: ${testUrl}`;
+        try {
+          await sendWhatsAppMessage(leadRow.phone, reminderMessage);
+          const { data: conversationRow } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("lead_id", test.lead_id)
+            .maybeSingle();
+          await Promise.all([
+            conversationRow
+              ? supabase.from("messages").insert({
+                  conversation_id: conversationRow.id,
+                  lead_id: test.lead_id,
+                  sender_type: "ai",
+                  content: reminderMessage,
+                  status: "sent",
+                  is_ai: true,
+                })
+              : Promise.resolve(),
+            supabase.from("lead_events").insert({
+              lead_id: test.lead_id,
+              event_type: "level_test_reminder",
+              metadata: { level_test_id: test.id },
+            }),
+          ]);
+          testRemindersSent += 1;
+        } catch (reminderError) {
+          await supabase.from("lead_events").insert({
+            lead_id: test.lead_id,
+            event_type: "level_test_reminder_error",
+            metadata: {
+              level_test_id: test.id,
+              message: reminderError instanceof Error ? reminderError.message : "erro",
+            },
+          });
+        }
+      }
+    } catch {
+      // tabela level_tests ausente ou erro pontual: segue o job normalmente
+    }
+
     const [
       { data: sequence, error: sequenceError },
       { data: operationsRow, error: operationsError },
@@ -46,7 +114,14 @@ export async function GET(request: Request) {
     ]);
     if (sequenceError) throw sequenceError;
     if (operationsError) throw operationsError;
-    if (!sequence) return NextResponse.json({ ok: true, sent: 0, reason: "Sequência pausada" });
+    if (!sequence) {
+      return NextResponse.json({
+        ok: true,
+        sent: 0,
+        level_test_reminders: testRemindersSent,
+        reason: "Sequência pausada",
+      });
+    }
 
     const operations = parseOperationsSettings(operationsRow?.global_prompt);
     const [
@@ -179,6 +254,7 @@ export async function GET(request: Request) {
       ok: true,
       sent: sentCount,
       disqualified: disqualifiedCount,
+      level_test_reminders: testRemindersSent,
       errors: errors.slice(0, 10),
     });
   } catch (error) {
