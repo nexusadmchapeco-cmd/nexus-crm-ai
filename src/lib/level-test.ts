@@ -147,6 +147,155 @@ export function evaluate(answers: StoredAnswer[]): {
   return { cefr, score, passedAny };
 }
 
+/* ==========================================================================
+   4 habilidades: Reading (gramática/MCQ acima), Listening, Writing, Speaking.
+   Speaking tem o maior peso na nota e no nível finais.
+   ========================================================================== */
+
+export type SkillKey = "reading" | "listening" | "writing" | "speaking";
+
+export const skillWeights: Record<SkillKey, number> = {
+  reading: 0.2,
+  listening: 0.2,
+  writing: 0.2,
+  speaking: 0.4,
+};
+
+export const skillLabels: Record<SkillKey, string> = {
+  reading: "Reading & Grammar",
+  listening: "Listening",
+  writing: "Writing",
+  speaking: "Speaking",
+};
+
+export type ListeningItem = {
+  id: string;
+  level: TestLevel;
+  audioText: string;
+  prompt: string;
+  options: string[];
+  correct: number;
+};
+
+// Um item por nível, em ordem crescente de dificuldade (3 no total: A2/B1/B2 —
+// já que quem está no A1 é avaliado pela régua de gramática).
+export const listeningBank: ListeningItem[] = [
+  { id: "li-a2-1", level: "A2", audioText: "I go to the gym every Tuesday and Thursday after work.", prompt: "Quando a pessoa vai à academia?", options: ["Todos os dias", "Terças e quintas", "Fins de semana", "Segundas e quartas"], correct: 1 },
+  { id: "li-a2-2", level: "A2", audioText: "Can you buy some milk and bread on your way home?", prompt: "O que a pessoa pediu?", options: ["Leite e pão", "Café e açúcar", "Frutas e leite", "Pão e queijo"], correct: 0 },
+  { id: "li-b1-1", level: "B1", audioText: "The meeting was supposed to start at nine, but it was postponed because the manager got stuck in traffic.", prompt: "Por que a reunião atrasou?", options: ["O gerente cancelou", "Faltou energia", "O gerente ficou preso no trânsito", "Começou mais cedo"], correct: 2 },
+  { id: "li-b1-2", level: "B1", audioText: "I've been thinking about changing jobs, but I haven't told anyone at the office yet.", prompt: "O que a pessoa ainda não fez?", options: ["Mudou de emprego", "Contou no escritório", "Pensou no assunto", "Pediu aumento"], correct: 1 },
+  { id: "li-b2-1", level: "B2", audioText: "Had I known the flight would be delayed by four hours, I would have taken the train instead.", prompt: "O que a pessoa teria feito se soubesse do atraso?", options: ["Cancelado a viagem", "Esperado no aeroporto", "Pegado o trem", "Reclamado com a companhia"], correct: 2 },
+  { id: "li-b2-2", level: "B2", audioText: "Despite the initial setbacks, the project turned out to be far more successful than anyone had anticipated.", prompt: "Como o projeto terminou?", options: ["Foi cancelado", "Melhor do que o esperado", "Dentro do esperado", "Com prejuízo"], correct: 1 },
+];
+
+export type OpenPrompt = { id: string; prompt: string; helper: string };
+
+export const writingPrompts: OpenPrompt[] = [
+  { id: "wr-1", prompt: "Write 2–3 sentences: Why do you want to improve your English?", helper: "Escreva em inglês, do seu jeito. Não precisa ser perfeito." },
+  { id: "wr-2", prompt: "Write 2–3 sentences about your daily routine.", helper: "Escreva em inglês, do seu jeito. Não precisa ser perfeito." },
+  { id: "wr-3", prompt: "Write 2–3 sentences about your last vacation or a trip you would like to take.", helper: "Escreva em inglês, do seu jeito. Não precisa ser perfeito." },
+];
+
+export const speakingPrompts: OpenPrompt[] = [
+  { id: "sp-1", prompt: "Introduce yourself: your name, what you do, and what you like doing in your free time.", helper: "Grave uns 20–30 segundos falando em inglês. Respira fundo e vai!" },
+  { id: "sp-2", prompt: "Talk about your plans for the future: work, travel or studies.", helper: "Grave uns 20–30 segundos falando em inglês. Respira fundo e vai!" },
+  { id: "sp-3", prompt: "Describe your city: what you like about it and what you would change.", helper: "Grave uns 20–30 segundos falando em inglês. Respira fundo e vai!" },
+];
+
+export type SkillResult = { score: number; cefr: TestLevel };
+
+export type TestAnswers = {
+  grammar: StoredAnswer[];
+  listening: StoredAnswer[];
+  writing?: { prompt_id: string; text: string } & SkillResult;
+  speaking?: ({ prompt_id: string; transcript: string } & SkillResult) | { prompt_id: string; skipped: true };
+};
+
+export type TestPhase = "grammar" | "listening" | "writing" | "speaking" | "done";
+
+export function normalizeAnswers(raw: unknown): TestAnswers {
+  if (Array.isArray(raw)) return { grammar: raw as StoredAnswer[], listening: [] };
+  const value = (raw || {}) as Partial<TestAnswers>;
+  return {
+    grammar: value.grammar || [],
+    listening: value.listening || [],
+    writing: value.writing,
+    speaking: value.speaking,
+  };
+}
+
+function seededPickOne<T>(seed: string, pool: T[]): T {
+  let hash = 5381;
+  for (const char of seed) hash = ((hash * 33) ^ char.charCodeAt(0)) >>> 0;
+  return pool[hash % pool.length];
+}
+
+export function listeningPlan(testId: string): ListeningItem[] {
+  return (["A2", "B1", "B2"] as TestLevel[]).map((level) =>
+    seededPickOne(`${testId}:listening:${level}`, listeningBank.filter((item) => item.level === level)),
+  );
+}
+
+export function writingPlan(testId: string): OpenPrompt {
+  return seededPickOne(`${testId}:writing`, writingPrompts);
+}
+
+export function speakingPlan(testId: string): OpenPrompt {
+  return seededPickOne(`${testId}:speaking`, speakingPrompts);
+}
+
+export function currentPhase(testId: string, answers: TestAnswers): TestPhase {
+  if (!nextStep(testId, answers.grammar).done) return "grammar";
+  if (answers.listening.length < listeningPlan(testId).length) return "listening";
+  if (!answers.writing) return "writing";
+  if (!answers.speaking) return "speaking";
+  return "done";
+}
+
+const levelIndex: Record<TestLevel, number> = { A1: 1, A2: 2, B1: 3, B2: 4 };
+
+export function listeningResult(answers: StoredAnswer[]): SkillResult {
+  const correctCount = answers.filter((answer) => answer.correct).length;
+  const cefr: TestLevel = (["A1", "A2", "B1", "B2"] as TestLevel[])[correctCount] || "B2";
+  const asked = answers.reduce((sum, answer) => sum + levelWeights[answer.level], 0);
+  const earned = answers.reduce(
+    (sum, answer) => sum + (answer.correct ? levelWeights[answer.level] : 0),
+    0,
+  );
+  return { cefr, score: asked ? Math.round((earned / asked) * 100) : 0 };
+}
+
+export function combineSkills(skills: Partial<Record<SkillKey, SkillResult | null>>): {
+  cefr: TestLevel;
+  score: number;
+} {
+  let weightSum = 0;
+  let scoreSum = 0;
+  let levelSum = 0;
+  for (const key of Object.keys(skillWeights) as SkillKey[]) {
+    const result = skills[key];
+    if (!result) continue; // habilidade pulada: redistribui o peso
+    weightSum += skillWeights[key];
+    scoreSum += result.score * skillWeights[key];
+    levelSum += levelIndex[result.cefr] * skillWeights[key];
+  }
+  if (!weightSum) return { cefr: "A1", score: 0 };
+  const levels: TestLevel[] = ["A1", "A2", "B1", "B2"];
+  const cefr = levels[Math.min(3, Math.max(0, Math.round(levelSum / weightSum) - 1))];
+  return { cefr, score: Math.round(scoreSum / weightSum) };
+}
+
+export const totalSteps = totalQuestions + 3 + 1 + 1; // gramática + listening + writing + speaking
+
+export function answeredSteps(answers: TestAnswers): number {
+  return (
+    answers.grammar.length +
+    answers.listening.length +
+    (answers.writing ? 1 : 0) +
+    (answers.speaking ? 1 : 0)
+  );
+}
+
 export function appBaseUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {

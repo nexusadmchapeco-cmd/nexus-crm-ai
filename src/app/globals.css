@@ -1227,6 +1227,46 @@ h1, h2, h3,
 .level-test-result-stats span { display: block; margin-top: 3px; color: #96979b; font-size: 9px; text-transform: uppercase; letter-spacing: .7px; font-weight: 700; }
 .level-test-result-note { padding: 12px; border-radius: 10px; background: #f2faf6; border: 1px solid #d3ecdf; color: #1d7350; font-size: 11px; line-height: 1.6; }
 .level-test-row a { color: var(--orange-dark); font-weight: 700; }
+.level-test-audio { margin-top: 18px; padding: 13px; border: 1px solid #eeede9; border-radius: 11px; background: #fbfaf8; }
+.level-test-audio p { margin: 0 0 9px; color: #6f7177; font-size: 11px; }
+.level-test-audio audio { width: 100%; height: 40px; }
+.level-test-open h2 { margin: 18px 0 6px; font-size: 17px; line-height: 1.35; letter-spacing: -.3px; }
+.level-test-helper { margin: 0 0 12px; color: #96979b; font-size: 11px; }
+.level-test-open textarea {
+  width: 100%; min-height: 110px; padding: 12px; border: 1px solid #e4e3e0; border-radius: 11px;
+  font: inherit; font-size: 13px; line-height: 1.55; resize: vertical; outline: none;
+}
+.level-test-open textarea:focus { border-color: #ff9457; box-shadow: 0 0 0 3px rgba(255, 107, 24, .13); }
+.level-test-open .level-test-start { margin-top: 12px; }
+.level-test-recorder { margin-top: 6px; display: grid; gap: 10px; justify-items: center; }
+.level-test-recorder audio { width: 100%; height: 40px; }
+.level-test-record {
+  min-height: 52px; padding: 0 26px; border: 0; border-radius: 26px; cursor: pointer;
+  background: linear-gradient(180deg, #2b2b2f, #1a1a1d); color: #fff; font-size: 14px; font-weight: 800;
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .5); transition: transform .2s var(--ease-spring);
+}
+.level-test-record:hover { transform: scale(1.04); }
+.level-test-record.recording {
+  background: linear-gradient(180deg, #e5484d, #c93338);
+  animation: pulse-record 1.4s ease-in-out infinite;
+}
+@keyframes pulse-record { 50% { box-shadow: 0 0 0 10px rgba(229, 72, 77, .12); } }
+.level-test-recorder-actions { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.level-test-again { border: 1px solid #e0dfdc; border-radius: 10px; background: #fff; padding: 11px 15px; font-size: 11px; font-weight: 700; color: #55565a; cursor: pointer; }
+.level-test-skip { display: block; margin: 16px auto 0; border: 0; background: none; color: #a0a1a5; font-size: 10px; text-decoration: underline; cursor: pointer; }
+.level-test-skip:hover { color: #6f7177; }
+.level-test-skills { margin: 20px 0; display: grid; gap: 11px; text-align: left; }
+.level-test-skill-head { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.level-test-skill-head span { color: #6f7177; font-size: 10px; font-weight: 700; }
+.level-test-skill-head strong { font-size: 10px; }
+.level-test-skill-bar { height: 7px; border-radius: 4px; background: #f0efec; overflow: hidden; }
+.level-test-skill-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8232, #f25a00); transition: width .8s var(--ease-out); }
+.level-test-creator { margin-bottom: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow-card); }
+.level-test-creator-row { display: flex; gap: 9px; flex-wrap: wrap; }
+.level-test-creator-row select { flex: 1; min-width: 220px; height: 38px; padding: 0 10px; border: 1px solid #dededb; border-radius: 7px; font-size: 10px; color: #39393b; background: #fafaf9; }
+.level-test-creator .error-banner { margin: 10px 0 0; }
+.level-test-link { margin-top: 11px; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #cfe9dc; border-radius: 9px; background: #f1faf6; }
+.level-test-link a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #17734e; font-size: 11px; font-weight: 700; }
 
 /* Acessibilidade: respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
