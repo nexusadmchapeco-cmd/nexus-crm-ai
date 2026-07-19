@@ -171,6 +171,13 @@ export async function PUT(request: Request) {
           ).trim(),
         },
         language_code: String(operations.language_code || "pt_BR"),
+        voice_reply_enabled: Boolean(
+          operations.voice_reply_enabled ?? defaultOperationsSettings.voice_reply_enabled,
+        ),
+        voice_name: String(operations.voice_name || defaultOperationsSettings.voice_name),
+        elevenlabs_voice_id: String(
+          operations.elevenlabs_voice_id || defaultOperationsSettings.elevenlabs_voice_id,
+        ),
       }),
       model: body.model.trim(),
       temperature: numericTemperature,
