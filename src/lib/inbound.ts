@@ -330,29 +330,25 @@ export async function processInbound(payload: InboundPayload) {
           .limit(1)
           .maybeSingle();
         if (!alreadyNotified) {
-          // Modelos do WhatsApp rejeitam quebra de linha/tab e 4+ espaços seguidos
-          // dentro de uma variável -- por isso usamos " · " em vez de "\n" e
-          // normalizamos qualquer espaço em branco remanescente.
-          const closerSummary = [
-            `Lead: ${lead.name || "Sem nome"}`,
-            `WhatsApp: +${lead.phone}`,
-            `Cidade: ${lead.city || "Não informada"}`,
-            `Objetivo: ${lead.objective || "Não informado"}`,
-            `Nível: ${lead.level || "Não informado"}`,
-            `Disponibilidade: ${lead.availability || "Não informada"}`,
-            `Temperatura: ${lead.temperature}`,
-            `Resumo: ${lead.summary || decision.summary}`,
-            `Próxima ação: ${lead.next_action || decision.next_action}`,
-          ]
-            .join(" · ")
-            .replace(/\s+/g, " ")
-            .slice(0, 1000);
+          // O modelo resumo_closer tem 5 variáveis fixas no corpo:
+          // Nome | Objetivo | Unidade | Disponibilidade | Resumo da IA.
+          // Modelos do WhatsApp rejeitam quebra de linha/tab e 4+ espaços
+          // seguidos dentro de uma variável, por isso normalizamos cada uma.
+          const sanitizeParam = (value: string) =>
+            value.replace(/\s+/g, " ").trim().slice(0, 300) || "-";
+          const closerParams = [
+            sanitizeParam(lead.name || "Lead sem nome"),
+            sanitizeParam(lead.objective || "Não informado"),
+            sanitizeParam(lead.city || "Não informada"),
+            sanitizeParam(lead.availability || "Não informada"),
+            sanitizeParam(lead.summary || decision.summary || "Sem resumo"),
+          ];
           try {
             const sent = await sendWhatsAppTemplate(
               operations.closer_phone,
               operations.closer_template_name,
               operations.language_code,
-              [closerSummary],
+              closerParams,
             );
             await supabase.from("lead_events").insert({
               lead_id: lead.id,
