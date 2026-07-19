@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-body", display: "swap" });
-const sora = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  variable: "--font-nexus",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Nexus CRM AI",
@@ -14,9 +18,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${sora.variable}`}>
+    <html lang="pt-BR" className={montserrat.variable}>
       <body>
-        <div className="ambient-backdrop" aria-hidden="true" />
         <Sidebar />
         <div className="app-shell">
           <Topbar />
