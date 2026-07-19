@@ -81,7 +81,13 @@ export async function GET() {
 
   const debugData = tokenDebug?.data;
 
+  const resumoCloserTemplate = await graphGet(
+    `/1455204943077975?fields=name,status,language,components`,
+    token,
+  );
+
   return NextResponse.json({
+    resumoCloserTemplate,
     configured: {
       phoneNumberId: configuredPhoneNumberId,
       businessAccountId: configuredWabaId || null,
