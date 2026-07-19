@@ -1,6 +1,9 @@
 import { after, NextResponse } from "next/server";
 import { processInbound } from "@/lib/inbound";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { synthesizeSpeech, transcribeAudio } from "@/lib/level-test-ai";
+import { parseOperationsSettings } from "@/lib/operations";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { downloadWhatsAppMedia, sendWhatsAppAudio, sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export const maxDuration = 60;
 
@@ -20,19 +23,64 @@ export async function POST(request: Request) {
     const body = await request.json();
     const value = body?.entry?.[0]?.changes?.[0]?.value;
     const incoming = value?.messages?.[0];
-    if (!incoming || incoming.type !== "text") return NextResponse.json({ received: true });
+    if (!incoming || (incoming.type !== "text" && incoming.type !== "audio")) {
+      return NextResponse.json({ received: true });
+    }
     const contact = value?.contacts?.[0];
 
     after(async () => {
       try {
+        const isAudio = incoming.type === "audio";
+        let messageText = incoming.text?.body || "";
+        if (isAudio) {
+          // Áudio do lead: baixa a mídia e transcreve para a IA entender.
+          const mediaId = incoming.audio?.id;
+          if (!mediaId) return;
+          const media = await downloadWhatsAppMedia(mediaId);
+          const extension = media.mimeType.includes("mpeg") ? "mp3" : "ogg";
+          const transcript = (
+            await transcribeAudio(
+              new File([media.buffer], `lead-audio.${extension}`, { type: media.mimeType }),
+            )
+          ).trim();
+          if (!transcript) return;
+          messageText = `🎙️ ${transcript}`;
+        }
+        if (!messageText.trim()) return;
+
         const result = await processInbound({
           phone: incoming.from,
           name: contact?.profile?.name,
-          message: incoming.text?.body || "",
+          message: messageText,
           source: "whatsapp",
           whatsapp_message_id: incoming.id,
         });
-        if (result.ai_reply) {
+        if (!result.ai_reply) return;
+
+        // Lead mandou áudio -> Nina responde com áudio (se habilitado);
+        // qualquer falha na voz cai para texto, o atendimento nunca para.
+        let voiceSent = false;
+        if (isAudio) {
+          try {
+            const { data: operationsRow } = await createAdminClient()
+              .from("ai_settings")
+              .select("global_prompt")
+              .eq("name", "__operations__")
+              .maybeSingle();
+            const operations = parseOperationsSettings(operationsRow?.global_prompt);
+            if (operations.voice_reply_enabled) {
+              const speech = await synthesizeSpeech(result.ai_reply, {
+                voice: "nova",
+                format: "opus",
+              });
+              await sendWhatsAppAudio(incoming.from, speech, "audio/ogg");
+              voiceSent = true;
+            }
+          } catch (voiceError) {
+            console.error("Voice reply failed, falling back to text", voiceError);
+          }
+        }
+        if (!voiceSent) {
           await sendWhatsAppMessage(incoming.from, result.ai_reply);
         }
       } catch (error) {

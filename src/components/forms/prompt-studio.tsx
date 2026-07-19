@@ -513,6 +513,28 @@ export function PromptStudio({
                 <p>Use um modelo aprovado com uma variável no corpo para receber todo o resumo.</p>
               </div>
             </div>
+            <div className="operations-callout" style={{ marginTop: 10 }}>
+              <Icon name="chat" size={16} />
+              <div style={{ flex: 1 }}>
+                <strong>Áudios no atendimento</strong>
+                <p>
+                  Áudios recebidos são transcritos automaticamente para a Nina entender. Com a opção
+                  abaixo ativa, quando o cliente manda áudio a Nina também responde com áudio (voz
+                  gerada por IA).
+                </p>
+              </div>
+              <label className="studio-switch">
+                <input
+                  type="checkbox"
+                  checked={operations.voice_reply_enabled}
+                  onChange={(event) =>
+                    setOperations({ ...operations, voice_reply_enabled: event.target.checked })
+                  }
+                />
+                <span />
+                {operations.voice_reply_enabled ? "Ativo" : "Só texto"}
+              </label>
+            </div>
             <div className="field-grid">
               <div className="field">
                 <label htmlFor="closer-name">Nome do closer</label>

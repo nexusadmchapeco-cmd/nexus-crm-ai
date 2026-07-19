@@ -62,13 +62,13 @@ export async function evaluateOpenAnswer({
   return { cefr: parsed.cefr, score: parsed.score, feedback: parsed.feedback };
 }
 
-export async function transcribeAudio(file: File): Promise<string> {
+export async function transcribeAudio(file: File, language?: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada");
   const form = new FormData();
   form.append("file", file, file.name || "speaking.webm");
   form.append("model", "whisper-1");
-  form.append("language", "en");
+  if (language) form.append("language", language);
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -82,13 +82,21 @@ export async function transcribeAudio(file: File): Promise<string> {
   return String(payload.text || "");
 }
 
-export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
+export async function synthesizeSpeech(
+  text: string,
+  options?: { voice?: string; format?: "mp3" | "opus" },
+): Promise<ArrayBuffer> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada");
   const response = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "tts-1", voice: "alloy", input: text, response_format: "mp3" }),
+    body: JSON.stringify({
+      model: "tts-1",
+      voice: options?.voice || "alloy",
+      input: text,
+      response_format: options?.format || "mp3",
+    }),
   });
   if (!response.ok) {
     const body = await response.text();

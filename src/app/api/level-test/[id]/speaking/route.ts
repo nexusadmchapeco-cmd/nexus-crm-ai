@@ -41,7 +41,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const prompt = speakingPlan(id);
   try {
-    const transcript = (await transcribeAudio(audio)).trim();
+    const transcript = (await transcribeAudio(audio, "en")).trim();
     const evaluation = await evaluateOpenAnswer({
       skill: "speaking",
       task: prompt.prompt,

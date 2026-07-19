@@ -20,6 +20,8 @@ export const defaultOperationsSettings: OperationsSettings = {
     next_month_classes: "turmas_proximo_mes",
   },
   language_code: "pt_BR",
+  // Quando o lead manda áudio, a Nina responde com áudio (voz gerada por IA).
+  voice_reply_enabled: true,
 };
 
 export function parseOperationsSettings(value?: string | null): OperationsSettings {
