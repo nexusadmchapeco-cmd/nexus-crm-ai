@@ -1063,6 +1063,92 @@ h1, h2, h3,
 ::-webkit-scrollbar-thumb { background: #d6d5d1; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: #bcbbb7; background-clip: content-box; border: 2px solid transparent; }
 
+/* ==========================================================================
+   KANBAN DENSO — todas as etapas em uma única tela, sem scroll lateral
+   ========================================================================== */
+
+.kanban-shell { display: flex; flex-direction: column; height: calc(100dvh - 65px - 78px); min-height: 0; }
+.kanban-shell .page-header { flex: 0 0 auto; margin-bottom: 14px; }
+.kanban-sections { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.kanban-section { display: flex; flex-direction: column; min-height: 0; }
+.kanban-section-ia { flex: 1.35 1 0; }
+.kanban-section-closer { flex: 1 1 0; margin-top: 12px; }
+.kanban-section-label { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.kanban-section-label::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #e3e2df, transparent); }
+.kanban-section-label em { color: #a6a7aa; font-size: 8px; font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.kanban-section-label-closer { border-top: 0; padding-top: 0; }
+.kanban-grid {
+  flex: 1 1 auto; min-height: 0; display: grid; gap: 10px;
+  grid-template-columns: repeat(var(--kanban-cols, 6), minmax(0, 1fr));
+}
+.kanban-column {
+  width: auto; min-width: 0; height: 100%; max-height: none; padding: 8px; border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--stage-color, #9a9a9a) 9%, #ffffff) 0%, rgba(255, 255, 255, .62) 80px);
+  border: 1px solid color-mix(in srgb, var(--stage-color, #9a9a9a) 18%, #e7e6e2);
+  animation: rise .5s var(--ease-out) both;
+}
+.kanban-grid .kanban-column:nth-child(2) { animation-delay: .05s; }
+.kanban-grid .kanban-column:nth-child(3) { animation-delay: .1s; }
+.kanban-grid .kanban-column:nth-child(4) { animation-delay: .15s; }
+.kanban-grid .kanban-column:nth-child(5) { animation-delay: .2s; }
+.kanban-grid .kanban-column:nth-child(n+6) { animation-delay: .25s; }
+.kanban-head { height: 28px; padding: 0 3px 7px; gap: 7px; }
+.kanban-head strong { font-size: 8.5px; letter-spacing: .3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kanban-head i { box-shadow: 0 0 0 3px color-mix(in srgb, var(--stage-color, #999) 24%, transparent); }
+.kanban-count {
+  min-width: 19px; height: 19px; font-size: 8px;
+  background: color-mix(in srgb, var(--stage-color, #999) 16%, #fff);
+  color: color-mix(in srgb, var(--stage-color, #555) 72%, #222);
+}
+
+/* Cards compactos com a cor da etapa */
+.lead-card { margin-bottom: 7px; border-radius: 9px; border-left: 3px solid var(--stage-color, #dcdcd9); animation: rise .35s var(--ease-out) both; }
+.lead-card-link { padding: 9px 10px 8px; }
+.lead-card-top { gap: 7px; }
+.lead-card-top .avatar { width: 24px; height: 24px; font-size: 7px; }
+.lead-card-top strong { font-size: 10px; max-width: none; }
+.lead-card-top span { font-size: 7px; margin-top: 2px; }
+.lead-drag-icon { display: none; }
+.lead-card .temperature { margin: 7px 0 0; padding: 3px 6px; font-size: 7px; }
+.followup-badges { margin: 6px 0 0; }
+.lead-card-detail { min-height: 0; margin-top: 6px; font-size: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.lead-card-footer { margin-top: 7px; padding-top: 6px; font-size: 7px; }
+.lead-card-history-toggle { padding: 6px 10px; }
+.lead-card-controls {
+  max-height: 0; padding: 0 8px; border-top: 0; opacity: 0; overflow: hidden;
+  transition: max-height .24s var(--ease-out), opacity .2s, padding .24s var(--ease-out);
+}
+.lead-card:hover .lead-card-controls, .lead-card:focus-within .lead-card-controls {
+  max-height: 46px; padding: 7px 8px; border-top: 1px solid #f0f0ee; opacity: 1;
+}
+.kanban-empty {
+  height: 100%; min-height: 40px; font-size: 8px;
+  border-color: color-mix(in srgb, var(--stage-color, #999) 28%, #e0e0dd);
+  color: color-mix(in srgb, var(--stage-color, #777) 45%, #999);
+}
+@media (hover: none) {
+  .lead-card-controls { max-height: none; padding: 7px 8px; border-top: 1px solid #f0f0ee; opacity: 1; }
+}
+@media (max-width: 1150px) {
+  .kanban-shell { height: auto; }
+  .kanban-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kanban-column { height: auto; max-height: 44vh; }
+  .kanban-section-closer .kanban-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .kanban-grid, .kanban-section-closer .kanban-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+}
+
+/* Toques extras de acabamento */
+.topbar { position: sticky; }
+.topbar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent 4%, rgba(255, 107, 24, .45), transparent 96%);
+}
+.metric-card { background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--metric, #9a9a9a) 5%, #ffffff) 100%); }
+.temperature.quente, .temperature.pronto_para_closer { background: linear-gradient(90deg, #ffe9d6, #ffd9c0); }
+.temperature.cliente { background: linear-gradient(90deg, #e4f7ee, #d2f2e2); }
+
 /* Acessibilidade: respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

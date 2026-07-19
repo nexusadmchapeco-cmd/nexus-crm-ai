@@ -16,7 +16,7 @@ export default async function KanbanPage() {
   const events = configured ? await getLeadEventsMap(leads.map((lead) => lead.id)) : {};
 
   return (
-    <>
+    <div className="kanban-shell">
       <AutoRefresh />
       <div className="page-header">
         <div><div className="eyebrow">Pipeline de vendas</div><h1>Kanban de leads</h1><p>{leads.length} leads distribuídos em {stages.length} etapas.</p></div>
@@ -25,6 +25,6 @@ export default async function KanbanPage() {
       {!configured ? <ConfigRequired /> : (
         <KanbanBoard initialLeads={leads} stages={stages} followups={followups} events={events} />
       )}
-    </>
+    </div>
   );
 }
