@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type DragEvent } from "react";
+import { conversationModels } from "@/lib/ai/openai";
 import { Icon } from "@/components/ui/icon";
 import type {
   AiSettings,
@@ -228,11 +229,25 @@ export function PromptStudio({
                 </div>
                 <div className="field">
                   <label htmlFor="assistant-model">Modelo</label>
-                  <input
+                  <select
                     id="assistant-model"
                     value={settings.model}
                     onChange={(event) => setSettings({ ...settings, model: event.target.value })}
-                  />
+                  >
+                    {!conversationModels.some((option) => option.value === settings.model) && (
+                      <option value={settings.model}>{settings.model}</option>
+                    )}
+                    {conversationModels.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="variable-help">
+                    Se o modelo escolhido não estiver liberado na sua conta OpenAI, a Nina usa o
+                    GPT-4.1 mini automaticamente para não parar o atendimento. Use “Testar conexão”
+                    para conferir o acesso.
+                  </span>
                 </div>
               </div>
               <div className="field">

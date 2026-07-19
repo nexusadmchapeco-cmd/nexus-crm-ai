@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { supportsTemperature } from "@/lib/ai/openai";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST() {
@@ -22,15 +23,20 @@ export async function POST() {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: settings.model || process.env.OPENAI_MODEL || "gpt-4.1-mini",
-        temperature: 0,
-        max_tokens: 5,
-        messages: [
-          { role: "system", content: "Responda somente OK." },
-          { role: "user", content: "Teste de conexão." },
-        ],
-      }),
+      body: JSON.stringify((() => {
+        const model = settings.model || process.env.OPENAI_MODEL || "gpt-4.1-mini";
+        // GPT-5 (reasoning) rejeita temperature e usa max_completion_tokens.
+        return {
+          model,
+          ...(supportsTemperature(model)
+            ? { temperature: 0, max_tokens: 5 }
+            : { max_completion_tokens: 16 }),
+          messages: [
+            { role: "system", content: "Responda somente OK." },
+            { role: "user", content: "Teste de conexão." },
+          ],
+        };
+      })()),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
