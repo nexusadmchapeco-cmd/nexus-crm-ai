@@ -84,18 +84,23 @@ export async function transcribeAudio(file: File, language?: string): Promise<st
 
 export async function synthesizeSpeech(
   text: string,
-  options?: { voice?: string; format?: "mp3" | "opus" },
+  options?: { voice?: string; format?: "mp3" | "opus"; instructions?: string; model?: string },
 ): Promise<ArrayBuffer> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada");
+  const model = options?.model || "gpt-4o-mini-tts";
   const response = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "tts-1",
+      model,
       voice: options?.voice || "alloy",
       input: text,
       response_format: options?.format || "mp3",
+      // gpt-4o-mini-tts aceita instruções de estilo; tts-1 ignora o campo.
+      ...(options?.instructions && model !== "tts-1"
+        ? { instructions: options.instructions }
+        : {}),
     }),
   });
   if (!response.ok) {

@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { toWhatsAppVoice } from "@/lib/audio";
 import { processInbound } from "@/lib/inbound";
 import { synthesizeSpeech, transcribeAudio } from "@/lib/level-test-ai";
 import { parseOperationsSettings } from "@/lib/operations";
@@ -70,10 +71,22 @@ export async function POST(request: Request) {
             const operations = parseOperationsSettings(operationsRow?.global_prompt);
             if (operations.voice_reply_enabled) {
               const speech = await synthesizeSpeech(result.ai_reply, {
-                voice: "nova",
-                format: "opus",
+                voice: "coral",
+                format: "mp3",
+                instructions:
+                  "Fale em português brasileiro com sotaque natural, como uma atendente brasileira jovem mandando áudio no WhatsApp: tom caloroso, espontâneo e conversacional, ritmo natural, sem parecer locutora nem robô.",
               });
-              await sendWhatsAppAudio(incoming.from, speech, "audio/ogg");
+              // WhatsApp só renderiza como mensagem de voz (bolha com
+              // waveform) se o áudio for OGG/Opus mono.
+              const voiceNote = await toWhatsAppVoice(speech);
+              await sendWhatsAppAudio(
+                incoming.from,
+                voiceNote.buffer.slice(
+                  voiceNote.byteOffset,
+                  voiceNote.byteOffset + voiceNote.byteLength,
+                ) as ArrayBuffer,
+                "audio/ogg",
+              );
               voiceSent = true;
             }
           } catch (voiceError) {
