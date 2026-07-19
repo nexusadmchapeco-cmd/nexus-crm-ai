@@ -141,6 +141,7 @@ export type OperationsSettings = {
     next_month_classes: string;
   };
   language_code: string;
+  voice_reply_enabled: boolean;
 };
 
 export type CampaignFilters = {
