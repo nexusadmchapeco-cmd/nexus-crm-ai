@@ -23,7 +23,7 @@ async function graphGet(path: string, token: string) {
   }
 }
 
-const TEMPLATE_FIELDS = "name,status,category,language,quality_score";
+const TEMPLATE_FIELDS = "name,status,category,language,quality_score,components";
 
 async function inspectWaba(wabaId: string, wabaName: string | undefined, token: string) {
   const [numbers, subscribedApps, templates] = await Promise.all([
