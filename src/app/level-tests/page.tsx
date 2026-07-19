@@ -1,6 +1,7 @@
+import { LevelTestCreator } from "@/components/level-test/level-test-creator";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
-import { getLevelTests } from "@/lib/data";
+import { getLeads, getLevelTests } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 import { formatRelative } from "@/lib/format";
 import { levelLabels, type TestLevel } from "@/lib/level-test";
@@ -16,7 +17,7 @@ const statusLabels: Record<string, string> = {
 
 export default async function LevelTestsPage() {
   const configured = isSupabaseConfigured();
-  const tests = configured ? await getLevelTests() : [];
+  const [tests, leads] = configured ? await Promise.all([getLevelTests(), getLeads()]) : [[], []];
 
   return (
     <>
@@ -25,11 +26,16 @@ export default async function LevelTestsPage() {
           <div className="eyebrow">Operação comercial</div>
           <h1>Testes de nível</h1>
           <p>
-            Quando o lead conta que já tem inglês, a IA envia o teste adaptativo (CEFR A1–B2)
-            automaticamente. Resultados aparecem aqui na hora.
+            Avalia as 4 habilidades (reading, listening, writing e speaking — com peso maior no
+            speaking). A IA envia sozinha quando o lead diz que já tem inglês, ou gere um link aqui.
           </p>
         </div>
       </div>
+      {configured && (
+        <LevelTestCreator
+          leads={leads.map((lead) => ({ id: lead.id, name: lead.name, phone: lead.phone }))}
+        />
+      )}
       {!configured ? (
         <ConfigRequired />
       ) : !tests.length ? (
@@ -48,7 +54,7 @@ export default async function LevelTestsPage() {
             return (
               <div className="level-test-row" key={test.id}>
                 <div>
-                  <strong>{test.leads?.name || test.leads?.phone || "Lead"}</strong>
+                  <strong>{test.leads?.name || test.leads?.phone || "Aluno avulso"}</strong>
                   <span>
                     {statusLabels[test.status] || test.status}
                     {" · "}
