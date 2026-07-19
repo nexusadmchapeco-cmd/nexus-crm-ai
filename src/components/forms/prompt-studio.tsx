@@ -2,6 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import { conversationModels } from "@/lib/ai/openai";
+import { voiceOptions } from "@/lib/voice";
 import { Icon } from "@/components/ui/icon";
 import type {
   AiSettings,
@@ -39,6 +40,7 @@ export function PromptStudio({
   const [stagePrompts, setStagePrompts] = useState(initialStagePrompts);
   const [followup, setFollowup] = useState(initialFollowup);
   const [operations, setOperations] = useState(initialOperations);
+  const [previewingVoice, setPreviewingVoice] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
@@ -534,6 +536,46 @@ export function PromptStudio({
                 <span />
                 {operations.voice_reply_enabled ? "Ativo" : "Só texto"}
               </label>
+            </div>
+            <div className="field-grid" style={{ marginTop: 14 }}>
+              <div className="field">
+                <label htmlFor="voice-name">Voz da Nina nos áudios</label>
+                <select
+                  id="voice-name"
+                  value={operations.voice_name}
+                  onChange={(event) =>
+                    setOperations({ ...operations, voice_name: event.target.value })
+                  }
+                >
+                  {voiceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="variable-help">
+                  Ouça a amostra, escolha a voz e clique em salvar para aplicar.
+                </span>
+              </div>
+              <div className="field">
+                <label>&nbsp;</label>
+                <button
+                  type="button"
+                  className="button"
+                  disabled={previewingVoice}
+                  onClick={() => {
+                    setPreviewingVoice(true);
+                    const audio = new Audio(
+                      `/api/settings/voice-preview?voice=${operations.voice_name}`,
+                    );
+                    audio.onended = () => setPreviewingVoice(false);
+                    audio.onerror = () => setPreviewingVoice(false);
+                    void audio.play().catch(() => setPreviewingVoice(false));
+                  }}
+                >
+                  {previewingVoice ? "Tocando…" : "🔊 Ouvir amostra desta voz"}
+                </button>
+              </div>
             </div>
             <div className="field-grid">
               <div className="field">

@@ -22,6 +22,7 @@ export const defaultOperationsSettings: OperationsSettings = {
   language_code: "pt_BR",
   // Quando o lead manda áudio, a Nina responde com áudio (voz gerada por IA).
   voice_reply_enabled: true,
+  voice_name: "nova",
 };
 
 export function parseOperationsSettings(value?: string | null): OperationsSettings {

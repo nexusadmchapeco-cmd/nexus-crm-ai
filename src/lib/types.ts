@@ -142,6 +142,7 @@ export type OperationsSettings = {
   };
   language_code: string;
   voice_reply_enabled: boolean;
+  voice_name: string;
 };
 
 export type CampaignFilters = {
