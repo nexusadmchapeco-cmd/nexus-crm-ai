@@ -298,6 +298,83 @@ export function PromptStudio({
                   }
                 />
               </div>
+              <div className="operations-callout" style={{ marginTop: 4 }}>
+                <Icon name="chat" size={16} />
+                <div style={{ flex: 1 }}>
+                  <strong>Áudios no atendimento</strong>
+                  <p>
+                    Áudios recebidos são transcritos automaticamente para a Nina entender. Com esta
+                    opção ativa, quando o cliente manda áudio a Nina também responde com áudio (voz
+                    gerada por IA).
+                  </p>
+                </div>
+                <label className="studio-switch">
+                  <input
+                    type="checkbox"
+                    checked={operations.voice_reply_enabled}
+                    onChange={(event) =>
+                      setOperations({ ...operations, voice_reply_enabled: event.target.checked })
+                    }
+                  />
+                  <span />
+                  {operations.voice_reply_enabled ? "Ativo" : "Só texto"}
+                </label>
+              </div>
+              <div className="field-grid" style={{ marginTop: 14 }}>
+                <div className="field">
+                  <label htmlFor="voice-name">Voz da Nina nos áudios</label>
+                  <select
+                    id="voice-name"
+                    value={
+                      voiceCatalog?.provider === "elevenlabs"
+                        ? operations.elevenlabs_voice_id
+                        : operations.voice_name
+                    }
+                    onChange={(event) =>
+                      setOperations(
+                        voiceCatalog?.provider === "elevenlabs"
+                          ? { ...operations, elevenlabs_voice_id: event.target.value }
+                          : { ...operations, voice_name: event.target.value },
+                      )
+                    }
+                  >
+                    {(voiceCatalog?.voices || voiceOptions.map((option) => ({ id: option.value, name: option.label }))).map(
+                      (option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                  <span className="variable-help">
+                    {voiceCatalog?.provider === "elevenlabs"
+                      ? "Voz premium ElevenLabs ativa — as vozes vêm da sua conta (adicione novas no VoiceLab do ElevenLabs)."
+                      : "Usando as vozes da OpenAI. Para voz ultra natural em pt-BR, configure a chave do ElevenLabs."}
+                    {" "}Ouça a amostra, escolha e salve para aplicar.
+                  </span>
+                </div>
+                <div className="field">
+                  <label>&nbsp;</label>
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={previewingVoice}
+                    onClick={() => {
+                      setPreviewingVoice(true);
+                      const selected =
+                        voiceCatalog?.provider === "elevenlabs"
+                          ? operations.elevenlabs_voice_id
+                          : operations.voice_name;
+                      const audio = new Audio(`/api/settings/voice-preview?voice=${selected}`);
+                      audio.onended = () => setPreviewingVoice(false);
+                      audio.onerror = () => setPreviewingVoice(false);
+                      void audio.play().catch(() => setPreviewingVoice(false));
+                    }}
+                  >
+                    {previewingVoice ? "Tocando…" : "🔊 Ouvir amostra desta voz"}
+                  </button>
+                </div>
+              </div>
             </div>
             <aside className="studio-guidance">
               <span>Checklist</span>
@@ -530,83 +607,6 @@ export function PromptStudio({
               <div>
                 <strong>Envio pela API Cloud oficial</strong>
                 <p>Use um modelo aprovado com uma variável no corpo para receber todo o resumo.</p>
-              </div>
-            </div>
-            <div className="operations-callout" style={{ marginTop: 10 }}>
-              <Icon name="chat" size={16} />
-              <div style={{ flex: 1 }}>
-                <strong>Áudios no atendimento</strong>
-                <p>
-                  Áudios recebidos são transcritos automaticamente para a Nina entender. Com a opção
-                  abaixo ativa, quando o cliente manda áudio a Nina também responde com áudio (voz
-                  gerada por IA).
-                </p>
-              </div>
-              <label className="studio-switch">
-                <input
-                  type="checkbox"
-                  checked={operations.voice_reply_enabled}
-                  onChange={(event) =>
-                    setOperations({ ...operations, voice_reply_enabled: event.target.checked })
-                  }
-                />
-                <span />
-                {operations.voice_reply_enabled ? "Ativo" : "Só texto"}
-              </label>
-            </div>
-            <div className="field-grid" style={{ marginTop: 14 }}>
-              <div className="field">
-                <label htmlFor="voice-name">Voz da Nina nos áudios</label>
-                <select
-                  id="voice-name"
-                  value={
-                    voiceCatalog?.provider === "elevenlabs"
-                      ? operations.elevenlabs_voice_id
-                      : operations.voice_name
-                  }
-                  onChange={(event) =>
-                    setOperations(
-                      voiceCatalog?.provider === "elevenlabs"
-                        ? { ...operations, elevenlabs_voice_id: event.target.value }
-                        : { ...operations, voice_name: event.target.value },
-                    )
-                  }
-                >
-                  {(voiceCatalog?.voices || voiceOptions.map((option) => ({ id: option.value, name: option.label }))).map(
-                    (option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ),
-                  )}
-                </select>
-                <span className="variable-help">
-                  {voiceCatalog?.provider === "elevenlabs"
-                    ? "Voz premium ElevenLabs ativa — as vozes acima vêm da sua conta (adicione novas no VoiceLab do ElevenLabs)."
-                    : "Usando as vozes da OpenAI. Para voz ultra natural em pt-BR, adicione a variável ELEVENLABS_API_KEY na Vercel — o sistema troca sozinho."}
-                  {" "}Ouça a amostra, escolha e salve para aplicar.
-                </span>
-              </div>
-              <div className="field">
-                <label>&nbsp;</label>
-                <button
-                  type="button"
-                  className="button"
-                  disabled={previewingVoice}
-                  onClick={() => {
-                    setPreviewingVoice(true);
-                    const selected =
-                      voiceCatalog?.provider === "elevenlabs"
-                        ? operations.elevenlabs_voice_id
-                        : operations.voice_name;
-                    const audio = new Audio(`/api/settings/voice-preview?voice=${selected}`);
-                    audio.onended = () => setPreviewingVoice(false);
-                    audio.onerror = () => setPreviewingVoice(false);
-                    void audio.play().catch(() => setPreviewingVoice(false));
-                  }}
-                >
-                  {previewingVoice ? "Tocando…" : "🔊 Ouvir amostra desta voz"}
-                </button>
               </div>
             </div>
             <div className="field-grid">
