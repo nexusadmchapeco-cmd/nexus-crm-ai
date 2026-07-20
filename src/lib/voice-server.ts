@@ -78,17 +78,34 @@ export async function synthesizeNinaVoice(
   text: string,
   options: { openAiVoice?: string; elevenVoiceId?: string },
 ): Promise<ArrayBuffer> {
+  const { audio } = await synthesizeNinaVoiceDetailed(text, options);
+  return audio;
+}
+
+/** Igual ao synthesizeNinaVoice, mas informa qual provedor foi usado e o erro. */
+export async function synthesizeNinaVoiceDetailed(
+  text: string,
+  options: { openAiVoice?: string; elevenVoiceId?: string },
+): Promise<{ audio: ArrayBuffer; provider: "elevenlabs" | "openai"; elevenError?: string }> {
   const apiKey = await resolveElevenLabsKey();
+  let elevenError: string | undefined;
   if (apiKey && options.elevenVoiceId) {
     try {
-      return await synthesizeWithElevenLabs(text, options.elevenVoiceId, apiKey);
+      const audio = await synthesizeWithElevenLabs(text, options.elevenVoiceId, apiKey);
+      return { audio, provider: "elevenlabs" };
     } catch (error) {
+      elevenError = error instanceof Error ? error.message : "erro desconhecido";
       console.error("ElevenLabs falhou; caindo para OpenAI TTS", error);
     }
+  } else if (!apiKey) {
+    elevenError = "Chave do ElevenLabs não encontrada";
+  } else if (!options.elevenVoiceId) {
+    elevenError = "Voz do ElevenLabs não configurada";
   }
-  return synthesizeSpeech(text, {
+  const audio = await synthesizeSpeech(text, {
     voice: options.openAiVoice || "nova",
     format: "mp3",
     instructions: ninaVoiceInstructions,
   });
+  return { audio, provider: "openai", elevenError };
 }
