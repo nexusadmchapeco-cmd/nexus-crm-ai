@@ -7,9 +7,8 @@ import { sendWhatsAppAudio } from "@/lib/whatsapp";
 
 export const maxDuration = 60;
 
-// Diagnóstico ponta a ponta da voz no WhatsApp. Roda o MESMO caminho do
-// webhook (síntese -> conversão ogg -> envio) e reporta cada etapa.
-// Opcional: ?to=55XXXXXXXXXXX envia um áudio de teste para esse número.
+// Diagnóstico ponta a ponta da voz. Usa um texto longo (~400 caracteres)
+// para provar que a chave aguenta uma resposta real, não só a amostra curta.
 export async function GET(request: Request) {
   const to = new URL(request.url).searchParams.get("to");
   const steps: Record<string, unknown> = {};
@@ -23,20 +22,20 @@ export async function GET(request: Request) {
     steps.config = {
       voice_reply_enabled: operations.voice_reply_enabled,
       elevenlabs_voice_id: operations.elevenlabs_voice_id,
-      openai_voice: operations.voice_name,
     };
 
     const text =
-      "Oi! Aqui é a Nina, da Nexus English Center. Esse é um teste de voz pra confirmar que tá tudo certo por aqui.";
+      "Oi! Que bom que você chamou a Nexus English Center. Aqui é a Nina, a assistente virtual. " +
+      "Eu vou fazer um atendimento rapidinho pra entender teu perfil e já te passar uma ideia dos " +
+      "planos e valores. Me conta uma coisa: você já estudou inglês antes, ou tá começando do zero? " +
+      "E como é a tua rotina hoje, quais dias e horários funcionariam melhor pra fazer as aulas?";
+    steps.text_length = text.length;
+
     const { audio, provider, elevenError } = await synthesizeNinaVoiceDetailed(text, {
       openAiVoice: operations.voice_name || "nova",
       elevenVoiceId: operations.elevenlabs_voice_id,
     });
-    steps.synthesis = {
-      provider,
-      mp3_bytes: audio.byteLength,
-      eleven_error: elevenError || null,
-    };
+    steps.synthesis = { provider, mp3_bytes: audio.byteLength, eleven_error: elevenError || null };
 
     const voiceNote = await toWhatsAppVoice(audio);
     steps.ogg_conversion = { ogg_bytes: voiceNote.byteLength, ok: voiceNote.byteLength > 0 };
@@ -54,8 +53,8 @@ export async function GET(request: Request) {
       ok: true,
       summary:
         provider === "elevenlabs"
-          ? "ElevenLabs funcionando ✅"
-          : `Usando OpenAI (fallback). Motivo: ${elevenError || "desconhecido"}`,
+          ? "ElevenLabs funcionando em texto longo ✅"
+          : `Fallback OpenAI. Motivo: ${elevenError || "desconhecido"}`,
       steps,
     });
   } catch (error) {
