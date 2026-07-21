@@ -6,22 +6,22 @@ import { requireEnv } from "@/lib/env";
 const TEMPLATES = [
   {
     name: "followup_ctx_dia1",
-    text: "Oi, {{1}}! Passando aqui pra saber se você ainda quer seguir com o inglês {{2}}. Posso retomar teu atendimento por aqui, é rapidinho.",
+    text: "Hello, {{1}}! Passando aqui pra saber se você ainda quer seguir com o inglês {{2}}. Posso retomar teu atendimento por aqui, é rapidinho.",
     example: ["Maria", "pra viagem"],
   },
   {
     name: "followup_ctx_dia3",
-    text: "Oi, {{1}}! Tô montando as próximas turmas e lembrei de você. Ainda quer destravar o inglês {{2}}? Posso te mostrar as opções que encaixam.",
+    text: "Hello, {{1}}! Tô montando as próximas turmas e lembrei de você. Ainda quer destravar o inglês {{2}}? Posso te mostrar as opções que encaixam.",
     example: ["Maria", "pra trabalho"],
   },
   {
     name: "followup_ctx_dia7",
-    text: "Oi, {{1}}! Que tal a gente agilizar com uma aula experimental? Assim você sente na prática como funciona o inglês {{2}}. O que acha?",
+    text: "Hello, {{1}}! Que tal a gente agilizar com uma aula experimental? Assim você sente na prática como funciona o inglês {{2}}. O que acha?",
     example: ["Maria", "pra viagem"],
   },
   {
     name: "followup_ctx_dia21",
-    text: "Oi, {{1}}! Vou pausar teu atendimento por enquanto, mas seu interesse no inglês {{2}} fica anotado aqui. Quando quiser retomar, é só chamar.",
+    text: "Hello, {{1}}! Vou pausar teu atendimento por enquanto, mas seu interesse no inglês {{2}} fica anotado aqui. Quando quiser retomar, é só chamar.",
     example: ["Maria", "no seu dia a dia"],
   },
 ];
