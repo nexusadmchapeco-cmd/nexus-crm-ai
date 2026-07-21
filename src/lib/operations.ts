@@ -7,10 +7,12 @@ export const defaultOperationsSettings: OperationsSettings = {
   closer_template_name: "resumo_closer",
   followup_template_name: "",
   followup_template_names: {
-    "1440": "followup_dia1",
-    "4320": "followup_dia3",
-    "10080": "followup_dia7",
-    "30240": "followup_dia21",
+    // Templates com contexto (2 variáveis: nome + objetivo). Após aprovados
+    // na Meta, o job envia o objetivo do lead para não repetir perguntas.
+    "1440": "followup_ctx_dia1",
+    "4320": "followup_ctx_dia3",
+    "10080": "followup_ctx_dia7",
+    "30240": "followup_ctx_dia21",
   },
   campaign_template_names: {
     // Sem modelo aprovado equivalente na Meta ainda; crie "reativacao_leads"

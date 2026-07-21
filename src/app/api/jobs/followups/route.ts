@@ -214,12 +214,20 @@ export async function GET(request: Request) {
         );
         continue;
       }
+      // Contexto do objetivo, para o template variar por lead sem repetir o
+      // que já foi perguntado. Ex.: "pra viagem", "pra trabalho" ou fallback.
+      const objective = String(lead.objective || "").replace(/\s+/g, " ").trim();
+      const contextPhrase = objective ? `pra ${objective}`.slice(0, 60) : "no seu dia a dia";
+      // Templates novos (followup_ctx_*) usam 2 variáveis; os antigos, só 1.
+      const templateParams = templateName.includes("_ctx_")
+        ? [lead.name || "tudo bem", contextPhrase]
+        : [lead.name || "tudo bem"];
       try {
         const result = await sendWhatsAppTemplate(
           lead.phone,
           templateName,
           operations.language_code,
-          [lead.name || "tudo bem"],
+          templateParams,
         );
         const whatsappMessageId = result?.messages?.[0]?.id || null;
         await Promise.all([
