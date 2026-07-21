@@ -65,11 +65,13 @@ export async function POST(request: Request) {
           whatsapp_message_id: incoming.id,
         });
         if (!result.ai_reply) return;
+        const parts = result.ai_reply_parts?.length
+          ? result.ai_reply_parts
+          : [result.ai_reply];
 
-        // Delay humanizado: ninguém digita uma resposta inteira em 1 segundo.
-        // Proporcional ao tamanho da resposta, entre 1,5s e 4,5s.
-        const humanDelay = Math.min(1500 + result.ai_reply.length * 30, 4500);
-        await new Promise((resolve) => setTimeout(resolve, humanDelay));
+        // Delay humanizado da primeira mensagem (ninguém digita tudo em 1s).
+        const firstDelay = Math.min(1200 + parts[0].length * 28, 4000);
+        await new Promise((resolve) => setTimeout(resolve, firstDelay));
 
         // Lead mandou áudio -> Nina responde com áudio (se habilitado);
         // qualquer falha na voz cai para texto, o atendimento nunca para.
@@ -105,7 +107,15 @@ export async function POST(request: Request) {
           }
         }
         if (!voiceSent) {
-          await sendWhatsAppMessage(incoming.from, result.ai_reply);
+          // Envia cada bolha separada, com "digitando…" e pausa natural entre elas.
+          for (let index = 0; index < parts.length; index++) {
+            if (index > 0) {
+              await sendTypingIndicator(incoming.id).catch(() => {});
+              const gap = Math.min(1000 + parts[index].length * 25, 3500);
+              await new Promise((resolve) => setTimeout(resolve, gap));
+            }
+            await sendWhatsAppMessage(incoming.from, parts[index]);
+          }
         }
       } catch (error) {
         console.error("WhatsApp background processing error", error);

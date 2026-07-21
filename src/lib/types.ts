@@ -166,7 +166,8 @@ export type CampaignAudienceLead = Pick<
 };
 
 export type AiDecision = {
-  reply: string;
+  // 1 a 3 mensagens curtas que a Nina envia em sequência (como no WhatsApp).
+  reply_messages: string[];
   extracted: {
     name: string | null;
     city: string | null;
