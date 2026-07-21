@@ -183,7 +183,8 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({
-      reply: decision.reply,
+      reply: decision.reply_messages.join("\n\n"),
+      reply_messages: decision.reply_messages,
       stage_role: nextRole,
       stage_name: nextStage.name,
       lead: {

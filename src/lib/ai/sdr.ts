@@ -8,7 +8,7 @@ const schema = {
     type: "object",
     additionalProperties: false,
     required: [
-      "reply",
+      "reply_messages",
       "extracted",
       "temperature",
       "should_handoff",
@@ -20,7 +20,7 @@ const schema = {
       "appointment",
     ],
     properties: {
-      reply: { type: "string" },
+      reply_messages: { type: "array", items: { type: "string" } },
       extracted: {
         type: "object",
         additionalProperties: false,
@@ -140,7 +140,9 @@ export async function runSdr({
             availableSlots
               ? `\n\nJANELAS DE DISPONIBILIDADE:\n${availableSlots}\nUse-as para sugerir opções. Só marque appointment.should_schedule=true quando o lead confirmar explicitamente um dia e horário exatos. Use starts_at em ISO 8601 com fuso -03:00 e duration_minutes=30. Reunião comercial é closer_meeting; aula experimental é experimental_class.`
               : "",
+            "\n\nFORMATO DAS MENSAGENS (reply_messages): escreva como uma pessoa real conversa no WhatsApp. Preencha reply_messages com 1 ou 2 mensagens curtas (no máximo 3, e só se realmente fizer sentido). Cada item do array é uma bolha de mensagem separada. Use 2 mensagens quando ajudar o ritmo (ex.: uma reagindo ao que a pessoa disse e outra com a próxima pergunta), mas NÃO pique demais nem mande textão. Faça no máximo UMA pergunta por vez no conjunto. Seja natural e fluido: nem formal nem forçando intimidade — nada de 'amiga', 'querida', excesso de emojis ou empolgação artificial. Fale como uma atendente simpática e tranquila.",
             "\n\nREGRA DE SEGURANÇA DA AGENDA: nunca invente disponibilidade e nunca confirme um agendamento sem confirmação explícita do cliente. Caso ainda esteja negociando o horário, deixe should_schedule=false e os demais campos de appointment como null.",
+            "\n\nENCAMINHAMENTO AO CLOSER (should_handoff): marque should_handoff=true assim que o lead estiver qualificado E demonstrar interesse em seguir — ou seja, quando você já tem uma ideia do objetivo, da rotina/disponibilidade e do nível dele, já apresentou a Nexus e os planos, e ele reagiu positivamente (quer saber valores/horários, quer conhecer, pediu pra falar com alguém, ou topou avançar). Nesses casos defina temperature='pronto_para_closer'. Não espere o lead pedir explicitamente por um humano. Se ainda falta informação básica ou o lead está só perguntando o preço logo de cara, continue qualificando (should_handoff=false).",
             "\n\nDESQUALIFICAÇÃO: marque should_disqualify=true apenas quando UM destes casos ficar claro na conversa, e preencha disqualify_reason:\n" +
               '- explicit_no: o lead recusou explicitamente ("não tenho interesse", "para de mandar mensagem", "não quero", etc.).\n' +
               "- out_of_profile: o lead não se encaixa no público da Nexus (cidade fora das unidades atendidas, sem qualquer condição de pagar, ou fora do perfil de idade/objetivo do curso).\n" +
@@ -158,5 +160,12 @@ export async function runSdr({
 
   const content = payload.choices?.[0]?.message?.content;
   if (!content) throw new Error("A OpenAI não retornou uma decisão");
-  return JSON.parse(content) as AiDecision;
+  const decision = JSON.parse(content) as AiDecision;
+  // Saneamento: mantém no máximo 3 mensagens não vazias; garante ao menos uma.
+  const parts = (decision.reply_messages || [])
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 3);
+  decision.reply_messages = parts.length ? parts : [decision.next_action || "Certo!"];
+  return decision;
 }

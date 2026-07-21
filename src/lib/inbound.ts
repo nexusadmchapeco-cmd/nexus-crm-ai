@@ -116,6 +116,7 @@ export async function processInbound(payload: InboundPayload) {
       lead,
       conversation,
       ai_reply: null,
+      ai_reply_parts: [] as string[],
       stage: stageByRole.get("closer_owns") || newStage,
       skipped_ai: true,
     };
@@ -217,18 +218,20 @@ export async function processInbound(payload: InboundPayload) {
     if (updated.error) throw updated.error;
     lead = updated.data;
 
+    // A Nina pode responder em 1-3 bolhas; grava cada uma como mensagem própria.
+    const replyParts = decision.reply_messages;
     const aiMessage = await supabase
       .from("messages")
-      .insert({
-        conversation_id: conversation.id,
-        lead_id: lead.id,
-        sender_type: "ai",
-        content: decision.reply,
-        status: "sent",
-        is_ai: true,
-      })
-      .select()
-      .single();
+      .insert(
+        replyParts.map((content) => ({
+          conversation_id: conversation.id,
+          lead_id: lead.id,
+          sender_type: "ai",
+          content,
+          status: "sent",
+          is_ai: true,
+        })),
+      );
     if (aiMessage.error) throw aiMessage.error;
     await supabase.from("lead_events").insert({
       lead_id: lead.id,
@@ -420,7 +423,14 @@ export async function processInbound(payload: InboundPayload) {
       }
     }
 
-    return { lead, conversation, ai_reply: decision.reply, stage: targetStage, skipped_ai: false };
+    return {
+      lead,
+      conversation,
+      ai_reply: replyParts.join("\n\n"),
+      ai_reply_parts: replyParts,
+      stage: targetStage,
+      skipped_ai: false,
+    };
   } catch (error) {
     await supabase.from("lead_events").insert({
       lead_id: lead.id,
