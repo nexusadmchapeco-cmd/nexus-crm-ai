@@ -25,6 +25,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (body.status) patch.status = body.status;
     if (typeof body.title === "string") patch.title = body.title.trim();
     if (typeof body.content === "string") patch.content = body.content.trim();
+    if (typeof body.category === "string") patch.category = body.category.trim() || "Geral";
+    if (typeof body.unit === "string") patch.unit = body.unit || null;
+    if (typeof body.valid_until === "string") patch.valid_until = body.valid_until || null;
     if (!Object.keys(patch).length) {
       return NextResponse.json({ error: "Nada para atualizar." }, { status: 400 });
     }
