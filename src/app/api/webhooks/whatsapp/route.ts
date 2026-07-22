@@ -37,8 +37,9 @@ export async function POST(request: Request) {
 
     after(async () => {
       try {
-        // Marca como lida e mostra "digitando…" enquanto a Nina pensa.
-        await sendTypingIndicator(incoming.id).catch(() => {});
+        // Marca como lida e mostra "digitando…" — sem travar: a IA já começa
+        // a processar em paralelo, ganhando o tempo dessa chamada.
+        void sendTypingIndicator(incoming.id).catch(() => {});
         const isAudio = incoming.type === "audio";
         let messageText = incoming.text?.body || "";
         if (isAudio) {
@@ -69,13 +70,15 @@ export async function POST(request: Request) {
           ? result.ai_reply_parts
           : [result.ai_reply];
 
-        // Ritmo humano: mensagem curta chega bem rápido; texto grande "digita"
-        // por no máximo 2s. Só mostra "digitando…" quando a pausa é perceptível.
+        // Ritmo humano enxuto: curta = quase instantânea; texto grande "digita"
+        // por no máximo ~1,2s. Só mostra "digitando…" quando a pausa é perceptível.
         const pauseFor = (text: string) =>
-          text.length <= 45 ? 300 : Math.min(Math.round(text.length * 16), 2000);
-        const isLong = (text: string) => text.length > 45;
+          text.length <= 60 ? 0 : Math.min(Math.round(text.length * 9), 1200);
+        const isLong = (text: string) => text.length > 60;
 
-        await new Promise((resolve) => setTimeout(resolve, pauseFor(parts[0])));
+        if (pauseFor(parts[0]) > 0) {
+          await new Promise((resolve) => setTimeout(resolve, pauseFor(parts[0])));
+        }
 
         // Lead mandou áudio -> Nina responde com áudio (se habilitado);
         // qualquer falha na voz cai para texto, o atendimento nunca para.
