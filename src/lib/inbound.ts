@@ -126,7 +126,23 @@ export async function processInbound(payload: InboundPayload) {
   // invocação da última mensagem responder — considerando todas juntas.
   // (No simulador não faz sentido; só vale para o WhatsApp real.)
   if (payload.source !== "simulador") {
-    const DEBOUNCE_MS = 7000;
+    // Espera adaptativa: se a Nina acabou de fazer VÁRIAS perguntas, o lead
+    // tende a responder picado e mais devagar — então esperamos bastante para
+    // juntar todos os pedaços antes de responder. Numa troca normal, a espera
+    // é curta para a resposta continuar rápida.
+    const { data: lastAi } = await supabase
+      .from("messages")
+      .select("content")
+      .eq("lead_id", lead.id)
+      .eq("sender_type", "ai")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const questionCount = ((lastAi?.content || "").match(/\?/g) || []).length;
+    const currentIsShort = payload.message.trim().length <= 25;
+    // Nina fez 2+ perguntas, ou a mensagem atual parece um fragmento curto
+    // (provável começo de uma resposta em pedaços): espera longa. Senão, curta.
+    const DEBOUNCE_MS = questionCount >= 2 || currentIsShort ? 14000 : 6000;
     await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS));
     const { data: latestInbound } = await supabase
       .from("messages")
@@ -156,12 +172,14 @@ export async function processInbound(payload: InboundPayload) {
   ] =
     await Promise.all([
       supabase.from("ai_settings").select("*").order("created_at").limit(1).single(),
+      // As 30 mensagens MAIS RECENTES (ordem desc no banco); revertidas abaixo
+      // para a ordem cronológica que o modelo espera.
       supabase
         .from("messages")
         .select("*")
         .eq("lead_id", lead.id)
-        .order("created_at")
-        .limit(20),
+        .order("created_at", { ascending: false })
+        .limit(30),
       supabase
         .from("ai_settings")
         .select("global_prompt")
@@ -171,6 +189,7 @@ export async function processInbound(payload: InboundPayload) {
   if (settingsError) throw settingsError;
   if (messagesError) throw messagesError;
   if (stagePromptError) throw stagePromptError;
+  const orderedMessages = ((messages as Message[]) || []).slice().reverse();
 
   try {
     const now = new Date().toISOString().slice(0, 10);
@@ -214,7 +233,7 @@ export async function processInbound(payload: InboundPayload) {
     const decision = await runSdr({
       lead,
       settings,
-      messages: messages as Message[],
+      messages: orderedMessages,
       stagePrompt:
         stagePromptRow?.global_prompt ||
         defaultStagePrompts[
