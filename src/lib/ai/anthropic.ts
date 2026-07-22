@@ -66,6 +66,12 @@ export async function anthropicToolCall({
 }): Promise<Record<string, unknown>> {
   // Sem `temperature`: os modelos Claude atuais (Sonnet 5 em diante) a
   // depreciaram e retornam 400 se ela for enviada.
+  //
+  // Cache de prompt: o ponto de corte (cache_control) fica no fim do bloco do
+  // sistema, então tudo que vem antes dele no prefixo — a ferramenta + todo o
+  // roteiro/base de conhecimento/regras — é cacheado. Em turnos seguintes da
+  // mesma conversa (janela de ~5 min) essa parte é lida a ~10% do preço, o que
+  // barateia bastante cada resposta.
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -76,7 +82,7 @@ export async function anthropicToolCall({
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      system,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: userContent }],
       tools: [tool],
       tool_choice: { type: "tool", name: tool.name },
