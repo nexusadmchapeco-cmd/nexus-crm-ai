@@ -34,7 +34,7 @@ export function buildChatBody(
   return {
     model,
     ...(temperature != null && supportsTemperature(model) ? { temperature } : {}),
-    ...(isReasoningModel(model) ? { reasoning_effort: "minimal" } : {}),
+    ...(isReasoningModel(model) ? { reasoning_effort: "low" } : {}),
     ...rest,
   };
 }
