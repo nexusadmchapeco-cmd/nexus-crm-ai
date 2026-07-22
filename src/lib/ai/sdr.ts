@@ -160,7 +160,6 @@ export async function runSdr({
         const decision = await anthropicToolCall({
           apiKey: anthropicKey,
           model,
-          temperature: settings.temperature,
           system: systemContent,
           userContent,
           tool: {

@@ -52,7 +52,6 @@ type AnthropicTool = {
 export async function anthropicToolCall({
   apiKey,
   model,
-  temperature,
   system,
   userContent,
   tool,
@@ -60,15 +59,13 @@ export async function anthropicToolCall({
 }: {
   apiKey: string;
   model: string;
-  temperature: number | null | undefined;
   system: string;
   userContent: string;
   tool: AnthropicTool;
   maxTokens?: number;
 }): Promise<Record<string, unknown>> {
-  // A Anthropic aceita temperature entre 0 e 1; a escala da OpenAI vai até 2.
-  const temp = typeof temperature === "number" ? Math.max(0, Math.min(1, temperature)) : undefined;
-
+  // Sem `temperature`: os modelos Claude atuais (Sonnet 5 em diante) a
+  // depreciaram e retornam 400 se ela for enviada.
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -79,7 +76,6 @@ export async function anthropicToolCall({
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      ...(temp != null ? { temperature: temp } : {}),
       system,
       messages: [{ role: "user", content: userContent }],
       tools: [tool],
