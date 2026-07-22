@@ -27,27 +27,31 @@ export async function sendWhatsAppMessage(phone: string, message: string) {
 }
 
 /**
- * Marca a mensagem recebida como lida e mostra "digitando…" para o cliente
- * (o indicador some sozinho quando a resposta é enviada, ou após ~25s).
+ * Marca a mensagem como lida e mostra o indicador: "digitando…" (text) ou
+ * "gravando áudio" (audio). Se a conta não aceitar o modo áudio, cai para
+ * text. O indicador some sozinho ao enviar a resposta, ou após ~25s.
  */
-export async function sendTypingIndicator(messageId: string) {
+export async function sendTypingIndicator(messageId: string, mode: "text" | "audio" = "text") {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
   if (!token || !phoneNumberId) throw new Error("WhatsApp Cloud API não configurada");
-  const response = await fetch(
-    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
-    {
+  const post = (type: string) =>
+    fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         messaging_product: "whatsapp",
         status: "read",
         message_id: messageId,
-        typing_indicator: { type: "text" },
+        typing_indicator: { type },
       }),
-    },
-  );
+    });
+  let response = await post(mode);
+  if (!response.ok && mode !== "text") {
+    // Modo "audio" não suportado nesta conta -> volta pro "digitando".
+    response = await post("text");
+  }
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`Falha no indicador de digitação (${response.status}): ${body.slice(0, 200)}`);
