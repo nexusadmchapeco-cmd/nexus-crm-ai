@@ -121,6 +121,33 @@ export async function processInbound(payload: InboundPayload) {
     };
   }
 
+  // Debounce: o lead costuma mandar em pedaços. Espera alguns segundos; se
+  // chegar mensagem mais nova nesse meio, esta execução para e deixa a
+  // invocação da última mensagem responder — considerando todas juntas.
+  // (No simulador não faz sentido; só vale para o WhatsApp real.)
+  if (payload.source !== "simulador") {
+    const DEBOUNCE_MS = 7000;
+    await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS));
+    const { data: latestInbound } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .eq("sender_type", "lead")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestInbound && latestInbound.id !== insertedMessage.data.id) {
+      return {
+        lead,
+        conversation,
+        ai_reply: null,
+        ai_reply_parts: [] as string[],
+        stage: newStage,
+        skipped_ai: true,
+      };
+    }
+  }
+
   const stagePromptKey = `__stage__:${lead.stage_id}`;
   const [
     { data: settings, error: settingsError },
