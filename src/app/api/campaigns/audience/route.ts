@@ -5,16 +5,17 @@ import {
   emptyCampaignFilters,
   normalizeCampaignFilters,
 } from "@/lib/campaigns";
-import { getAiSettings, getLeads, getStages } from "@/lib/data";
+import { getLeads, getStages } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CampaignFilters, Message } from "@/lib/types";
 
 async function interpretWithAi(instruction: string) {
   const stages = await getStages();
-  const settings = await getAiSettings();
+  // Tarefa interna simples (interpretar filtros): usa sempre o modelo OpenAI
+  // econômico, independente do modelo da conversa (que agora é Claude).
   const { payload: body } = await chatCompletionWithFallback({
     apiKey: process.env.OPENAI_API_KEY || "",
-    model: settings?.model || FALLBACK_MODEL,
+    model: FALLBACK_MODEL,
     temperature: 0,
     body: {
       response_format: { type: "json_object" },

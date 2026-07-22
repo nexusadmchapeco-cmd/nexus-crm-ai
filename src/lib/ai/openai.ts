@@ -7,12 +7,16 @@
 
 export const FALLBACK_MODEL = "gpt-4.1-mini";
 
+// Lista de modelos do seletor no Estúdio de IA. Claude (Anthropic) primeiro —
+// é o cérebro padrão da conversa; os GPT ficam como alternativa.
 export const conversationModels = [
-  { value: "gpt-5-mini", label: "GPT-5 mini · rápido e inteligente (recomendado)" },
-  { value: "gpt-5", label: "GPT-5 · máxima qualidade" },
-  { value: "gpt-4.1", label: "GPT-4.1 · ótimo em conversa" },
-  { value: "gpt-4o", label: "GPT-4o · clássico conversacional" },
-  { value: "gpt-4.1-mini", label: "GPT-4.1 mini · econômico" },
+  { value: "claude-sonnet-5", label: "Claude Sonnet 5 · segue o roteiro melhor (recomendado)" },
+  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 · mais rápido e econômico" },
+  { value: "claude-opus-4-8", label: "Claude Opus 4.8 · máxima qualidade" },
+  { value: "gpt-5-mini", label: "GPT-5 mini · alternativa OpenAI" },
+  { value: "gpt-4.1", label: "GPT-4.1 · alternativa OpenAI" },
+  { value: "gpt-4o", label: "GPT-4o · alternativa OpenAI" },
+  { value: "gpt-4.1-mini", label: "GPT-4.1 mini · alternativa econômica" },
 ];
 
 export function supportsTemperature(model: string) {
