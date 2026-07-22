@@ -69,9 +69,13 @@ export async function POST(request: Request) {
           ? result.ai_reply_parts
           : [result.ai_reply];
 
-        // Delay humanizado da primeira mensagem (ninguém digita tudo em 1s).
-        const firstDelay = Math.min(1200 + parts[0].length * 28, 4000);
-        await new Promise((resolve) => setTimeout(resolve, firstDelay));
+        // Ritmo humano: mensagem curta chega bem rápido; texto grande "digita"
+        // por no máximo 2s. Só mostra "digitando…" quando a pausa é perceptível.
+        const pauseFor = (text: string) =>
+          text.length <= 45 ? 300 : Math.min(Math.round(text.length * 16), 2000);
+        const isLong = (text: string) => text.length > 45;
+
+        await new Promise((resolve) => setTimeout(resolve, pauseFor(parts[0])));
 
         // Lead mandou áudio -> Nina responde com áudio (se habilitado);
         // qualquer falha na voz cai para texto, o atendimento nunca para.
@@ -85,6 +89,8 @@ export async function POST(request: Request) {
               .maybeSingle();
             const operations = parseOperationsSettings(operationsRow?.global_prompt);
             if (operations.voice_reply_enabled) {
+              // Mostra "gravando áudio" enquanto a voz é gerada.
+              await sendTypingIndicator(incoming.id, "audio").catch(() => {});
               const speech = await synthesizeNinaVoice(result.ai_reply, {
                 openAiVoice: operations.voice_name || "nova",
                 elevenVoiceId: operations.elevenlabs_voice_id,
@@ -107,12 +113,14 @@ export async function POST(request: Request) {
           }
         }
         if (!voiceSent) {
-          // Envia cada bolha separada, com "digitando…" e pausa natural entre elas.
+          // Envia cada bolha separada. Só "digita" (com pausa) antes de bolhas
+          // maiores; as curtas saem quase na hora.
           for (let index = 0; index < parts.length; index++) {
             if (index > 0) {
-              await sendTypingIndicator(incoming.id).catch(() => {});
-              const gap = Math.min(1000 + parts[index].length * 25, 3500);
-              await new Promise((resolve) => setTimeout(resolve, gap));
+              if (isLong(parts[index])) {
+                await sendTypingIndicator(incoming.id).catch(() => {});
+              }
+              await new Promise((resolve) => setTimeout(resolve, pauseFor(parts[index])));
             }
             await sendWhatsAppMessage(incoming.from, parts[index]);
           }
