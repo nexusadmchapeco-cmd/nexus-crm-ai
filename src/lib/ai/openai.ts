@@ -19,6 +19,13 @@ export function supportsTemperature(model: string) {
   return model.startsWith("gpt-4") || model.includes("chat");
 }
 
+// Modelos GPT-5 (reasoning) "pensam" antes de responder, o que adiciona
+// latência. Para um SDR de chat o esforço mínimo já basta e deixa a resposta
+// muito mais rápida.
+export function isReasoningModel(model: string) {
+  return model.startsWith("gpt-5") || model.startsWith("o1") || model.startsWith("o3");
+}
+
 export function buildChatBody(
   model: string,
   temperature: number | null | undefined,
@@ -27,6 +34,7 @@ export function buildChatBody(
   return {
     model,
     ...(temperature != null && supportsTemperature(model) ? { temperature } : {}),
+    ...(isReasoningModel(model) ? { reasoning_effort: "minimal" } : {}),
     ...rest,
   };
 }
