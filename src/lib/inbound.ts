@@ -372,7 +372,8 @@ export async function processInbound(payload: InboundPayload) {
           const closerParams = [
             sanitizeParam(lead.name || "Lead sem nome"),
             sanitizeParam(lead.objective || "Não informado"),
-            sanitizeParam(lead.city || "Não informada"),
+            // Unidade: Online conta como unidade; usa unit_interest e cai na cidade.
+            sanitizeParam(lead.unit_interest || lead.city || "Não informada"),
             sanitizeParam(lead.availability || "Não informada"),
             sanitizeParam(lead.summary || decision.summary || "Sem resumo"),
           ];
