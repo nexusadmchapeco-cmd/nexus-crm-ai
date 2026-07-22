@@ -117,7 +117,7 @@ export async function runSdr({
       objection: lead.objection,
       temperature: lead.temperature,
     },
-    recent_messages: messages.slice(-12).map((message) => ({
+    recent_messages: messages.slice(-20).map((message) => ({
       sender: message.sender_type,
       content: message.content,
     })),
