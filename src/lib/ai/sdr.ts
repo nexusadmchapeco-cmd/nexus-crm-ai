@@ -133,6 +133,7 @@ export async function runSdr({
       ? `\n\nJANELAS DE DISPONIBILIDADE:\n${availableSlots}\nUse-as para sugerir opções. Só marque appointment.should_schedule=true quando o lead confirmar explicitamente um dia e horário exatos. Use starts_at em ISO 8601 com fuso -03:00 e duration_minutes=30. Reunião comercial é closer_meeting; aula experimental é experimental_class.`
       : "",
     "\n\nFORMATO TÉCNICO (reply_messages): este campo é um array; cada item vira uma bolha separada no WhatsApp. Coloque o texto da etapa atual do roteiro acima, respeitando exatamente o que ele manda dizer e perguntar (se o roteiro pede várias perguntas numa mensagem, mantenha juntas). Quebre em 2 bolhas apenas quando o próprio texto tiver uma parte de fala e depois uma pergunta, e ficar mais natural separado. Não invente conteúdo novo nem contrarie o roteiro; este campo é só o formato de entrega.",
+    "\n\nNUNCA PARE NUMA CONFIRMAÇÃO VAZIA: quando o lead te der as informações que você pediu (ou responder o que você perguntou), é PROIBIDO responder só com uma confirmação seca do tipo 'Legal', 'Certo', 'Perfeito', 'Show', 'Ótimo', 'Bacana' e encerrar o turno esperando ele falar de novo. Reconheça em poucas palavras E JÁ EMENDE, na MESMA resposta, o próximo passo do roteiro: explicar como funciona a Nexus, apresentar o curso, dar os valores, ou fazer a próxima pergunta. O campo next_action é o que você deve fazer AGORA, nesta resposta — não numa mensagem futura. Só encerre o seu turno quando a bola estiver de fato com o lead (você fez uma pergunta ou pediu uma decisão e precisa da resposta dele). Se você não fez nenhuma pergunta nesta resposta, é sinal de que ela está incompleta: continue o roteiro.",
     "\n\nUNIDADE (unit_interest): Online é uma unidade como qualquer outra. Quando o lead escolher online, defina unit_interest='Online'. Quando for presencial, defina unit_interest com a unidade escolhida (ex.: 'Chapecó' ou 'Passo Fundo'). Sempre registre a unidade escolhida em unit_interest.",
     "\n\nREGRA DE SEGURANÇA DA AGENDA: nunca invente disponibilidade e nunca confirme um agendamento sem confirmação explícita do cliente. Caso ainda esteja negociando o horário, deixe should_schedule=false e os demais campos de appointment como null.",
     "\n\nTEMPERATURA E ENCAMINHAMENTO AO CLOSER — siga esta régua com rigor, NÃO acione cedo:\n" +
@@ -209,12 +210,14 @@ async function runOpenAiSdr(
   return sanitizeDecision(JSON.parse(content) as AiDecision);
 }
 
-// Saneamento: mantém no máximo 3 mensagens não vazias; garante ao menos uma.
+// Saneamento: mantém no máximo 5 mensagens não vazias; garante ao menos uma.
+// (5 porque etapas como a explicação da Nexus têm reconhecimento + 2-3 falas +
+// a pergunta de fechamento; com um teto menor a pergunta final ficava de fora.)
 function sanitizeDecision(decision: AiDecision): AiDecision {
   const parts = (decision.reply_messages || [])
     .map((part) => (typeof part === "string" ? part.trim() : ""))
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, 5);
   decision.reply_messages = parts.length ? parts : [decision.next_action || "Certo!"];
   return decision;
 }
