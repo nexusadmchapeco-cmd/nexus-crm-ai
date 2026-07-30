@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChatActions } from "@/components/conversations/chat-actions";
 import { Composer } from "@/components/conversations/composer";
 import { MessageList } from "@/components/conversations/message-list";
+import { LeadHistory } from "@/components/leads/lead-history";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
@@ -111,6 +112,10 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 </div>
                 <div className="detail-section"><h4>Resumo da IA</h4><div className="ai-summary">{selected.summary || "A IA criará um resumo conforme a conversa evoluir."}</div></div>
                 <div className="detail-section"><h4>Próxima ação</h4><div className="next-action">{selected.next_action || "Aguardar resposta do lead."}</div></div>
+                <div className="detail-section">
+                  <h4>Follow-up do closer</h4>
+                  <LeadHistory leadId={selected.id} />
+                </div>
               </div>
             </aside>
           </>
