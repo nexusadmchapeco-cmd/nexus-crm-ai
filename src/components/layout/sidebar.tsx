@@ -12,6 +12,7 @@ const nav = [
   { href: "/conversations", label: "Conversas", icon: "chat" as const },
   { href: "/agenda", label: "Agenda", icon: "calendar" as const },
   { href: "/level-tests", label: "Testes de nível", icon: "report" as const },
+  { href: "/vendedor", label: "Vendedor", icon: "trend" as const },
   { href: "/reports", label: "Relatório diário", icon: "report" as const },
   { href: "/test-inbound", label: "Simulador", icon: "flask" as const },
   { href: "/campaigns", label: "Disparos", icon: "send" as const },

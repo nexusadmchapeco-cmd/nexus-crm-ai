@@ -1,4 +1,5 @@
 import { Icon } from "@/components/ui/icon";
+import { SellerSelect } from "@/components/layout/seller-select";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 
@@ -21,6 +22,7 @@ export async function Topbar() {
         <kbd>⌘ K</kbd>
       </div>
       <div className="topbar-actions">
+        <SellerSelect />
         <span className="live-pill"><i />Sistema online</span>
         <Link className="icon-button topbar-bell" aria-label={`${notificationCount} notificações`} href="/agenda">
           <Icon name="bell" />

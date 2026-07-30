@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
+import { getStoredSeller } from "@/lib/seller";
 
 export type DiaItem = {
   task_id: string | null;
@@ -71,17 +72,28 @@ export function MeuDia({
     if (!active || !note.trim() || saving) return;
     setSaving(true);
     setError(null);
+    const authorName = getStoredSeller()?.name || null;
     try {
       const response = active.task_id
         ? await fetch(`/api/leads/${active.lead_id}/tasks/${active.task_id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "done", done_note: note, next_contact_at: nextContact }),
+            body: JSON.stringify({
+              status: "done",
+              done_note: note,
+              next_contact_at: nextContact,
+              author_name: authorName,
+            }),
           })
         : await fetch(`/api/leads/${active.lead_id}/notes`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: note, outcome: "atendeu", next_contact_at: nextContact }),
+            body: JSON.stringify({
+              content: note,
+              outcome: "atendeu",
+              next_contact_at: nextContact,
+              author_name: authorName,
+            }),
           });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao concluir.");
