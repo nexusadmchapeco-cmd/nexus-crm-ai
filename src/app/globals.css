@@ -220,6 +220,13 @@ a { color: inherit; text-decoration: none; }
 .composer textarea { flex: 1; resize: none; height: 42px; max-height: 90px; border: 1px solid #dededb; border-radius: 7px; padding: 11px; outline: none; font-size: 10px; }
 .composer textarea:focus { border-color: #a5a5a2; box-shadow: 0 0 0 3px #00000008; }
 .composer button { width: 42px; height: 42px; border: 0; border-radius: 7px; background: var(--orange); color: white; display: grid; place-items: center; cursor: pointer; }
+.composer-wrap { display: flex; flex-direction: column; }
+.composer-window-warning { display: flex; align-items: flex-start; gap: 9px; margin: 9px 13px 0; padding: 10px 12px; background: #fff4ec; border: 1px solid #f4c9a6; border-radius: 8px; color: #8a4415; }
+.composer-window-warning svg { flex-shrink: 0; margin-top: 1px; color: var(--orange); }
+.composer-window-warning strong { display: block; font-size: 10px; }
+.composer-window-warning span { display: block; font-size: 9px; opacity: .85; margin-top: 2px; }
+.composer-window-cta { flex-shrink: 0; align-self: center; font-size: 9px; font-weight: 600; padding: 6px 10px; border-radius: 6px; background: var(--orange); color: white; text-decoration: none; white-space: nowrap; }
+.lead-opt-out { display: inline-block; margin-top: 6px; padding: 2px 7px; border-radius: 999px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: #fbe3e3; color: #a12020; border: 1px solid #eeb9b9; }
 .lead-panel { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: white; }
 .lead-panel-header { flex: 0 0 auto; }
 .lead-panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }

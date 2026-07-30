@@ -149,6 +149,11 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
                   <span className={`temperature ${lead.temperature}`}>
                     {labelTemperature(lead.temperature)}
                   </span>
+                  {lead.opted_out_at && (
+                    <span className="lead-opt-out" title="Lead pediu para sair (opt-out)">
+                      Opt-out
+                    </span>
+                  )}
                   {followups.some((item) => item.lead_id === lead.id) && (
                     <div className="followup-badges" aria-label="Histórico de follow-up">
                       {followups

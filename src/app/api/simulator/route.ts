@@ -37,6 +37,7 @@ const simLeadDefaults: Lead = {
   next_action: null,
   ai_enabled: true,
   human_takeover: false,
+  opted_out_at: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   last_message_at: new Date().toISOString(),

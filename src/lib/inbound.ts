@@ -110,6 +110,32 @@ export async function processInbound(payload: InboundPayload) {
     .from("lead_events")
     .insert({ lead_id: lead.id, event_type: "message_received", metadata: { channel: "whatsapp" } });
 
+  // Opt-out: se a mensagem for exatamente uma palavra de descadastro, marca o
+  // lead e encerra aqui — não aciona a IA nem responde. (Bloqueia só marketing/
+  // follow-up; atendimento iniciado pelo lead continua permitido.)
+  const optOutWord = payload.message
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+  if (["sair", "parar", "cancelar", "descadastrar"].includes(optOutWord)) {
+    const optedOutAt = new Date().toISOString();
+    await Promise.all([
+      supabase.from("leads").update({ opted_out_at: optedOutAt }).eq("id", lead.id),
+      supabase
+        .from("lead_events")
+        .insert({ lead_id: lead.id, event_type: "opted_out", metadata: { keyword: optOutWord } }),
+    ]);
+    return {
+      lead: { ...lead, opted_out_at: optedOutAt },
+      conversation,
+      ai_reply: null,
+      ai_reply_parts: [] as string[],
+      stage: newStage,
+      skipped_ai: true,
+    };
+  }
+
   if (!lead.ai_enabled || lead.human_takeover) {
     return {
       lead,
@@ -263,8 +289,14 @@ export async function processInbound(payload: InboundPayload) {
     if (updated.error) throw updated.error;
     lead = updated.data;
 
-    // A Nina pode responder em 1-3 bolhas; grava cada uma como mensagem própria.
+    // A Nina pode responder em 1-5 bolhas; grava cada uma como mensagem própria.
     const replyParts = decision.reply_messages;
+    // Regra das 24h (FASE 0.1): o gatilho é sempre uma mensagem recente do lead,
+    // então normalmente estamos dentro da janela. O guarda cobre o caso extremo
+    // de atraso: fora da janela, grava como blocked_24h e NÃO envia (o webhook
+    // só envia quando ai_reply volta preenchido).
+    const withinWindow =
+      Date.now() - new Date(insertedMessage.data.created_at).getTime() < 24 * 60 * 60 * 1000;
     const aiMessage = await supabase
       .from("messages")
       .insert(
@@ -273,11 +305,18 @@ export async function processInbound(payload: InboundPayload) {
           lead_id: lead.id,
           sender_type: "ai",
           content,
-          status: "sent",
+          status: withinWindow ? "sent" : "blocked_24h",
           is_ai: true,
         })),
       );
     if (aiMessage.error) throw aiMessage.error;
+    if (!withinWindow) {
+      await supabase.from("lead_events").insert({
+        lead_id: lead.id,
+        event_type: "window_expired",
+        metadata: { blocked_parts: replyParts.length },
+      });
+    }
     await supabase.from("lead_events").insert({
       lead_id: lead.id,
       event_type: "ai_qualified",
@@ -427,8 +466,10 @@ export async function processInbound(payload: InboundPayload) {
     return {
       lead,
       conversation,
-      ai_reply: replyParts.join("\n\n"),
-      ai_reply_parts: replyParts,
+      // Fora da janela de 24h não devolve resposta: fica gravada como
+      // blocked_24h e o webhook não envia texto livre recusado pela Meta.
+      ai_reply: withinWindow ? replyParts.join("\n\n") : null,
+      ai_reply_parts: withinWindow ? replyParts : [],
       stage: targetStage,
       skipped_ai: false,
     };

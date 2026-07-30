@@ -61,6 +61,11 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 <div className="lead-panel-profile">
                   <div className="avatar">{initials(selected.name, selected.phone)}</div>
                   <h3>{selected.name || "Lead sem nome"}</h3><p>+{selected.phone}</p>
+                  {selected.opted_out_at && (
+                    <span className="lead-opt-out" title="Lead pediu para sair (opt-out)">
+                      Opt-out
+                    </span>
+                  )}
                 </div>
                 <ChatActions
                   leadId={selected.id}

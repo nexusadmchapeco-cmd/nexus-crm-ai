@@ -51,6 +51,7 @@ export type Lead = {
   next_action: string | null;
   ai_enabled: boolean;
   human_takeover: boolean;
+  opted_out_at: string | null;
   created_at: string;
   updated_at: string;
   last_message_at: string;

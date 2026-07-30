@@ -71,7 +71,9 @@ export async function GET(request: Request) {
         .from("leads")
         .select("*")
         .eq("stage_id", sequence.trigger_stage_id)
-        .eq("human_takeover", false),
+        .eq("human_takeover", false)
+        // Não envia follow-up para quem pediu opt-out (SAIR/PARAR/etc.).
+        .is("opted_out_at", null),
       supabase.from("pipeline_stages").select("id").eq("role", "not_qualified").maybeSingle(),
     ]);
     if (stepsError) throw stepsError;
