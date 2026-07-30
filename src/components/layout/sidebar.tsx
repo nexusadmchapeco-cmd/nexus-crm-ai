@@ -15,6 +15,7 @@ const nav = [
   { href: "/vendedor", label: "Vendedor", icon: "trend" as const },
   { href: "/reports", label: "Relatório diário", icon: "report" as const },
   { href: "/test-inbound", label: "Simulador", icon: "flask" as const },
+  { href: "/prospeccao", label: "Prospecção", icon: "search" as const },
   { href: "/campaigns", label: "Disparos", icon: "send" as const },
 ];
 
