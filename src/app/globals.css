@@ -270,6 +270,40 @@ a { color: inherit; text-decoration: none; }
 .timeline-task-done { color: #2e6b3f; display: flex; align-items: flex-start; gap: 5px; flex-wrap: wrap; }
 .timeline-task-done p { width: 100%; margin: 2px 0 0; color: var(--ink); }
 .timeline-event { color: var(--muted); }
+
+/* FASE 2 — Meu dia */
+.page-shell { display: flex; flex-direction: column; }
+.nav-badge { margin-left: auto; background: var(--orange); color: white; font-size: 9px; font-weight: 700; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; }
+.dia-shell { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.dia-block { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.dia-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dia-block-head h3 { font-size: 13px; margin: 0; }
+.dia-block-head span { font-size: 10px; font-weight: 700; background: #f0f0ee; color: var(--muted); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; }
+.dia-late { border-top: 3px solid #d64545; }
+.dia-today { border-top: 3px solid var(--orange); }
+.dia-stale { border-top: 3px solid #caa33a; }
+.dia-agenda { border-top: 3px solid #3a4a9a; }
+.dia-late .dia-block-head span { background: #fbe3e3; color: #a12020; }
+.dia-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.dia-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; }
+.dia-row-main { min-width: 0; }
+.dia-row-main strong { display: block; font-size: 11px; }
+.dia-meta { font-size: 9px; color: var(--muted); }
+.dia-row-actions { display: flex; gap: 5px; flex-shrink: 0; }
+.dia-btn { border: 0; border-radius: 6px; padding: 5px 10px; font-size: 9px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.dia-btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.dia-empty { color: var(--muted); font-size: 10px; margin: 0; }
+.dia-modal-backdrop { position: fixed; inset: 0; background: #00000055; display: grid; place-items: center; z-index: 50; padding: 20px; }
+.dia-modal { background: white; border-radius: 12px; padding: 16px; width: min(420px, 100%); display: flex; flex-direction: column; gap: 11px; }
+.dia-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dia-modal-head h4 { margin: 0; font-size: 12px; }
+.dia-modal-head button { border: 0; background: transparent; cursor: pointer; color: var(--muted); }
+.dia-modal-error { background: #fbe3e3; color: #a12020; border-radius: 6px; padding: 7px 9px; font-size: 10px; }
+.dia-modal textarea { width: 100%; min-height: 70px; resize: vertical; border: 1px solid #dededb; border-radius: 7px; padding: 9px; font-size: 11px; }
+.dia-modal-schedule { display: flex; flex-direction: column; gap: 6px; }
+.dia-modal-schedule > span { font-size: 9px; color: var(--muted); }
+.dia-modal-save { align-self: flex-end; border: 0; border-radius: 7px; padding: 8px 15px; font-size: 11px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; }
+.dia-modal-save:disabled { opacity: .5; cursor: default; }
 .lead-panel { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: white; }
 .lead-panel-header { flex: 0 0 auto; }
 .lead-panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }

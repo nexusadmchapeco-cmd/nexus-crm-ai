@@ -57,7 +57,27 @@ export async function PATCH(
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({ task: data });
+
+    // Concluir e já agendar o próximo contato, se veio uma data.
+    let nextTask = null;
+    if (status === "done" && body.next_contact_at) {
+      const dueAt = new Date(body.next_contact_at);
+      if (!Number.isNaN(dueAt.getTime())) {
+        const { data: created } = await supabase
+          .from("lead_tasks")
+          .insert({
+            lead_id: id,
+            owner_name: body.author_name ? String(body.author_name).slice(0, 120) : null,
+            title: String(body.next_contact_title || "Retomar contato").slice(0, 200),
+            due_at: dueAt.toISOString(),
+          })
+          .select()
+          .single();
+        nextTask = created;
+      }
+    }
+
+    return NextResponse.json({ task: data, next_task: nextTask });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro ao atualizar a tarefa." },
