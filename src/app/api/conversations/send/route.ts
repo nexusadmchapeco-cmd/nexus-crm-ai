@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isWithin24hWindow } from "@/lib/whatsapp-window";
 import { isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
@@ -16,6 +17,19 @@ export async function POST(request: Request) {
       ]);
     if (conversationError) throw conversationError;
     if (leadError) throw leadError;
+
+    // Regra das 24h: fora da janela, texto livre é recusado pela Meta (131047).
+    // Avisa o atendente com 409 para ele usar um modelo aprovado.
+    if (isWhatsAppConfigured() && !(await isWithin24hWindow(supabase, lead_id))) {
+      return NextResponse.json(
+        {
+          error:
+            "Passaram mais de 24h desde a última mensagem do lead. Use um modelo aprovado.",
+          code: "window_expired",
+        },
+        { status: 409 },
+      );
+    }
 
     let whatsappMessageId: string | null = null;
     if (isWhatsAppConfigured()) {

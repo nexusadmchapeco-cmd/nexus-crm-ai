@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       { data: leads, error: leadsError },
       { data: operationsRow, error: operationsError },
     ] = await Promise.all([
-      supabase.from("leads").select("id,name,phone").in("id", leadIds),
+      // Não envia campanha para quem pediu opt-out (SAIR/PARAR/etc.).
+      supabase.from("leads").select("id,name,phone").in("id", leadIds).is("opted_out_at", null),
       supabase
         .from("ai_settings")
         .select("global_prompt")
