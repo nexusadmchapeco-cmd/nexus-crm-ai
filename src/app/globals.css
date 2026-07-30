@@ -270,6 +270,129 @@ a { color: inherit; text-decoration: none; }
 .timeline-task-done { color: #2e6b3f; display: flex; align-items: flex-start; gap: 5px; flex-wrap: wrap; }
 .timeline-task-done p { width: 100%; margin: 2px 0 0; color: var(--ink); }
 .timeline-event { color: var(--muted); }
+
+/* FASE 2 — Meu dia */
+.page-shell { display: flex; flex-direction: column; }
+.nav-badge { margin-left: auto; background: var(--orange); color: white; font-size: 9px; font-weight: 700; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; }
+.dia-shell { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.dia-block { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.dia-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dia-block-head h3 { font-size: 13px; margin: 0; }
+.dia-block-head span { font-size: 10px; font-weight: 700; background: #f0f0ee; color: var(--muted); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; }
+.dia-late { border-top: 3px solid #d64545; }
+.dia-today { border-top: 3px solid var(--orange); }
+.dia-stale { border-top: 3px solid #caa33a; }
+.dia-agenda { border-top: 3px solid #3a4a9a; }
+.dia-late .dia-block-head span { background: #fbe3e3; color: #a12020; }
+.dia-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.dia-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; }
+.dia-row-main { min-width: 0; }
+.dia-row-main strong { display: block; font-size: 11px; }
+.dia-meta { font-size: 9px; color: var(--muted); }
+.dia-row-actions { display: flex; gap: 5px; flex-shrink: 0; }
+.dia-btn { border: 0; border-radius: 6px; padding: 5px 10px; font-size: 9px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.dia-btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.dia-empty { color: var(--muted); font-size: 10px; margin: 0; }
+.dia-modal-backdrop { position: fixed; inset: 0; background: #00000055; display: grid; place-items: center; z-index: 50; padding: 20px; }
+.dia-modal { background: white; border-radius: 12px; padding: 16px; width: min(420px, 100%); display: flex; flex-direction: column; gap: 11px; }
+.dia-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dia-modal-head h4 { margin: 0; font-size: 12px; }
+.dia-modal-head button { border: 0; background: transparent; cursor: pointer; color: var(--muted); }
+.dia-modal-error { background: #fbe3e3; color: #a12020; border-radius: 6px; padding: 7px 9px; font-size: 10px; }
+.dia-modal textarea { width: 100%; min-height: 70px; resize: vertical; border: 1px solid #dededb; border-radius: 7px; padding: 9px; font-size: 11px; }
+.dia-modal-schedule { display: flex; flex-direction: column; gap: 6px; }
+.dia-modal-schedule > span { font-size: 9px; color: var(--muted); }
+.dia-modal-save { align-self: flex-end; border: 0; border-radius: 7px; padding: 8px 15px; font-size: 11px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; }
+.dia-modal-save:disabled { opacity: .5; cursor: default; }
+
+/* FASE 4 — Vendedor / metas + seletor no topo */
+.seller-select { display: inline-flex; align-items: center; gap: 5px; background: white; border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; color: var(--muted); }
+.seller-select select { border: 0; background: transparent; font-size: 10px; color: var(--ink); outline: none; cursor: pointer; }
+.vendedor-error { background: #fbe3e3; color: #a12020; border: 1px solid #eeb9b9; border-radius: 8px; padding: 9px 11px; font-size: 11px; margin-bottom: 14px; }
+.vendedor-empty { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 18px; color: var(--muted); font-size: 12px; }
+.vendedor-periods { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.vendedor-card { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.vendedor-card h3 { margin: 0 0 12px; font-size: 13px; }
+.vendedor-metric { margin-bottom: 11px; }
+.vendedor-metric-head { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
+.vendedor-metric-head span { color: var(--muted); }
+.vendedor-bar { height: 7px; background: #f0f0ee; border-radius: 999px; overflow: hidden; }
+.vendedor-bar i { display: block; height: 100%; background: var(--orange); border-radius: 999px; transition: width .3s; }
+.vendedor-ranking { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.vendedor-ranking h3 { margin: 0 0 10px; font-size: 13px; }
+.vendedor-ranking ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.vendedor-ranking li { display: flex; justify-content: space-between; font-size: 11px; }
+.vendedor-config { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.vendedor-form { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.vendedor-form h3 { margin: 0 0 3px; font-size: 13px; }
+.vendedor-form p { margin: 0 0 10px; font-size: 10px; color: var(--muted); }
+.vendedor-form-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.vendedor-form-row select, .vendedor-form-row input { border: 1px solid #dededb; border-radius: 6px; padding: 7px; font-size: 10px; flex: 1; min-width: 80px; }
+.vendedor-form-row button { border: 0; border-radius: 6px; padding: 7px 14px; font-size: 10px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; }
+.vendedor-form-row button:disabled { opacity: .5; cursor: default; }
+
+/* FASE 3 — Correção do teste de nível */
+.review { display: flex; flex-direction: column; gap: 16px; }
+.review-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.review-head-item span { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.review-head-item strong { font-size: 13px; }
+.review-section { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.review-section h3 { margin: 0 0 12px; font-size: 13px; }
+.review-q { border-top: 1px solid var(--line); padding-top: 11px; margin-top: 11px; }
+.review-q:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.review-q-head { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.review-q-head strong { font-size: 11px; flex: 1; }
+.review-q-mark { width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center; color: white; flex-shrink: 0; }
+.review-q-mark.ok { background: #2e9e57; }
+.review-q-mark.no { background: #d64545; }
+.review-q-level { font-size: 8px; font-weight: 700; color: var(--muted); background: #f0f0ee; border-radius: 4px; padding: 1px 6px; }
+.review-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.review-options li { font-size: 10px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; display: flex; align-items: center; gap: 7px; }
+.review-options li.correct { border-color: #a6d6b8; background: #eef8f1; }
+.review-options li.wrong { border-color: #e6b3b3; background: #fbeceb; }
+.review-tag { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #2e6b3f; }
+.review-tag.chosen { color: #8a4415; margin-left: auto; }
+.review-audio { width: 100%; margin-top: 8px; height: 34px; }
+.review-open { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+.review-open span { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+.review-open-answer p { margin: 0; font-size: 11px; white-space: pre-wrap; }
+.review-open-eval strong { font-size: 15px; }
+.review-empty { color: var(--muted); font-size: 10px; }
+.review-adjust-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.review-adjust label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--muted); flex: 1; min-width: 140px; }
+.review-adjust select, .review-adjust input, .review-adjust textarea { border: 1px solid #dededb; border-radius: 6px; padding: 8px; font-size: 11px; color: var(--ink); }
+.review-adjust textarea { width: 100%; min-height: 60px; resize: vertical; margin-bottom: 10px; }
+.review-message { font-size: 10px; color: #2e6b3f; margin-bottom: 8px; }
+.button-small { border: 1px solid var(--line); background: white; border-radius: 6px; padding: 6px 12px; font-size: 10px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+@media (max-width: 560px) { .review-open { grid-template-columns: 1fr; } }
+
+/* FASE 5 — Prospecção de parceiros */
+.prospect-search { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.prospect-search input { flex: 1; min-width: 140px; border: 1px solid #dededb; border-radius: 7px; padding: 9px; font-size: 11px; }
+.prospect-search button { border: 0; border-radius: 7px; padding: 9px 18px; font-size: 11px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; }
+.prospect-search button:disabled { opacity: .5; cursor: default; }
+.prospect-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.prospect-chips button { border: 1px solid var(--line); background: white; border-radius: 999px; padding: 4px 11px; font-size: 9px; cursor: pointer; color: var(--muted); }
+.prospect-error { background: #fbe3e3; color: #a12020; border: 1px solid #eeb9b9; border-radius: 8px; padding: 9px 11px; font-size: 11px; margin-bottom: 12px; }
+.prospect-list { display: flex; flex-direction: column; gap: 10px; }
+.prospect-card { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.prospect-card-main { min-width: 200px; flex: 1; }
+.prospect-card-title { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.prospect-card-title strong { font-size: 12px; }
+.prospect-wa { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: #e4f5ea; color: #1f7a44; border-radius: 4px; padding: 2px 6px; }
+.prospect-status { font-size: 8px; font-weight: 700; border-radius: 4px; padding: 2px 6px; background: #f0f0ee; color: var(--muted); }
+.prospect-status.status-contatado { background: #fff2e2; color: #8a5416; }
+.prospect-status.status-respondeu { background: #e7eefb; color: #2a4a9a; }
+.prospect-status.status-reuniao { background: #e9e2fb; color: #5a3a9a; }
+.prospect-status.status-fechado { background: #e4f5ea; color: #1f7a44; }
+.prospect-status.status-descartado { background: #f6e7e7; color: #97302f; }
+.prospect-addr { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.prospect-meta { display: block; font-size: 10px; color: var(--ink); margin-top: 3px; }
+.prospect-card-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; min-width: 140px; }
+.prospect-card-actions button, .prospect-wa-link { border: 0; border-radius: 6px; padding: 7px 12px; font-size: 10px; font-weight: 600; background: var(--orange); color: white; cursor: pointer; text-align: center; text-decoration: none; }
+.prospect-wa-link { background: #1f7a44; }
+.prospect-card-actions select { border: 1px solid #dededb; border-radius: 6px; padding: 6px; font-size: 10px; }
+.prospect-empty { color: var(--muted); font-size: 11px; }
 .lead-panel { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: white; }
 .lead-panel-header { flex: 0 0 auto; }
 .lead-panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }

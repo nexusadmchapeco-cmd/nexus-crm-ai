@@ -41,13 +41,30 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const prompt = speakingPlan(id);
   try {
+    // Guarda o áudio original no bucket privado antes de transcrever, para o
+    // avaliador poder reouvir depois. Falha no upload não derruba o teste.
+    let audioPath: string | undefined;
+    try {
+      const path = `${id}/${prompt.id}.webm`;
+      const buffer = Buffer.from(await audio.arrayBuffer());
+      const { error: uploadError } = await supabase.storage
+        .from("level-test-audio")
+        .upload(path, buffer, {
+          contentType: audio.type || "audio/webm",
+          upsert: true,
+        });
+      if (!uploadError) audioPath = path;
+    } catch {
+      audioPath = undefined;
+    }
+
     const transcript = (await transcribeAudio(audio, "en")).trim();
     const evaluation = await evaluateOpenAnswer({
       skill: "speaking",
       task: prompt.prompt,
       answer: transcript || "(nada compreensível foi dito)",
     });
-    answers.speaking = { prompt_id: prompt.id, transcript, ...evaluation };
+    answers.speaking = { prompt_id: prompt.id, transcript, audio_path: audioPath, ...evaluation };
   } catch (speakingError) {
     return NextResponse.json(
       {

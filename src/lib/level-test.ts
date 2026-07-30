@@ -208,7 +208,9 @@ export type TestAnswers = {
   grammar: StoredAnswer[];
   listening: StoredAnswer[];
   writing?: { prompt_id: string; text: string } & SkillResult;
-  speaking?: ({ prompt_id: string; transcript: string } & SkillResult) | { prompt_id: string; skipped: true };
+  speaking?:
+    | ({ prompt_id: string; transcript: string; audio_path?: string } & SkillResult)
+    | { prompt_id: string; skipped: true };
 };
 
 export type TestPhase = "grammar" | "listening" | "writing" | "speaking" | "done";

@@ -243,6 +243,11 @@ export type LevelTest = {
   cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
   score: number | null;
   answers: unknown[];
+  skills?: unknown;
+  reviewed_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+  reviewer_note?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;

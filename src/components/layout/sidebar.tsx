@@ -2,23 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 
 const nav = [
   { href: "/", label: "Visão geral", icon: "grid" as const },
+  { href: "/meu-dia", label: "Meu dia", icon: "board" as const },
   { href: "/kanban", label: "Pipeline", icon: "board" as const },
   { href: "/conversations", label: "Conversas", icon: "chat" as const },
   { href: "/agenda", label: "Agenda", icon: "calendar" as const },
   { href: "/level-tests", label: "Testes de nível", icon: "report" as const },
+  { href: "/vendedor", label: "Vendedor", icon: "trend" as const },
   { href: "/reports", label: "Relatório diário", icon: "report" as const },
   { href: "/test-inbound", label: "Simulador", icon: "flask" as const },
+  { href: "/prospeccao", label: "Prospecção", icon: "search" as const },
   { href: "/campaigns", label: "Disparos", icon: "send" as const },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [diaCount, setDiaCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/meu-dia/summary")
+      .then((response) => response.json())
+      .then((data) => setDiaCount(data.count || 0))
+      .catch(() => {});
+  }, [pathname]);
 
   return (
     <>
@@ -45,6 +56,9 @@ export function Sidebar() {
               <Link key={item.href} href={item.href} className={active ? "active" : ""} onClick={() => setOpen(false)}>
                 <Icon name={item.icon} />
                 {item.label}
+                {item.href === "/meu-dia" && diaCount > 0 && (
+                  <span className="nav-badge">{diaCount}</span>
+                )}
               </Link>
             );
           })}

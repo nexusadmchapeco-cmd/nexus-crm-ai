@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { formatRelative, labelEventType } from "@/lib/format";
+import { getStoredSeller } from "@/lib/seller";
 import type { LeadContactType, LeadNote, LeadNoteOutcome, LeadTask } from "@/lib/types";
 
 type LeadEventLite = {
@@ -161,6 +162,7 @@ export function LeadHistory({ leadId }: { leadId: string }) {
           outcome,
           content,
           next_contact_at: nextContactAt,
+          author_name: getStoredSeller()?.name || null,
         }),
       });
       const data = await response.json();
@@ -186,7 +188,12 @@ export function LeadHistory({ leadId }: { leadId: string }) {
       const response = await fetch(`/api/leads/${leadId}/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "done", done_note: doneNote, outcome: "atendeu" }),
+        body: JSON.stringify({
+          status: "done",
+          done_note: doneNote,
+          outcome: "atendeu",
+          author_name: getStoredSeller()?.name || null,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao concluir.");

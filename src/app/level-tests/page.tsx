@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LevelTestCreator } from "@/components/level-test/level-test-creator";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
@@ -51,25 +52,24 @@ export default async function LevelTestsPage() {
         <div className="level-test-list">
           {tests.map((test) => {
             const cefr = test.cefr_level as TestLevel | null;
+            const reviewed = test.reviewed_level as TestLevel | null;
+            const shown = reviewed || cefr;
             return (
-              <div className="level-test-row" key={test.id}>
+              <Link className="level-test-row" key={test.id} href={`/level-tests/${test.id}`}>
                 <div>
                   <strong>{test.leads?.name || test.leads?.phone || "Aluno avulso"}</strong>
                   <span>
                     {statusLabels[test.status] || test.status}
                     {" · "}
                     {formatRelative(test.completed_at || test.started_at || test.created_at)}
-                    {" · "}
-                    <a href={`/teste/${test.id}`} target="_blank" rel="noreferrer">
-                      abrir teste
-                    </a>
+                    {reviewed ? " · corrigido" : ""}
                   </span>
                 </div>
                 <div className="level-test-badge">
-                  {cefr ? `${cefr} · ${levelLabels[cefr]}` : "—"}
+                  {shown ? `${shown}${levelLabels[shown as TestLevel] ? ` · ${levelLabels[shown as TestLevel]}` : ""}` : "—"}
                 </div>
                 <div className="level-test-score">{test.score ?? "—"}</div>
-              </div>
+              </Link>
             );
           })}
         </div>
