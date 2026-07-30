@@ -58,6 +58,38 @@ export type Lead = {
   pipeline_stages?: PipelineStage | null;
 };
 
+export type LeadContactType = "whatsapp" | "ligacao" | "presencial" | "email" | "outro";
+export type LeadNoteOutcome =
+  | "atendeu"
+  | "sem_resposta"
+  | "vai_pensar"
+  | "agendou"
+  | "fechou"
+  | "perdeu";
+
+export type LeadNote = {
+  id: string;
+  lead_id: string;
+  author_name: string | null;
+  contact_type: LeadContactType;
+  outcome: LeadNoteOutcome;
+  content: string;
+  created_at: string;
+};
+
+export type LeadTask = {
+  id: string;
+  lead_id: string;
+  owner_name: string | null;
+  title: string;
+  due_at: string;
+  status: "pending" | "done" | "canceled";
+  done_at: string | null;
+  done_note: string | null;
+  created_from_note: string | null;
+  created_at: string;
+};
+
 export type Conversation = {
   id: string;
   lead_id: string;
