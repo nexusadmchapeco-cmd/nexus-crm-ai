@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isWithin24hWindow } from "@/lib/whatsapp-window";
 import { isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
@@ -9,6 +10,9 @@ export async function POST(request: Request) {
     if (!lead_id || typeof message !== "string" || !message.trim()) {
       return NextResponse.json({ error: "lead_id e message são obrigatórios" }, { status: 400 });
     }
+    const guard = await guardLead(String(lead_id));
+    if (guard.response) return guard.response;
+
     const supabase = createAdminClient();
     const [{ data: conversation, error: conversationError }, { data: lead, error: leadError }] =
       await Promise.all([

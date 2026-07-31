@@ -262,9 +262,9 @@ export function CampaignCenter({
             </div>
           </div>
           <div className="field"><label htmlFor="campaign-message">Prévia do texto aprovado</label><textarea id="campaign-message" value={message} readOnly /></div>
-          <div className="field campaign-pin"><label htmlFor="campaign-pin">PIN de segurança do disparo</label><input id="campaign-pin" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN administrativo" value={adminPin} onChange={(event) => setAdminPin(event.target.value)} /></div>
+          <div className="field campaign-pin"><label htmlFor="campaign-pin">PIN (só se o sistema pedir)</label><input id="campaign-pin" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN administrativo" value={adminPin} onChange={(event) => setAdminPin(event.target.value)} /></div>
           <label className="campaign-confirm"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /> Conferi o público de {audience.count} leads e autorizo este disparo oficial.</label>
-          <button className="button button-primary" type="button" disabled={!confirmed || !adminPin || sending} onClick={sendCampaign}><Icon name="send" size={14} />{sending ? "Enviando…" : `Enviar para ${audience.count} leads`}</button>
+          <button className="button button-primary" type="button" disabled={!confirmed || sending} onClick={sendCampaign}><Icon name="send" size={14} />{sending ? "Enviando…" : `Enviar para ${audience.count} leads`}</button>
         </section>
       )}
 

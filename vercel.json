@@ -3,6 +3,10 @@
     {
       "path": "/api/jobs/followups",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/jobs/nudges",
+      "schedule": "*/30 13-22 * * *"
     }
   ]
 }

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { formatRelative, labelEventType } from "@/lib/format";
-import { getStoredSeller } from "@/lib/seller";
 import type { LeadContactType, LeadNote, LeadNoteOutcome, LeadTask } from "@/lib/types";
 
 type LeadEventLite = {
@@ -58,6 +57,14 @@ export function LeadHistory({ leadId }: { leadId: string }) {
   const [events, setEvents] = useState<LeadEventLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionName, setSessionName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((response) => response.json())
+      .then((data) => setSessionName(data.user?.name || null))
+      .catch(() => {});
+  }, []);
 
   // Formulário de nova observação.
   const [contactType, setContactType] = useState<LeadContactType>("whatsapp");
@@ -162,7 +169,7 @@ export function LeadHistory({ leadId }: { leadId: string }) {
           outcome,
           content,
           next_contact_at: nextContactAt,
-          author_name: getStoredSeller()?.name || null,
+          author_name: sessionName,
         }),
       });
       const data = await response.json();
@@ -192,7 +199,7 @@ export function LeadHistory({ leadId }: { leadId: string }) {
           status: "done",
           done_note: doneNote,
           outcome: "atendeu",
-          author_name: getStoredSeller()?.name || null,
+          author_name: sessionName,
         }),
       });
       const data = await response.json();

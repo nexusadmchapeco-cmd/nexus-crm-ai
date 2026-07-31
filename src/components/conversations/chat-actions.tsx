@@ -40,8 +40,26 @@ export function ChatActions({
     router.refresh();
   }
 
+  async function sendToSeller() {
+    setLoading(true);
+    const response = await fetch(`/api/leads/${leadId}/send-to-seller`, { method: "POST" });
+    const data = await response.json();
+    setLoading(false);
+    if (!response.ok) {
+      alert(data.error || "Não foi possível enviar para o vendedor.");
+    } else if (data.notified) {
+      alert(`${leadLabel} entrou na fila do vendedor e o aviso foi enviado no WhatsApp dele. ✅`);
+    } else {
+      alert(`${leadLabel} entrou na fila do vendedor, mas o aviso no WhatsApp falhou: ${data.notify_error || "erro"}`);
+    }
+    router.refresh();
+  }
+
   return (
     <div className="lead-actions">
+      <button disabled={loading} className="button button-primary primary-action" onClick={sendToSeller}>
+        <Icon name="send" size={14} /> Enviar pro vendedor
+      </button>
       {humanTakeover ? (
         <button disabled={loading} className="button button-primary primary-action" onClick={() => action(`/api/leads/${leadId}/return-to-ai`)}>
           <Icon name="bot" size={14} /> Devolver para IA

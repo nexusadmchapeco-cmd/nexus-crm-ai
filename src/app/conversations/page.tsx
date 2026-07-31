@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChatActions } from "@/components/conversations/chat-actions";
 import { Composer } from "@/components/conversations/composer";
+import { ConversationList } from "@/components/conversations/conversation-list";
 import { MessageList } from "@/components/conversations/message-list";
 import { LeadHistory } from "@/components/leads/lead-history";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
@@ -31,21 +32,19 @@ export default async function ConversationsPage({ searchParams }: { searchParams
       <div className="chat-layout">
         <aside className="conversation-list">
           <div className="chat-section-head"><h2>Conversas</h2></div>
-          <div className="conversation-search"><Icon name="search" size={14} /> Buscar conversa</div>
-          <div className="conversation-list-items">
-            {leads.map((lead) => (
-              <Link href={`/conversations?lead=${lead.id}`} key={lead.id} className={`conversation-item ${lead.id === selected?.id ? "active" : ""}`}>
-                <div className="avatar">{initials(lead.name, lead.phone)}</div>
-                <div className="conversation-item-body">
-                  <div><strong>{lead.name || lead.phone}</strong><time>{formatRelative(lead.last_message_at)}</time></div>
-                  <p>{lead.next_action || lead.objective || "Nova conversa"}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <ConversationList
+            items={leads.map((lead) => ({
+              id: lead.id,
+              name: lead.name,
+              phone: lead.phone,
+              last_message_at: lead.last_message_at,
+              preview: lead.next_action || lead.objective || "Nova conversa",
+            }))}
+            selectedId={selected?.id || null}
+          />
         </aside>
         {!selected ? (
-          <div className="chat-empty"><div><Icon name="chat" size={28} /><p>Nenhuma conversa ainda.</p><Link className="button button-primary" href="/test-inbound">Simular mensagem</Link></div></div>
+          <div className="chat-empty"><div><Icon name="chat" size={28} /><p>Nenhuma conversa ainda.</p><span>As conversas do WhatsApp aparecem aqui.</span></div></div>
         ) : (
           <>
             <section className="chat-main">

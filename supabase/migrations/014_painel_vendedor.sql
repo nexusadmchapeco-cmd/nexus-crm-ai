@@ -15,8 +15,12 @@ create table if not exists seller_tasks (
   done_at timestamptz,
   created_at timestamptz not null default now()
 );
-create unique index if not exists seller_tasks_source_idx
-  on seller_tasks(user_id, source) where source is not null;
+-- Constraint única completa (índice parcial não funciona com upsert/ON
+-- CONFLICT). NULLs não conflitam entre si, então tarefas manuais (source
+-- null) seguem ilimitadas.
+drop index if exists seller_tasks_source_idx;
+alter table seller_tasks drop constraint if exists seller_tasks_user_source_key;
+alter table seller_tasks add constraint seller_tasks_user_source_key unique (user_id, source);
 alter table seller_tasks enable row level security;
 
 -- Revisão semanal de sexta (roteiro fixo). checklist = {"1": true, ...};

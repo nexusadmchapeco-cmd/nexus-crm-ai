@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function PATCH(
@@ -7,6 +8,9 @@ export async function PATCH(
 ) {
   try {
     const { id, taskId } = await params;
+    const guard = await guardLead(id);
+    if (guard.response) return guard.response;
+
     const body = await request.json();
     const status = body.status === "canceled" ? "canceled" : "done";
 

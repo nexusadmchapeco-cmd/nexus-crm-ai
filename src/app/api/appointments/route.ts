@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -9,6 +10,10 @@ export async function POST(request: Request) {
     }
     if (new Date(body.ends_at).getTime() - new Date(body.starts_at).getTime() !== 30 * 60_000) {
       return NextResponse.json({ error: "Os atendimentos devem durar 30 minutos." }, { status: 400 });
+    }
+    if (body.lead_id) {
+      const guard = await guardLead(String(body.lead_id));
+      if (guard.response) return guard.response;
     }
     const supabase = createAdminClient();
     const [{ data: appointmentConflict }, { data: blockConflict }] = await Promise.all([

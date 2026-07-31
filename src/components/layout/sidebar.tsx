@@ -20,7 +20,7 @@ const nav = [
 // Itens de gestão: escondidos do papel "vendedor" (o middleware também
 // bloqueia). Menu do vendedor (spec): Painel, Pipeline, Conversas, Agenda,
 // Disparos.
-const MANAGEMENT_HREFS = new Set(["/", "/level-tests", "/reports", "/test-inbound"]);
+const MANAGEMENT_HREFS = new Set(["/", "/reports", "/test-inbound"]);
 
 export function Sidebar() {
   const pathname = usePathname();

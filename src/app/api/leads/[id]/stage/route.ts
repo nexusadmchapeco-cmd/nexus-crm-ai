@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const guard = await guardLead(id);
+    if (guard.response) return guard.response;
+
     const { stage_id } = await request.json();
     if (!stage_id) return NextResponse.json({ error: "stage_id é obrigatório" }, { status: 400 });
     const supabase = createAdminClient();

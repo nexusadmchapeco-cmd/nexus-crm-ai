@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { LeadContactType, LeadNoteOutcome } from "@/lib/types";
 
@@ -15,6 +16,9 @@ const OUTCOMES: LeadNoteOutcome[] = [
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const guard = await guardLead(id);
+    if (guard.response) return guard.response;
+
     const supabase = createAdminClient();
     // Eventos relevantes do sistema para a timeline unificada.
     const timelineEvents = [
@@ -64,6 +68,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const guard = await guardLead(id);
+    if (guard.response) return guard.response;
     const body = await request.json();
     const content = String(body.content || "").trim();
     if (!content) {

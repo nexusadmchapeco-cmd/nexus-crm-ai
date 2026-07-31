@@ -253,6 +253,21 @@ export function LeadModal({
             </div>
             <div className="lm-actions">
               <button type="button" className="lm-delete" onClick={onDelete}>Excluir</button>
+              <button
+                type="button"
+                className="pv-btn-green pv-btn-sm"
+                onClick={() => {
+                  void fetch(`/api/leads/${lead.id}/send-to-seller`, { method: "POST" })
+                    .then((response) => response.json())
+                    .then((data) => {
+                      if (data.error) setError(data.error);
+                      else if (data.notified) setError(null);
+                      else setError(`Lead na fila, mas o aviso no WhatsApp falhou: ${data.notify_error || "erro"}`);
+                    });
+                }}
+              >
+                Enviar pro vendedor
+              </button>
               <Link className="pv-btn pv-btn-sm" href={`/conversations?lead=${lead.id}`}>Abrir conversa</Link>
             </div>
           </div>

@@ -34,11 +34,15 @@ const ADMIN_ONLY_PREFIXES = [
   "/prospeccao",
   "/test-inbound",
   "/reports",
-  "/level-tests",
   "/api/settings",
   "/api/users",
   "/api/stages",
   "/api/knowledge",
+  // Integrações WhatsApp (deregister/oauth/templates) e injeção de inbound
+  // de teste são função de gestor. O webhook da Meta segue público (a lista
+  // PUBLIC_PREFIXES é avaliada antes desta).
+  "/api/integrations",
+  "/api/messages",
 ];
 
 function isPublicPath(pathname: string) {
@@ -73,9 +77,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Páginas aposentadas (substituídas pelo Painel do Vendedor).
+  if (pathname === "/meu-dia" || pathname === "/vendedor") {
+    const painelUrl = request.nextUrl.clone();
+    painelUrl.pathname = "/painel-vendedor";
+    painelUrl.search = "";
+    return NextResponse.redirect(painelUrl);
+  }
+
   if (user.role === "vendedor") {
     // Vendedor cai direto no painel dele.
-    if (pathname === "/" || pathname === "/meu-dia" || pathname === "/vendedor") {
+    if (pathname === "/") {
       const painelUrl = request.nextUrl.clone();
       painelUrl.pathname = "/painel-vendedor";
       painelUrl.search = "";

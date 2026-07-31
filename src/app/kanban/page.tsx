@@ -22,7 +22,9 @@ export default async function KanbanPage() {
       <AutoRefresh />
       <div className="page-header">
         <div><div className="eyebrow">Pipeline de vendas</div><h1>Kanban de leads</h1><p>{leads.length} leads distribuídos em {stages.length} etapas.</p></div>
-        <Link href="/test-inbound" className="button button-primary"><Icon name="plus" size={15} /> Novo lead</Link>
+        {sessionUser?.role !== "vendedor" && (
+          <Link href="/test-inbound" className="button button-primary"><Icon name="plus" size={15} /> Novo lead</Link>
+        )}
       </div>
       {!configured ? <ConfigRequired /> : (
         <KanbanBoard initialLeads={leads} stages={stages} followups={followups} events={events} authorName={sessionUser?.name || null} />

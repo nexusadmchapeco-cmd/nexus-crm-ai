@@ -3,6 +3,19 @@ import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
+// Etapas cobertas pelo follow-up de templates (24h+): a etapa configurada na
+// sequência + as etapas quentes do funil (Qualificado, Reunião, Negociação).
+async function followupStageIds(
+  supabase: ReturnType<typeof createAdminClient>,
+  triggerStageId: string,
+) {
+  const { data } = await supabase
+    .from("pipeline_stages")
+    .select("id")
+    .in("role", ["hot_lead", "handoff", "closer_owns"]);
+  return [...new Set([triggerStageId, ...(data || []).map((s) => s.id)])];
+}
+
 function labelForDelay(minutes: number) {
   if (minutes % 1440 === 0) return `D+${minutes / 1440}`;
   if (minutes % 60 === 0) return `${minutes / 60}h`;
@@ -70,7 +83,10 @@ export async function GET(request: Request) {
       supabase
         .from("leads")
         .select("*")
-        .eq("stage_id", sequence.trigger_stage_id)
+        .in(
+          "stage_id",
+          await followupStageIds(supabase, sequence.trigger_stage_id),
+        )
         .eq("human_takeover", false)
         // Não envia follow-up para quem pediu opt-out (SAIR/PARAR/etc.).
         .is("opted_out_at", null),
@@ -122,7 +138,7 @@ export async function GET(request: Request) {
       );
       if (!dueStep) {
         const exhausted = (steps || []).length > 0 && completedDelays.size >= (steps || []).length;
-        if (exhausted && notQualifiedStage) {
+        if (exhausted && notQualifiedStage && lead.stage_id === sequence.trigger_stage_id) {
           const { error: disqualifyError } = await supabase
             .from("leads")
             .update({ stage_id: notQualifiedStage.id, updated_at: new Date().toISOString() })

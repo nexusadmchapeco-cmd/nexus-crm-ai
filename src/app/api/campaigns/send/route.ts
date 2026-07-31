@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/session";
+import { scopedUnit, unitVisibleTo } from "@/lib/units";
 import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
@@ -6,12 +8,18 @@ import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const adminPin = process.env.CRM_ADMIN_PIN;
-    if (!adminPin) {
-      return NextResponse.json({ error: "CRM_ADMIN_PIN não configurado" }, { status: 503 });
-    }
-    if (String(body.admin_pin || "") !== adminPin) {
-      return NextResponse.json({ error: "PIN de segurança inválido." }, { status: 401 });
+    // Com login ativo, quem dispara é o usuário logado (vendedor recebe o
+    // recorte da própria unidade abaixo). O PIN fica como contingência para
+    // o modo aberto (sem sessão).
+    const session = await getSessionUser();
+    if (!session) {
+      const adminPin = process.env.CRM_ADMIN_PIN;
+      if (!adminPin) {
+        return NextResponse.json({ error: "CRM_ADMIN_PIN não configurado" }, { status: 503 });
+      }
+      if (String(body.admin_pin || "") !== adminPin) {
+        return NextResponse.json({ error: "PIN de segurança inválido." }, { status: 401 });
+      }
     }
     const leadIds = Array.isArray(body.lead_ids) ? body.lead_ids.slice(0, 200) : [];
     if (!body.confirmed || !leadIds.length || !body.name?.trim() || !body.template_name?.trim()) {
@@ -27,7 +35,7 @@ export async function POST(request: Request) {
       { data: operationsRow, error: operationsError },
     ] = await Promise.all([
       // Não envia campanha para quem pediu opt-out (SAIR/PARAR/etc.).
-      supabase.from("leads").select("id,name,phone").in("id", leadIds).is("opted_out_at", null),
+      supabase.from("leads").select("id,name,phone,unit_interest").in("id", leadIds).is("opted_out_at", null),
       supabase
         .from("ai_settings")
         .select("global_prompt")
@@ -40,7 +48,9 @@ export async function POST(request: Request) {
     const campaignId = crypto.randomUUID();
     const results = { sent: 0, failed: 0 };
 
-    for (const lead of leads || []) {
+    const unit = scopedUnit(session);
+    const scopedLeads = (leads || []).filter((lead) => unitVisibleTo(lead.unit_interest, unit));
+    for (const lead of scopedLeads) {
       const personalizedText = String(body.message || "")
         .replaceAll("{{nome}}", lead.name || "tudo bem")
         .slice(0, 1000);
