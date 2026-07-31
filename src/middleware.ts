@@ -21,6 +21,9 @@ const PUBLIC_PREFIXES = [
   "/data-deletion",
   "/_next/",
   "/favicon",
+  // PWA: manifest e ícones são buscados pelo navegador sem sessão.
+  "/manifest.webmanifest",
+  "/icons/",
 ];
 
 // Dentro de /api/level-test, a revisão é interna (closer) — exige login.
