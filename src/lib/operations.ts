@@ -4,6 +4,8 @@ export const defaultOperationsSettings: OperationsSettings = {
   closer_enabled: false,
   closer_name: "Closer Nexus",
   closer_phone: "",
+  closer_phone_passo_fundo: "",
+  closer_phone_chapeco: "",
   closer_template_name: "resumo_closer",
   followup_template_name: "",
   followup_template_names: {
@@ -52,4 +54,19 @@ export function parseOperationsSettings(value?: string | null): OperationsSettin
 
 export function normalizePhone(value: string) {
   return value.replace(/\D/g, "");
+}
+
+
+// WhatsApp do closer responsável pelo lead: Chapecó tem closer próprio;
+// Passo Fundo atende também Online e leads sem unidade definida (mesma regra
+// de visibilidade do sistema). closer_phone antigo fica como fallback.
+export function closerPhoneForLead(
+  operations: OperationsSettings,
+  unitInterest?: string | null,
+) {
+  const value = (unitInterest || "").toLowerCase();
+  if (value.includes("chapec")) {
+    return operations.closer_phone_chapeco || operations.closer_phone || operations.closer_phone_passo_fundo;
+  }
+  return operations.closer_phone_passo_fundo || operations.closer_phone || operations.closer_phone_chapeco;
 }

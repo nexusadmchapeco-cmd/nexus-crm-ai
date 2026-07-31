@@ -165,6 +165,9 @@ export type OperationsSettings = {
   closer_enabled: boolean;
   closer_name: string;
   closer_phone: string;
+  // WhatsApp do closer por unidade: o aviso vai pro closer certo.
+  closer_phone_passo_fundo: string;
+  closer_phone_chapeco: string;
   closer_template_name: string;
   followup_template_name: string;
   followup_template_names: Record<string, string>;

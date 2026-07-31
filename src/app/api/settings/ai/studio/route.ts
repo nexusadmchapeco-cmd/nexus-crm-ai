@@ -138,8 +138,18 @@ export async function PUT(request: Request) {
     if (insertStepsError) throw insertStepsError;
 
     const closerPhone = normalizePhone(String(operations.closer_phone || ""));
-    if (operations.closer_enabled && closerPhone.length < 10) {
-      return NextResponse.json({ error: "Informe o WhatsApp completo do closer." }, { status: 400 });
+    const closerPhonePF = normalizePhone(String(operations.closer_phone_passo_fundo || ""));
+    const closerPhoneCH = normalizePhone(String(operations.closer_phone_chapeco || ""));
+    if (
+      operations.closer_enabled &&
+      closerPhone.length < 10 &&
+      closerPhonePF.length < 10 &&
+      closerPhoneCH.length < 10
+    ) {
+      return NextResponse.json(
+        { error: "Informe o WhatsApp de pelo menos um closer (Passo Fundo ou Chapecó)." },
+        { status: 400 },
+      );
     }
     if (operations.closer_enabled && !String(operations.closer_template_name || "").trim()) {
       return NextResponse.json(
@@ -147,12 +157,25 @@ export async function PUT(request: Request) {
         { status: 400 },
       );
     }
+    const googleKey = String(body.google_places_api_key || "").trim();
+    if (googleKey) {
+      const { error: keyError } = await supabase
+        .from("app_secrets")
+        .upsert(
+          { name: "google_places_api_key", value: googleKey, updated_at: new Date().toISOString() },
+          { onConflict: "name" },
+        );
+      if (keyError) throw keyError;
+    }
+
     const operationsRecord = {
       name: "__operations__",
       global_prompt: JSON.stringify({
         closer_enabled: Boolean(operations.closer_enabled),
         closer_name: String(operations.closer_name || "").trim(),
         closer_phone: closerPhone,
+        closer_phone_passo_fundo: closerPhonePF,
+        closer_phone_chapeco: closerPhoneCH,
         closer_template_name: String(operations.closer_template_name || "").trim(),
         followup_template_name: String(operations.followup_template_name || "").trim(),
         followup_template_names: Object.fromEntries(

@@ -58,6 +58,7 @@ export function PromptStudio({
       active = false;
     };
   }, []);
+  const [googleKey, setGoogleKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
@@ -78,6 +79,7 @@ export function PromptStudio({
         stage_prompts: stagePrompts.map(({ stage_id, prompt }) => ({ stage_id, prompt })),
         followup,
         operations,
+        google_places_api_key: googleKey.trim() || undefined,
       }),
     });
     const body = await response.json();
@@ -87,6 +89,7 @@ export function PromptStudio({
       return;
     }
     setFollowup((current) => ({ ...current, id: body.sequence_id }));
+    setGoogleKey("");
     setNotice({ type: "ok", text: "Configurações salvas no Supabase." });
   }
 
@@ -621,16 +624,42 @@ export function PromptStudio({
                 />
               </div>
               <div className="field">
-                <label htmlFor="closer-phone">WhatsApp do closer</label>
+                <label htmlFor="closer-phone-pf">WhatsApp do closer · Passo Fundo (e Online)</label>
                 <input
-                  id="closer-phone"
+                  id="closer-phone-pf"
                   inputMode="tel"
                   placeholder="5554999999999"
-                  value={operations.closer_phone}
+                  value={operations.closer_phone_passo_fundo || operations.closer_phone}
                   onChange={(event) =>
-                    setOperations({ ...operations, closer_phone: event.target.value })
+                    setOperations({ ...operations, closer_phone_passo_fundo: event.target.value })
                   }
                 />
+              </div>
+              <div className="field">
+                <label htmlFor="closer-phone-ch">WhatsApp do closer · Chapecó</label>
+                <input
+                  id="closer-phone-ch"
+                  inputMode="tel"
+                  placeholder="5549999999999"
+                  value={operations.closer_phone_chapeco}
+                  onChange={(event) =>
+                    setOperations({ ...operations, closer_phone_chapeco: event.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="google-places-key">Chave Google Places (busca de empresas)</label>
+                <input
+                  id="google-places-key"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Cole a chave — em branco mantém a atual"
+                  value={googleKey}
+                  onChange={(event) => setGoogleKey(event.target.value)}
+                />
+                <small className="field-hint">
+                  Usada na Prospecção de Empresas do Painel do Vendedor. Fica guardada no banco, nunca aparece no navegador.
+                </small>
               </div>
               <div className="field">
                 <label htmlFor="closer-template">Modelo aprovado para o resumo</label>

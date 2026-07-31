@@ -7,10 +7,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // dados vêm ao vivo a cada busca, conforme os termos da Places API.
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    let apiKey: string | null = null;
+    try {
+      const { data: secretRow } = await createAdminClient()
+        .from("app_secrets")
+        .select("value")
+        .eq("name", "google_places_api_key")
+        .maybeSingle();
+      apiKey = secretRow?.value?.trim() || null;
+    } catch {
+      apiKey = null;
+    }
+    if (!apiKey) apiKey = process.env.GOOGLE_PLACES_API_KEY || null;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GOOGLE_PLACES_API_KEY não configurada." },
+        { error: "Chave do Google Places não configurada — salve no Estúdio de IA (aba Encaminhamento)." },
         { status: 503 },
       );
     }

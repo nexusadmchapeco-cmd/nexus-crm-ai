@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardLead } from "@/lib/lead-guard";
-import { parseOperationsSettings } from "@/lib/operations";
+import { closerPhoneForLead, parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
@@ -35,12 +35,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const operations = parseOperationsSettings(operationsRow?.global_prompt);
     let notified = false;
     let notifyError: string | null = null;
-    if (operations.closer_phone && operations.closer_template_name) {
+    const closerPhone = closerPhoneForLead(operations, lead.unit_interest || lead.city);
+    if (closerPhone && operations.closer_template_name) {
       const sanitizeParam = (value: string) =>
         value.replace(/\s+/g, " ").trim().slice(0, 300) || "-";
       try {
         const sent = await sendWhatsAppTemplate(
-          operations.closer_phone,
+          closerPhone,
           operations.closer_template_name,
           operations.language_code,
           [
@@ -58,7 +59,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           metadata: {
             manual: true,
             author_name: guard.session?.name || null,
-            closer_phone: operations.closer_phone,
+            closer_phone: closerPhone,
             whatsapp_message_id: sent?.messages?.[0]?.id || null,
           },
         });

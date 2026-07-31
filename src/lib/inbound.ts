@@ -2,7 +2,7 @@ import { runSdr } from "@/lib/ai/sdr";
 import { defaultStagePrompts } from "@/lib/ai/prompt-defaults";
 import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseOperationsSettings } from "@/lib/operations";
+import { closerPhoneForLead, parseOperationsSettings } from "@/lib/operations";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
@@ -408,11 +408,8 @@ export async function processInbound(payload: InboundPayload) {
         .eq("name", "__operations__")
         .maybeSingle();
       const operations = parseOperationsSettings(operationsRow?.global_prompt);
-      if (
-        operations.closer_enabled &&
-        operations.closer_phone &&
-        operations.closer_template_name
-      ) {
+      const closerPhone = closerPhoneForLead(operations, lead.unit_interest || lead.city);
+      if (operations.closer_enabled && closerPhone && operations.closer_template_name) {
         const { data: alreadyNotified } = await supabase
           .from("lead_events")
           .select("id")
@@ -437,7 +434,7 @@ export async function processInbound(payload: InboundPayload) {
           ];
           try {
             const sent = await sendWhatsAppTemplate(
-              operations.closer_phone,
+              closerPhone,
               operations.closer_template_name,
               operations.language_code,
               closerParams,
@@ -446,7 +443,7 @@ export async function processInbound(payload: InboundPayload) {
               lead_id: lead.id,
               event_type: "closer_notified",
               metadata: {
-                closer_phone: operations.closer_phone,
+                closer_phone: closerPhone,
                 whatsapp_message_id: sent?.messages?.[0]?.id || null,
               },
             });
