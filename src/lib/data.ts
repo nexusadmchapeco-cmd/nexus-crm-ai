@@ -1,5 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/env";
+import { getSessionUser } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scopedUnit, unitOrExpression } from "@/lib/units";
 import { defaultFollowupSteps, defaultStagePrompts, editableStageRoles } from "@/lib/ai/prompt-defaults";
 import { defaultOperationsSettings, parseOperationsSettings } from "@/lib/operations";
 import type {
@@ -27,10 +29,14 @@ export async function getStages(): Promise<PipelineStage[]> {
 
 export async function getLeads(): Promise<Lead[]> {
   if (!isSupabaseConfigured()) return [];
-  const { data, error } = await createAdminClient()
+  let query = createAdminClient()
     .from("leads")
     .select("*, pipeline_stages(*)")
     .order("last_message_at", { ascending: false });
+  // Vendedor logado enxerga só a unidade dele (+ Online e leads sem unidade).
+  const unit = scopedUnit(await getSessionUser());
+  if (unit) query = query.or(unitOrExpression(unit));
+  const { data, error } = await query;
   if (error) throw error;
   return data as Lead[];
 }

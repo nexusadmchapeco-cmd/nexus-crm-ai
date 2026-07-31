@@ -19,10 +19,14 @@ const nav = [
   { href: "/campaigns", label: "Disparos", icon: "send" as const },
 ];
 
+// Itens de gestão: escondidos do papel "vendedor" (o middleware também bloqueia).
+const MANAGEMENT_HREFS = new Set(["/reports", "/test-inbound", "/prospeccao", "/campaigns"]);
+
 export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [diaCount, setDiaCount] = useState(0);
+  const [role, setRole] = useState<string | null>(null);
   const isLogin = pathname === "/login";
 
   useEffect(() => {
@@ -32,7 +36,17 @@ export function Sidebar() {
       .catch(() => {});
   }, [pathname]);
 
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((response) => response.json())
+      .then((data) => setRole(data.user?.role || null))
+      .catch(() => {});
+  }, [pathname]);
+
   if (isLogin) return null;
+
+  const isVendedor = role === "vendedor";
+  const visibleNav = nav.filter((item) => !isVendedor || !MANAGEMENT_HREFS.has(item.href));
 
   return (
     <>
@@ -53,7 +67,7 @@ export function Sidebar() {
         </div>
         <nav className="main-nav" aria-label="Navegação principal">
           <span className="nav-label">Operação</span>
-          {nav.map((item) => {
+          {visibleNav.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href} className={active ? "active" : ""} onClick={() => setOpen(false)}>
@@ -65,23 +79,33 @@ export function Sidebar() {
               </Link>
             );
           })}
-          <span className="nav-label nav-label-spaced">Configurações</span>
-          <Link href="/settings/whatsapp" className={pathname.startsWith("/settings/whatsapp") ? "active" : ""} onClick={() => setOpen(false)}>
-            <Icon name="chat" />
-            Conectar WhatsApp
-          </Link>
-          <Link href="/settings/pipeline" className={pathname.startsWith("/settings/pipeline") ? "active" : ""} onClick={() => setOpen(false)}>
-            <Icon name="board" />
-            Etapas do pipeline
-          </Link>
-          <Link href="/settings/ai" className={pathname.startsWith("/settings/ai") ? "active" : ""} onClick={() => setOpen(false)}>
-            <Icon name="settings" />
-            Estúdio de IA
-          </Link>
-          <Link href="/settings/knowledge" className={pathname.startsWith("/settings/knowledge") ? "active" : ""} onClick={() => setOpen(false)}>
-            <Icon name="book" />
-            Base de conhecimento
-          </Link>
+          {!isVendedor && (
+            <>
+              <span className="nav-label nav-label-spaced">Configurações</span>
+              <Link href="/settings/whatsapp" className={pathname.startsWith("/settings/whatsapp") ? "active" : ""} onClick={() => setOpen(false)}>
+                <Icon name="chat" />
+                Conectar WhatsApp
+              </Link>
+              <Link href="/settings/pipeline" className={pathname.startsWith("/settings/pipeline") ? "active" : ""} onClick={() => setOpen(false)}>
+                <Icon name="board" />
+                Etapas do pipeline
+              </Link>
+              <Link href="/settings/ai" className={pathname.startsWith("/settings/ai") ? "active" : ""} onClick={() => setOpen(false)}>
+                <Icon name="settings" />
+                Estúdio de IA
+              </Link>
+              <Link href="/settings/knowledge" className={pathname.startsWith("/settings/knowledge") ? "active" : ""} onClick={() => setOpen(false)}>
+                <Icon name="book" />
+                Base de conhecimento
+              </Link>
+              {role === "admin" && (
+                <Link href="/settings/usuarios" className={pathname.startsWith("/settings/usuarios") ? "active" : ""} onClick={() => setOpen(false)}>
+                  <Icon name="user" />
+                  Usuários
+                </Link>
+              )}
+            </>
+          )}
         </nav>
         <div className="sidebar-status">
           <div className="status-dot" />

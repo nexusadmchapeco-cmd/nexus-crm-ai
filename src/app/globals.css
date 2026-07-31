@@ -1624,3 +1624,46 @@ strong, b { font-weight: 600; }
   font-weight: 600; cursor: pointer;
 }
 .logout-btn:hover { border-color: rgba(255, 255, 255, .45); color: #fff; }
+
+/* Usuários (gestão de acessos) */
+.users-shell { display: flex; flex-direction: column; gap: 18px; max-width: 860px; }
+.users-notice { background: #e8f7f0; color: #0d7a4f; border-radius: 8px; padding: 9px 12px; font-size: 12px; }
+.users-create .users-form-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 9px; margin-top: 10px;
+}
+.users-form-grid input, .users-form-grid select {
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; background: var(--canvas);
+}
+.users-form-grid button {
+  border: 0; border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 700;
+  background: var(--orange); color: #fff; cursor: pointer;
+}
+.users-form-grid button:disabled { opacity: .5; cursor: default; }
+.users-list { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.users-list h3 { margin: 0 0 10px; font-size: 13px; }
+.users-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.users-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px;
+}
+.users-row-inactive { opacity: .55; }
+.users-row-main { display: flex; flex-direction: column; gap: 2px; }
+.users-row-main strong { font-size: 13px; }
+.users-row-main > span { font-size: 11px; color: var(--muted); }
+.users-badges { display: flex; gap: 5px; margin-top: 3px; }
+.users-badges b {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  background: #f1f1ef; border-radius: 5px; padding: 2px 7px; color: var(--ink);
+}
+.users-badges .users-unit { background: #fff1e8; color: var(--orange-dark); }
+.users-badges .users-off { background: #fdecec; color: #b3261e; }
+.users-row-actions { display: flex; gap: 6px; align-items: center; }
+.users-row-actions input {
+  border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; font-size: 11px; width: 130px;
+}
+.users-row-actions button {
+  border: 0; border-radius: 7px; padding: 6px 10px; font-size: 11px; font-weight: 600;
+  background: var(--orange); color: #fff; cursor: pointer;
+}
+.users-row-actions button.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.users-row-actions button:disabled { opacity: .5; cursor: default; }

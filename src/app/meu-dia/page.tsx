@@ -3,7 +3,9 @@ import { ConfigRequired } from "@/components/ui/config-required";
 import { MeuDia, type DiaItem, type AgendaItem } from "@/components/meu-dia/meu-dia";
 import { saoPauloDayBounds } from "@/lib/day";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getSessionUser } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scopedUnit, unitVisibleTo } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +13,17 @@ type LeadEmbed = {
   id: string;
   name: string | null;
   phone: string;
+  unit_interest?: string | null;
   pipeline_stages?: { name: string } | null;
 };
 
-function leadRow(task: { id: string; due_at: string; lead: LeadEmbed | null }, reason: string): DiaItem | null {
+function leadRow(
+  task: { id: string; due_at: string; lead: LeadEmbed | null },
+  reason: string,
+  unit: "chapeco" | "passo_fundo" | null,
+): DiaItem | null {
   if (!task.lead) return null;
+  if (!unitVisibleTo(task.lead.unit_interest, unit)) return null;
   return {
     task_id: task.id,
     lead_id: task.lead.id,
@@ -38,9 +46,10 @@ export default async function MeuDiaPage() {
   }
 
   const supabase = createAdminClient();
+  const unit = scopedUnit(await getSessionUser());
   const { start, end } = saoPauloDayBounds();
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-  const leadSelect = "id, name, phone, pipeline_stages(name)";
+  const leadSelect = "id, name, phone, unit_interest, pipeline_stages(name)";
 
   const [
     { data: overdueTasks },
@@ -65,7 +74,7 @@ export default async function MeuDiaPage() {
     supabase.from("lead_tasks").select("lead_id").eq("status", "pending"),
     supabase
       .from("leads")
-      .select("id, name, phone, last_message_at, pipeline_stages(name)")
+      .select("id, name, phone, unit_interest, last_message_at, pipeline_stages(name)")
       .is("opted_out_at", null)
       .not("temperature", "in", "(perdido,cliente)")
       .lt("last_message_at", threeDaysAgo)
@@ -73,7 +82,7 @@ export default async function MeuDiaPage() {
       .limit(50),
     supabase
       .from("appointments")
-      .select(`id, title, type, starts_at, status, lead:leads(id, name, phone)`)
+      .select(`id, title, type, starts_at, status, lead:leads(id, name, phone, unit_interest)`)
       .gte("starts_at", start.toISOString())
       .lte("starts_at", end.toISOString())
       .in("status", ["scheduled", "confirmed"])
@@ -81,15 +90,15 @@ export default async function MeuDiaPage() {
   ]);
 
   const overdue = (overdueTasks || [])
-    .map((task) => leadRow(task as never, "Contato atrasado"))
+    .map((task) => leadRow(task as never, "Contato atrasado", unit))
     .filter(Boolean) as DiaItem[];
   const today = (todayTasks || [])
-    .map((task) => leadRow(task as never, "Agendado para hoje"))
+    .map((task) => leadRow(task as never, "Agendado para hoje", unit))
     .filter(Boolean) as DiaItem[];
 
   const leadsWithTask = new Set((pendingLeadIdsRows || []).map((row) => row.lead_id));
   const noResponse: DiaItem[] = ((staleLeads as unknown as (LeadEmbed & { last_message_at: string })[]) || [])
-    .filter((lead) => !leadsWithTask.has(lead.id))
+    .filter((lead) => !leadsWithTask.has(lead.id) && unitVisibleTo(lead.unit_interest, unit))
     .map((lead) => ({
       task_id: null,
       lead_id: lead.id,
@@ -105,8 +114,8 @@ export default async function MeuDiaPage() {
     title: string;
     type: string;
     starts_at: string;
-    lead: { id: string; name: string | null; phone: string } | null;
-  }[]) || []).map((item) => ({
+    lead: { id: string; name: string | null; phone: string; unit_interest?: string | null } | null;
+  }[]) || []).filter((item) => unitVisibleTo(item.lead?.unit_interest, unit)).map((item) => ({
     id: item.id,
     title: item.title,
     type: item.type,
