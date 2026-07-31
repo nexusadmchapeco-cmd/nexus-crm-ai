@@ -1838,14 +1838,13 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .lm-cadencia button small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
 
 
-/* Seção do closer: ~4 cards visíveis por coluna, resto rola (feedback do
-   Lucas). A barra "Mover para/excluir" sai do card — a ficha (clique) tem os
-   chips de etapa e o excluir, e o arrasto continua funcionando. */
-.kanban-section-closer .kanban-column { max-height: 545px; }
-.kanban-section-closer .lead-card-controls { display: none; }
-.kanban-section-closer .lead-card-link { padding: 9px 11px 7px; }
-.kanban-section-closer .lead-card .temperature { margin: 6px 0 5px; }
-.kanban-section-closer .lead-card-detail { min-height: 0; -webkit-line-clamp: 1; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
-.kanban-section-closer .lead-card-footer { margin-top: 6px; padding-top: 6px; }
-.kanban-section-closer .lead-card { margin-bottom: 6px; }
-.kanban-section-closer .lead-card-controls { padding: 5px 10px; }
+/* Kanban inteiro (IA + closer): ~4 cards visíveis por coluna, resto rola.
+   A barra "Mover para/excluir" sai do card — a ficha (clique) tem os chips
+   de etapa e o excluir, e o arrasto continua funcionando. */
+.kanban-sections .kanban-column { max-height: 545px; }
+.kanban-sections .lead-card-controls { display: none; }
+.kanban-sections .lead-card-link { padding: 9px 11px 7px; }
+.kanban-sections .lead-card .temperature { margin: 6px 0 5px; }
+.kanban-sections .lead-card-detail { min-height: 0; -webkit-line-clamp: 1; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.kanban-sections .lead-card-footer { margin-top: 6px; padding-top: 6px; }
+.kanban-sections .lead-card { margin-bottom: 6px; }
