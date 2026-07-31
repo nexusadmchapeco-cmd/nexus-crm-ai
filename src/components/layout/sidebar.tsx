@@ -23,6 +23,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [diaCount, setDiaCount] = useState(0);
+  const isLogin = pathname === "/login";
 
   useEffect(() => {
     fetch("/api/meu-dia/summary")
@@ -30,6 +31,8 @@ export function Sidebar() {
       .then((data) => setDiaCount(data.count || 0))
       .catch(() => {});
   }, [pathname]);
+
+  if (isLogin) return null;
 
   return (
     <>
@@ -93,6 +96,19 @@ export function Sidebar() {
             <strong>Equipe Nexus</strong>
             <span>Operação comercial</span>
           </div>
+          <button
+            className="logout-btn"
+            type="button"
+            aria-label="Sair"
+            title="Sair"
+            onClick={() => {
+              void fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+                window.location.href = "/login";
+              });
+            }}
+          >
+            Sair
+          </button>
         </div>
       </aside>
     </>
