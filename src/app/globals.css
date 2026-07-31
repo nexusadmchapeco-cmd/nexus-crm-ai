@@ -142,7 +142,7 @@ a { color: inherit; text-decoration: none; }
 .kanban-notice { position: fixed; right: 24px; bottom: 22px; z-index: 30; padding: 11px 14px; border: 1px solid #c9eadc; border-radius: 7px; color: #14724d; background: #effaf5; box-shadow: 0 8px 24px #0002; font-size: 10px; font-weight: 700; }
 .kanban-wrap { overflow-x: auto; padding-bottom: 15px; }
 .kanban-board { display: flex; gap: 12px; min-width: max-content; align-items: flex-start; }
-.kanban-column { width: 268px; min-height: 116px; max-height: 48vh; display: flex; flex-direction: column; overflow: hidden; background: #efefed; border: 1px solid #e1e1df; border-radius: 9px; padding: 10px; transition: .16s ease; }
+.kanban-column { width: 268px; min-height: 116px; max-height: 46vh; display: flex; flex-direction: column; overflow: hidden; background: #efefed; border: 1px solid #e1e1df; border-radius: 9px; padding: 10px; transition: .16s ease; }
 .kanban-column-drop { border-color: #ff9b62; background: #fff6f0; box-shadow: inset 0 0 0 1px #ffd4bc; }
 .kanban-section-label { margin: 22px 0 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: #86878b; }
 .kanban-section-label:first-of-type { margin-top: 0; }
@@ -1244,12 +1244,12 @@ h1, h2, h3,
    KANBAN DENSO — todas as etapas em uma única tela, sem scroll lateral
    ========================================================================== */
 
-.kanban-shell { display: flex; flex-direction: column; height: calc(100dvh - 65px - 78px); min-height: 0; }
+.kanban-shell { display: flex; flex-direction: column; }
 .kanban-shell .page-header { flex: 0 0 auto; margin-bottom: 14px; }
 .kanban-sections { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .kanban-section { display: flex; flex-direction: column; min-height: 0; }
-.kanban-section-ia { flex: 1.35 1 0; }
-.kanban-section-closer { flex: 1 1 0; margin-top: 12px; }
+.kanban-section-ia { flex: none; }
+.kanban-section-closer { flex: none; margin-top: 16px; }
 .kanban-section-label { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
 .kanban-section-label::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #e3e2df, transparent); }
 .kanban-section-label em { color: #a6a7aa; font-size: 8px; font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; }
@@ -1836,3 +1836,13 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .conversation-search-active input { border: 0; background: transparent; outline: none; flex: 1; font-size: 12.5px; color: var(--ink); min-width: 0; }
 .conversation-search-active button { border: 0; background: transparent; cursor: pointer; color: var(--muted); display: grid; place-items: center; }
 .lm-cadencia button small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+
+/* Seção do closer: colunas altas + cards compactos (feedback do Lucas) */
+.kanban-section-closer .kanban-column { max-height: 66vh; }
+.kanban-section-closer .lead-card-link { padding: 9px 11px 7px; }
+.kanban-section-closer .lead-card .temperature { margin: 6px 0 5px; }
+.kanban-section-closer .lead-card-detail { min-height: 0; -webkit-line-clamp: 1; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.kanban-section-closer .lead-card-footer { margin-top: 6px; padding-top: 6px; }
+.kanban-section-closer .lead-card { margin-bottom: 6px; }
+.kanban-section-closer .lead-card-controls { padding: 5px 10px; }
