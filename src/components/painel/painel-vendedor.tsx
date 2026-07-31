@@ -51,6 +51,7 @@ type PainelData = {
       done: boolean;
       manual: boolean;
       lead_id?: string | null;
+      lead_task_id?: string | null;
     }[];
   };
   semana: {
@@ -251,6 +252,22 @@ export function PainelVendedor({
 
   async function toggleTask(task: PainelData["hoje"]["tarefas"][number]) {
     if (!data) return;
+    // Follow-up agendado na ficha do lead: concluir marca a lead_task e
+    // registra a observação na timeline do lead.
+    if (task.lead_task_id && task.lead_id) {
+      if (task.done) return;
+      await fetch(`/api/leads/${task.lead_id}/tasks/${task.lead_task_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "done",
+          done_note: `Concluído pelo Painel do Vendedor: ${task.title}`,
+          author_name: viewer?.name || null,
+        }),
+      });
+      void load();
+      return;
+    }
     const done = !task.done;
     setData({
       ...data,

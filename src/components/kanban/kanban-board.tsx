@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type DragEvent } from "react";
+import { LeadModal } from "@/components/kanban/lead-modal";
 import { Icon } from "@/components/ui/icon";
 import { formatRelative, initials, labelEventType, labelTemperature } from "@/lib/format";
 import type { FollowupHistoryItem, Lead, LeadEvent, PipelineStage } from "@/lib/types";
@@ -11,15 +11,17 @@ type Props = {
   stages: PipelineStage[];
   followups: FollowupHistoryItem[];
   events: Record<string, LeadEvent[]>;
+  authorName?: string | null;
 };
 
-export function KanbanBoard({ initialLeads, stages, followups, events }: Props) {
+export function KanbanBoard({ initialLeads, stages, followups, events, authorName = null }: Props) {
   const [leads, setLeads] = useState(initialLeads);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropStageId, setDropStageId] = useState<string | null>(null);
   const [movingLeadId, setMovingLeadId] = useState<string | null>(null);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     // initialLeads muda a cada AutoRefresh (novo fetch no servidor); não mexe
@@ -137,7 +139,7 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
                   setDropStageId(null);
                 }}
               >
-                <Link href={`/conversations?lead=${lead.id}`} className="lead-card-link">
+                <button type="button" className="lead-card-link" onClick={() => setOpenLeadId(lead.id)}>
                   <div className="lead-card-top">
                     <div className="avatar">{initials(lead.name, lead.phone)}</div>
                     <div>
@@ -171,7 +173,7 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
                     <span>{lead.source || "Direto"}</span>
                     <span>{formatRelative(lead.last_message_at)}</span>
                   </div>
-                </Link>
+                </button>
                 {history.length > 0 && (
                   <div className="lead-card-history">
                     <button
@@ -235,9 +237,24 @@ export function KanbanBoard({ initialLeads, stages, followups, events }: Props) 
   const iaStages = visibleStages.filter((stage) => stage.board_group === "ia");
   const closerStages = visibleStages.filter((stage) => stage.board_group === "closer");
 
+  const openLead = openLeadId ? leads.find((lead) => lead.id === openLeadId) || null : null;
+
   return (
     <div className="kanban-sections">
       {notice && <div className="kanban-notice" role="status">{notice}</div>}
+      {openLead && (
+        <LeadModal
+          lead={openLead}
+          stages={stages.filter((stage) => stage.board_visible)}
+          authorName={authorName}
+          onClose={() => setOpenLeadId(null)}
+          onMove={(stageId) => void moveLead(openLead.id, stageId)}
+          onDelete={() => {
+            setOpenLeadId(null);
+            void deleteLead(openLead);
+          }}
+        />
+      )}
       <div className="kanban-section kanban-section-ia">
         <div className="kanban-section-label">
           Atendimento da IA

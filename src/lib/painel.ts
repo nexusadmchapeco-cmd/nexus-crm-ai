@@ -15,6 +15,8 @@ export type PainelTask = {
   done: boolean;
   manual: boolean;
   lead_id?: string | null;
+  // Follow-up agendado na ficha do lead (lead_tasks): concluir marca a task.
+  lead_task_id?: string | null;
 };
 
 const DEFAULT_GOALS: { key: string; label: string; target: number; suffix?: string }[] = [
@@ -140,6 +142,15 @@ export async function getPainelData(target: SessionUser) {
       .limit(2000),
   ]);
 
+  // Follow-ups agendados na ficha do lead (lead_tasks) vencendo até hoje.
+  const { data: leadTasksRaw } = await supabase
+    .from("lead_tasks")
+    .select("id, title, due_at, lead:leads(id, name, phone, unit_interest)")
+    .eq("status", "pending")
+    .lte("due_at", dayEnd.toISOString())
+    .order("due_at")
+    .limit(100);
+
   const stageById = new Map((stages || []).map((s) => [s.id, s]));
   const stageByRole = new Map((stages || []).map((s) => [s.role, s]));
   const leads = (leadsRaw || []).filter((lead) => unitVisibleTo(lead.unit_interest, unit));
@@ -226,6 +237,26 @@ export async function getPainelData(target: SessionUser) {
     if (row.source) taskState.set(row.source, { id: row.id, done: Boolean(row.done_at) });
   }
   const tarefas: PainelTask[] = [];
+
+  // 1) Follow-ups agendados manualmente (ficha do lead → aba Follow-up).
+  const scheduledLeadIds = new Set<string>();
+  for (const task of leadTasksRaw || []) {
+    const taskLead = task.lead as { id?: string; name?: string | null; phone?: string; unit_interest?: string | null } | null;
+    if (!taskLead?.id || !unitVisibleTo(taskLead.unit_interest, unit)) continue;
+    scheduledLeadIds.add(taskLead.id);
+    const overdueDays = Math.floor((now.getTime() - new Date(task.due_at).getTime()) / 86400000);
+    tarefas.push({
+      id: null,
+      source: null,
+      title: `Contato agendado: ${taskLead.name || taskLead.phone} — ${task.title}${overdueDays > 0 ? ` (atrasado ${overdueDays}d)` : ""}`,
+      chip: "followup",
+      done: false,
+      manual: false,
+      lead_id: taskLead.id,
+      lead_task_id: task.id,
+    });
+  }
+
   const followupLeads = leads.filter(
     (lead) =>
       activeRoles.has(roleOf(lead)) &&
@@ -233,7 +264,7 @@ export async function getPainelData(target: SessionUser) {
       lead.last_message_at < new Date(now.getTime() - 3 * 86400000).toISOString() &&
       lead.last_message_at >= new Date(now.getTime() - 30 * 86400000).toISOString(),
   );
-  for (const lead of followupLeads.slice(0, 12)) {
+  for (const lead of followupLeads.filter((l) => !scheduledLeadIds.has(l.id)).slice(0, 12)) {
     const source = `fu:${lead.id}:${today}`;
     const state = taskState.get(source);
     tarefas.push({

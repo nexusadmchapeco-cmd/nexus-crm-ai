@@ -5,11 +5,13 @@ import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
 import { getFollowupHistory, getLeadEventsMap, getLeads, getStages } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function KanbanPage() {
   const configured = isSupabaseConfigured();
+  const sessionUser = configured ? await getSessionUser() : null;
   const [stages, leads, followups] = configured
     ? await Promise.all([getStages(), getLeads(), getFollowupHistory()])
     : [[], [], []];
@@ -23,7 +25,7 @@ export default async function KanbanPage() {
         <Link href="/test-inbound" className="button button-primary"><Icon name="plus" size={15} /> Novo lead</Link>
       </div>
       {!configured ? <ConfigRequired /> : (
-        <KanbanBoard initialLeads={leads} stages={stages} followups={followups} events={events} />
+        <KanbanBoard initialLeads={leads} stages={stages} followups={followups} events={events} authorName={sessionUser?.name || null} />
       )}
     </div>
   );
