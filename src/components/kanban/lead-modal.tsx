@@ -10,13 +10,23 @@ import { Icon } from "@/components/ui/icon";
 import { formatRelative, labelEventType } from "@/lib/format";
 import type { Lead, PipelineStage } from "@/lib/types";
 
+// followupDays: registrar a etapa agenda o próximo contato automaticamente
+// (modelo do CRM antigo). null = encerra sem follow-up.
 const CADENCIA = [
-  { n: 1, label: "Retorno Reunião", color: "#eceafd" },
-  { n: 2, label: "Tirar Dúvidas", color: "#eceafd" },
-  { n: 3, label: "Aula Experimental", color: "#e2f5ec" },
-  { n: 4, label: "Oferecer Promoção", color: "#fcf1dc" },
-  { n: 5, label: "Encerrar Atendimento", color: "#fce4e5" },
+  { n: 1, label: "Retorno Reunião", color: "#eceafd", followupDays: 1 },
+  { n: 2, label: "Tirar Dúvidas", color: "#eceafd", followupDays: 2 },
+  { n: 3, label: "Aula Experimental", color: "#e2f5ec", followupDays: 3 },
+  { n: 4, label: "Oferecer Promoção", color: "#fcf1dc", followupDays: 2 },
+  { n: 5, label: "Encerrar Atendimento", color: "#fce4e5", followupDays: null },
 ];
+
+function isoInDays(days: number) {
+  const date = new Date(Date.now() + days * 86400000);
+  const dateStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(date);
+  return `${dateStr}T09:00:00-03:00`;
+}
 
 const OUTCOME_LABELS: Record<string, string> = {
   atendeu: "Atendeu",
@@ -94,20 +104,37 @@ export function LeadModal({
   const pendingTask = tasks.find((task) => task.status === "pending") || null;
   const stageName = stages.find((s) => s.id === lead.stage_id)?.name || "";
 
+  async function cancelPendingTask() {
+    if (!pendingTask) return;
+    await fetch(`/api/leads/${lead.id}/tasks/${pendingTask.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "canceled", author_name: authorName }),
+    });
+  }
+
   async function registrarCadencia() {
-    if (!etapa || !nota.trim() || registrando) return;
+    if (!nota.trim() || registrando) return;
     setRegistrando(true);
     setError(null);
     try {
-      const step = CADENCIA.find((c) => String(c.n) === etapa);
+      const step = etapa ? CADENCIA.find((c) => String(c.n) === etapa) : null;
+      const autoFollowup = step?.followupDays ?? null;
+      const body: Record<string, unknown> = {
+        content: step ? `${step.n}° ${step.label} — ${nota.trim()}` : nota.trim(),
+        outcome: step ? "atendeu" : "sem_resposta",
+        author_name: authorName,
+      };
+      if (step && autoFollowup) {
+        // Novo follow-up automático substitui o pendente anterior.
+        await cancelPendingTask();
+        body.next_contact_at = isoInDays(autoFollowup);
+        body.next_contact_title = `${step.n}° ${step.label}`;
+      }
       const response = await fetch(`/api/leads/${lead.id}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: `${step?.n}° ${step?.label} — ${nota.trim()}`,
-          outcome: "atendeu",
-          author_name: authorName,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao registrar.");
@@ -126,6 +153,7 @@ export function LeadModal({
     setFuBusy(true);
     setError(null);
     try {
+      await cancelPendingTask();
       const title = fuNote.trim() || "Retomar contato";
       const response = await fetch(`/api/leads/${lead.id}/notes`, {
         method: "POST",
@@ -286,12 +314,13 @@ export function LeadModal({
                   onClick={() => setEtapa(etapa === String(step.n) ? "" : String(step.n))}
                 >
                   <b>{step.n}°</b> {step.label}
+                  <small>{step.followupDays ? `follow-up +${step.followupDays}d` : "sem follow-up"}</small>
                 </button>
               ))}
             </div>
             <div className="lm-registrar">
               <select value={etapa} onChange={(event) => setEtapa(event.target.value)}>
-                <option value="">Selecione a etapa...</option>
+                <option value="">Sem etapa (anotação livre)</option>
                 {CADENCIA.map((step) => (
                   <option key={step.n} value={step.n}>{step.n}° {step.label}</option>
                 ))}
@@ -302,7 +331,7 @@ export function LeadModal({
                 onChange={(event) => setNota(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && void registrarCadencia()}
               />
-              <button type="button" className="pv-btn pv-btn-sm" disabled={!etapa || !nota.trim() || registrando} onClick={() => void registrarCadencia()}>
+              <button type="button" className="pv-btn pv-btn-sm" disabled={!nota.trim() || registrando} onClick={() => void registrarCadencia()}>
                 {registrando ? "Salvando..." : "+ Registrar"}
               </button>
             </div>

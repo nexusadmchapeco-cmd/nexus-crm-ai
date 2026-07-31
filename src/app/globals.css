@@ -1835,3 +1835,4 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .conversation-search-active { display: flex; align-items: center; gap: 8px; cursor: text; }
 .conversation-search-active input { border: 0; background: transparent; outline: none; flex: 1; font-size: 12.5px; color: var(--ink); min-width: 0; }
 .conversation-search-active button { border: 0; background: transparent; cursor: pointer; color: var(--muted); display: grid; place-items: center; }
+.lm-cadencia button small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
