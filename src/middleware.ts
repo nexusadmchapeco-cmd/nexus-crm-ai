@@ -26,16 +26,16 @@ const PUBLIC_PREFIXES = [
 // Dentro de /api/level-test, a revisão é interna (closer) — exige login.
 const BLOCKED_INSIDE_PUBLIC = ["/review"];
 
-// Áreas de gestão: vendedor não acessa (admin e SDR sim).
+// Áreas de gestão: vendedor não acessa (admin e SDR sim). O vendedor usa
+// Painel, Pipeline, Conversas, Agenda e Disparos — inclusive a prospecção e
+// os disparos DENTRO do painel (/api/prospects e /api/campaigns liberados).
 const ADMIN_ONLY_PREFIXES = [
   "/settings",
-  "/campaigns",
   "/prospeccao",
   "/test-inbound",
   "/reports",
+  "/level-tests",
   "/api/settings",
-  "/api/campaigns",
-  "/api/prospects",
   "/api/users",
   "/api/stages",
   "/api/knowledge",
@@ -73,14 +73,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user.role === "vendedor" && ADMIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Acesso restrito ao gestor" }, { status: 403 });
+  if (user.role === "vendedor") {
+    // Vendedor cai direto no painel dele.
+    if (pathname === "/" || pathname === "/meu-dia" || pathname === "/vendedor") {
+      const painelUrl = request.nextUrl.clone();
+      painelUrl.pathname = "/painel-vendedor";
+      painelUrl.search = "";
+      return NextResponse.redirect(painelUrl);
     }
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
-    homeUrl.search = "";
-    return NextResponse.redirect(homeUrl);
+    if (ADMIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Acesso restrito ao gestor" }, { status: 403 });
+      }
+      const painelUrl = request.nextUrl.clone();
+      painelUrl.pathname = "/painel-vendedor";
+      painelUrl.search = "";
+      return NextResponse.redirect(painelUrl);
+    }
   }
 
   return NextResponse.next();

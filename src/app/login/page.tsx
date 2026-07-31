@@ -34,7 +34,9 @@ function LoginForm() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao entrar.");
       const next = searchParams.get("next");
-      router.replace(next && next.startsWith("/") ? next : "/");
+      // Vendedor cai direto no Painel do Vendedor.
+      const home = data.user?.role === "vendedor" ? "/painel-vendedor" : "/";
+      router.replace(next && next.startsWith("/") ? next : home);
       router.refresh();
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Erro ao entrar.");
