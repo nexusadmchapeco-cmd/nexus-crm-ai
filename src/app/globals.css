@@ -1849,3 +1849,24 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .kanban-sections .lead-card-footer { margin-top: 6px; padding-top: 6px; }
 .kanban-sections .lead-card { margin-bottom: 6px; }
 .field-hint { display: block; margin-top: 4px; font-size: 10.5px; color: var(--muted); }
+
+/* Barra inferior do celular/PWA (feedback: menu no alcance do polegar) */
+.mobile-tabbar { display: none; }
+@media (max-width: 800px) {
+  .mobile-menu { display: none; }
+  .topbar { padding-left: 15px; }
+  .mobile-tabbar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 24;
+    background: #fff; border-top: 1px solid var(--line);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 16px rgba(23, 23, 25, .06);
+  }
+  .mobile-tabbar a, .mobile-tabbar button {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border: 0; background: none; color: var(--muted); font-size: 9.5px; font-weight: 600;
+    padding: 4px 0; cursor: pointer; text-decoration: none;
+  }
+  .mobile-tabbar a.on { color: var(--orange); }
+  .page-content { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .conversations-shell { height: calc(100dvh - 65px - 61px - 70px); }
+}

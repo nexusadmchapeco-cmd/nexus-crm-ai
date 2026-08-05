@@ -48,6 +48,15 @@ export function Sidebar() {
   const isVendedor = role === "vendedor";
   const visibleNav = nav.filter((item) => !isVendedor || !MANAGEMENT_HREFS.has(item.href));
 
+  // Barra inferior do celular/PWA: atalhos principais no alcance do polegar;
+  // "Menu" abre a gaveta com todo o resto.
+  const tabbar = [
+    { href: "/painel-vendedor", label: "Painel", icon: "user" as const },
+    { href: "/kanban", label: "Pipeline", icon: "board" as const },
+    { href: "/conversations", label: "Conversas", icon: "chat" as const },
+    { href: "/agenda", label: "Agenda", icon: "calendar" as const },
+  ];
+
   return (
     <>
       <button className="mobile-menu" onClick={() => setOpen(true)} aria-label="Abrir menu">
@@ -135,6 +144,21 @@ export function Sidebar() {
           </button>
         </div>
       </aside>
+      <nav className="mobile-tabbar" aria-label="Navegação inferior">
+        {tabbar.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link key={item.href} href={item.href} className={active ? "on" : ""}>
+              <Icon name={item.icon} size={18} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button type="button" onClick={() => setOpen(true)}>
+          <Icon name="menu" size={18} />
+          <span>Menu</span>
+        </button>
+      </nav>
     </>
   );
 }
