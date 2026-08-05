@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const value = body?.entry?.[0]?.changes?.[0]?.value;
     const incoming = value?.messages?.[0];
-    if (!incoming || (incoming.type !== "text" && incoming.type !== "audio")) {
+    const supportedTypes = ["text", "audio", "button", "interactive"];
+    if (!incoming || !supportedTypes.includes(incoming.type)) {
       return NextResponse.json({ received: true });
     }
     const contact = value?.contacts?.[0];
@@ -41,7 +42,23 @@ export async function POST(request: Request) {
         // a processar em paralelo, ganhando o tempo dessa chamada.
         void sendTypingIndicator(incoming.id).catch(() => {});
         const isAudio = incoming.type === "audio";
-        let messageText = incoming.text?.body || "";
+        // Cliques de botão chegam como type "button" (quick reply de template,
+        // com payload) ou "interactive" (button_reply/list_reply). O payload
+        // roteia ações fixas; o texto visível entra na conversa normalmente.
+        const buttonPayload: string | null =
+          incoming.type === "button"
+            ? incoming.button?.payload || null
+            : incoming.type === "interactive"
+              ? incoming.interactive?.button_reply?.id ||
+                incoming.interactive?.list_reply?.id ||
+                null
+              : null;
+        let messageText =
+          incoming.text?.body ||
+          incoming.button?.text ||
+          incoming.interactive?.button_reply?.title ||
+          incoming.interactive?.list_reply?.title ||
+          "";
         if (isAudio) {
           // Áudio do lead: baixa a mídia e transcreve para a IA entender.
           const mediaId = incoming.audio?.id;
@@ -64,6 +81,7 @@ export async function POST(request: Request) {
           message: messageText,
           source: "whatsapp",
           whatsapp_message_id: incoming.id,
+          button_payload: buttonPayload,
         });
         if (!result.ai_reply) return;
         const parts = result.ai_reply_parts?.length

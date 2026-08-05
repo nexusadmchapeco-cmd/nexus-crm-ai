@@ -2,6 +2,7 @@ import { runSdr } from "@/lib/ai/sdr";
 import { defaultStagePrompts } from "@/lib/ai/prompt-defaults";
 import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isBlocked, slotRulesPrompt, validateSlotRules } from "@/lib/agenda-rules";
 import { buildCloserNotification } from "@/lib/closer-notify";
 import { parseOperationsSettings } from "@/lib/operations";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
@@ -15,6 +16,8 @@ export type InboundPayload = {
   campaign?: string;
   ad_name?: string;
   whatsapp_message_id?: string;
+  // Payload fixo do clique de botão (quick reply de template / interactive).
+  button_payload?: string | null;
 };
 
 export async function processInbound(payload: InboundPayload) {
@@ -119,6 +122,43 @@ export async function processInbound(payload: InboundPayload) {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z]/g, "");
+  // Cliques de botão com payload fixo (lembretes de reunião, régua de
+  // follow-up). Roteia pela constante, nunca pelo texto visível.
+  if (payload.button_payload === "CONFIRMAR_PRESENCA") {
+    const { data: nextAppointment } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .in("status", ["scheduled", "confirmed"])
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at")
+      .limit(1)
+      .maybeSingle();
+    if (nextAppointment) {
+      await supabase
+        .from("appointments")
+        .update({ status: "confirmed", updated_at: new Date().toISOString() })
+        .eq("id", nextAppointment.id);
+      await supabase.from("lead_events").insert({
+        lead_id: lead.id,
+        event_type: "appointment_status_changed",
+        metadata: { appointment_id: nextAppointment.id, status: "confirmed", via: "button" },
+      });
+    }
+    const confirmReply = "Presença confirmada! 🎉 Até lá. Qualquer coisa é só chamar por aqui.";
+    await supabase.from("messages").insert({
+      conversation_id: conversation.id,
+      lead_id: lead.id,
+      sender_type: "ai",
+      content: confirmReply,
+      status: "sent",
+      is_ai: true,
+    });
+    return { lead_id: lead.id, ai_reply: confirmReply, ai_reply_parts: [confirmReply] };
+  }
+  // REMARCAR e demais payloads seguem para a IA como texto normal (a regra de
+  // reagendamento trata a contagem).
+
   if (["sair", "parar", "cancelar", "descadastrar"].includes(optOutWord)) {
     const optedOutAt = new Date().toISOString();
     await Promise.all([
@@ -257,6 +297,7 @@ export async function processInbound(payload: InboundPayload) {
       )
       .join("\n")
       .slice(0, 6000);
+    const slotsContext = `${slotRulesPrompt()}\n\nHorários da semana:\n${availableSlots}`;
     const decision = await runSdr({
       lead,
       settings,
@@ -268,7 +309,7 @@ export async function processInbound(payload: InboundPayload) {
         ] ||
         null,
       knowledgeContext: knowledgeContext || null,
-      availableSlots: availableSlots || null,
+      availableSlots: slotsContext,
     });
     const stageRole = resolveSuggestedStage(decision, lead);
     const targetStage = stageByRole.get(stageRole) || stageByRole.get("ai_service")!;
@@ -331,9 +372,14 @@ export async function processInbound(payload: InboundPayload) {
     ) {
       const startsAt = new Date(decision.appointment.starts_at);
       const duration = 30;
-      if (!Number.isNaN(startsAt.getTime()) && startsAt.getTime() > Date.now()) {
+      const ruleViolation = validateSlotRules(startsAt);
+      if (
+        !Number.isNaN(startsAt.getTime()) &&
+        startsAt.getTime() > Date.now() &&
+        !ruleViolation
+      ) {
         const endsAt = new Date(startsAt.getTime() + duration * 60_000);
-        const [{ data: conflict }, { data: closed }] = await Promise.all([
+        const [{ data: conflict }, closed] = await Promise.all([
           supabase
             .from("appointments")
             .select("id")
@@ -342,13 +388,7 @@ export async function processInbound(payload: InboundPayload) {
             .in("status", ["scheduled", "confirmed"])
             .limit(1)
             .maybeSingle(),
-          supabase
-            .from("calendar_blocks")
-            .select("id")
-            .lt("starts_at", endsAt.toISOString())
-            .gt("ends_at", startsAt.toISOString())
-            .limit(1)
-            .maybeSingle(),
+          isBlocked(supabase, startsAt, endsAt),
         ]);
         if (!conflict && !closed) {
           const { data: appointment } = await supabase

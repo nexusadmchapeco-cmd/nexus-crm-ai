@@ -1870,3 +1870,7 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
   .page-content { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   .conversations-shell { height: calc(100dvh - 65px - 61px - 70px); }
 }
+
+/* Agenda: métricas + bloqueios */
+.agenda-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 240px)); gap: 12px; margin-bottom: 16px; }
+.availability-list i.blocked { background: #e5484d; }

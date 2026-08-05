@@ -7,6 +7,10 @@
     {
       "path": "/api/jobs/nudges",
       "schedule": "*/30 13-22 * * *"
+    },
+    {
+      "path": "/api/jobs/reminders",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

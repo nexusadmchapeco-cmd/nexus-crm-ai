@@ -139,6 +139,10 @@ export async function sendWhatsAppTemplate(
   templateName: string,
   languageCode: string,
   bodyParameters: string[],
+  // Payloads dos botões quick reply (na ordem dos botões do modelo). O clique
+  // volta no webhook como button.payload — é assim que o roteamento fixo
+  // (CONFIRMAR_PRESENCA, HANDOFF_CONSULTOR...) funciona.
+  buttonPayloads?: string[],
 ) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -166,6 +170,12 @@ export async function sendWhatsAppTemplate(
               type: "body",
               parameters: bodyParameters.map((text) => ({ type: "text", text })),
             },
+            ...(buttonPayloads || []).map((payload, index) => ({
+              type: "button",
+              sub_type: "quick_reply",
+              index: String(index),
+              parameters: [{ type: "payload", payload }],
+            })),
           ],
         },
       }),
