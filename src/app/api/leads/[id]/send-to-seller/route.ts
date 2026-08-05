@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { guardLead } from "@/lib/lead-guard";
-import { closerPhoneForLead, parseOperationsSettings } from "@/lib/operations";
+import { buildCloserNotification } from "@/lib/closer-notify";
+import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
@@ -35,22 +36,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const operations = parseOperationsSettings(operationsRow?.global_prompt);
     let notified = false;
     let notifyError: string | null = null;
-    const closerPhone = closerPhoneForLead(operations, lead.unit_interest || lead.city);
-    if (closerPhone && operations.closer_template_name) {
-      const sanitizeParam = (value: string) =>
-        value.replace(/\s+/g, " ").trim().slice(0, 300) || "-";
+    const notification = buildCloserNotification(
+      operations,
+      lead,
+      `ENVIO MANUAL PELA EQUIPE. ${lead.summary || "Lead quente, atender agora."}`,
+    );
+    const closerPhone = notification.phone;
+    if (closerPhone && notification.templateName) {
       try {
         const sent = await sendWhatsAppTemplate(
           closerPhone,
-          operations.closer_template_name,
+          notification.templateName,
           operations.language_code,
-          [
-            sanitizeParam(lead.name || "Lead sem nome"),
-            sanitizeParam(lead.objective || "Não informado"),
-            sanitizeParam(lead.unit_interest || lead.city || "Não informada"),
-            sanitizeParam(lead.availability || "Não informada"),
-            sanitizeParam(`ENVIO MANUAL PELA EQUIPE. ${lead.summary || "Lead quente, atender agora."}`),
-          ],
+          notification.params,
         );
         notified = true;
         await supabase.from("lead_events").insert({

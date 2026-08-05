@@ -2,7 +2,8 @@ import { runSdr } from "@/lib/ai/sdr";
 import { defaultStagePrompts } from "@/lib/ai/prompt-defaults";
 import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { closerPhoneForLead, parseOperationsSettings } from "@/lib/operations";
+import { buildCloserNotification } from "@/lib/closer-notify";
+import { parseOperationsSettings } from "@/lib/operations";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
@@ -408,8 +409,13 @@ export async function processInbound(payload: InboundPayload) {
         .eq("name", "__operations__")
         .maybeSingle();
       const operations = parseOperationsSettings(operationsRow?.global_prompt);
-      const closerPhone = closerPhoneForLead(operations, lead.unit_interest || lead.city);
-      if (operations.closer_enabled && closerPhone && operations.closer_template_name) {
+      const notification = buildCloserNotification(
+        operations,
+        lead,
+        lead.summary || decision.summary || "Sem resumo",
+      );
+      const closerPhone = notification.phone;
+      if (operations.closer_enabled && closerPhone && notification.templateName) {
         const { data: alreadyNotified } = await supabase
           .from("lead_events")
           .select("id")
@@ -418,26 +424,12 @@ export async function processInbound(payload: InboundPayload) {
           .limit(1)
           .maybeSingle();
         if (!alreadyNotified) {
-          // O modelo resumo_closer tem 5 variáveis fixas no corpo:
-          // Nome | Objetivo | Unidade | Disponibilidade | Resumo da IA.
-          // Modelos do WhatsApp rejeitam quebra de linha/tab e 4+ espaços
-          // seguidos dentro de uma variável, por isso normalizamos cada uma.
-          const sanitizeParam = (value: string) =>
-            value.replace(/\s+/g, " ").trim().slice(0, 300) || "-";
-          const closerParams = [
-            sanitizeParam(lead.name || "Lead sem nome"),
-            sanitizeParam(lead.objective || "Não informado"),
-            // Unidade: Online conta como unidade; usa unit_interest e cai na cidade.
-            sanitizeParam(lead.unit_interest || lead.city || "Não informada"),
-            sanitizeParam(lead.availability || "Não informada"),
-            sanitizeParam(lead.summary || decision.summary || "Sem resumo"),
-          ];
           try {
             const sent = await sendWhatsAppTemplate(
               closerPhone,
-              operations.closer_template_name,
+              notification.templateName,
               operations.language_code,
-              closerParams,
+              notification.params,
             );
             await supabase.from("lead_events").insert({
               lead_id: lead.id,
