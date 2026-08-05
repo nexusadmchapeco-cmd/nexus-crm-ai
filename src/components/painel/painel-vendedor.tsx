@@ -31,6 +31,7 @@ type PainelData = {
       summary: string;
       waitingMinutes: number;
       indicacao: boolean;
+      tags?: string[];
       overdue: boolean;
     }[];
     agenda: {
@@ -489,6 +490,11 @@ export function PainelVendedor({
                           <small>{item.summary}</small>
                         </div>
                         <div className="pv-row-actions">
+                          {(item.tags || []).map((tag) => (
+                            <span key={tag} className={`pv-chip ${tag === "Experimental" ? "pv-c-blue" : "pv-c-red"}`}>
+                              {tag.toUpperCase()}
+                            </span>
+                          ))}
                           {item.indicacao && <span className="pv-chip pv-c-green">INDICAÇÃO</span>}
                           <span className={timerClass(item.waitingMinutes, item.overdue)}>{timerLabel(item.waitingMinutes)}</span>
                           <Link href={`/conversations?lead=${item.lead_id}`} className="pv-btn pv-btn-sm">Atender</Link>

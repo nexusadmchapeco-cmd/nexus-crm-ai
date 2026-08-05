@@ -105,9 +105,7 @@ export async function getPainelData(target: SessionUser) {
     supabase.from("pipeline_stages").select("id, name, role"),
     supabase
       .from("leads")
-      .select(
-        "id, name, phone, city, source, objective, unit_interest, stage_id, human_takeover, last_message_at, updated_at, created_at, opted_out_at",
-      )
+      .select("*")
       .order("last_message_at", { ascending: false })
       .limit(1000),
     supabase
@@ -199,6 +197,7 @@ export async function getPainelData(target: SessionUser) {
         summary: detalhes || "Qualificado pela IA",
         waitingMinutes,
         indicacao: isIndicacao(lead),
+        tags: (lead as { tags?: string[] }).tags || [],
         overdue: inWindow && waitingMinutes > 10,
       };
     })

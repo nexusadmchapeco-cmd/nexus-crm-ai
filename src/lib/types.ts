@@ -30,6 +30,14 @@ export type PipelineStage = {
 };
 
 export type Lead = {
+  // Briefing ago/2026 (migração 015) — opcionais até a migração rodar.
+  modalidade?: "presencial" | "online" | null;
+  para_quem?: "propria" | "outra" | null;
+  idade_aluno?: string | null;
+  qualification_step?: string | null;
+  reschedule_count?: number;
+  tags?: string[];
+  blocked_at?: string | null;
   id: string;
   name: string | null;
   phone: string;

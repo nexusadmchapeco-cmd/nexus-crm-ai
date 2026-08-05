@@ -151,6 +151,11 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
                   <span className={`temperature ${lead.temperature}`}>
                     {labelTemperature(lead.temperature)}
                   </span>
+                  {(lead.tags || []).map((tag) => (
+                    <span key={tag} className={`lead-tag ${tag === "Experimental" ? "tag-exp" : "tag-hard"}`}>
+                      {tag}
+                    </span>
+                  ))}
                   {lead.opted_out_at && (
                     <span className="lead-opt-out" title="Lead pediu para sair (opt-out)">
                       Opt-out

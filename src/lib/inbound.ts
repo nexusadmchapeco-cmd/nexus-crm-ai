@@ -156,8 +156,40 @@ export async function processInbound(payload: InboundPayload) {
     });
     return { lead_id: lead.id, ai_reply: confirmReply, ai_reply_parts: [confirmReply] };
   }
-  // REMARCAR e demais payloads seguem para a IA como texto normal (a regra de
-  // reagendamento trata a contagem).
+  if (payload.button_payload === "REMARCAR") {
+    const { data: upcoming } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .in("status", ["scheduled", "confirmed"])
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at")
+      .limit(1)
+      .maybeSingle();
+    if (upcoming) {
+      await supabase
+        .from("appointments")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", upcoming.id);
+    }
+    try {
+      await supabase
+        .from("leads")
+        .update({ reschedule_count: (lead.reschedule_count || 0) + 1 })
+        .eq("id", lead.id);
+      lead.reschedule_count = (lead.reschedule_count || 0) + 1;
+    } catch {
+      // coluna ainda sem migração — segue sem contar
+    }
+    await supabase.from("lead_events").insert({
+      lead_id: lead.id,
+      event_type: "reschedule_requested",
+      metadata: { via: "button", count: lead.reschedule_count || 0 },
+    });
+    // Segue para a IA com o pedido em texto (a regra do motor decide se
+    // oferece horários ou transfere na 3ª vez).
+  }
+
 
   if (["sair", "parar", "cancelar", "descadastrar"].includes(optOutWord)) {
     const optedOutAt = new Date().toISOString();
@@ -365,7 +397,30 @@ export async function processInbound(payload: InboundPayload) {
       metadata: { stage: targetStage.name, stage_role: stageRole, temperature: decision.temperature },
     });
 
+    // Etiquetas que forçam a transferência ao closer com destaque na
+    // notificação (briefing §4): experimental e difícil agendamento.
+    let forceCloserPrefix: string | null = null;
+    const addTag = async (tag: string) => {
+      try {
+        const tags = Array.isArray(lead.tags) ? lead.tags : [];
+        if (!tags.includes(tag)) {
+          await supabase.from("leads").update({ tags: [...tags, tag] }).eq("id", lead.id);
+          lead.tags = [...tags, tag];
+        }
+      } catch {
+        // coluna ainda sem migração
+      }
+    };
+
     if (
+      decision.appointment?.should_schedule &&
+      decision.appointment.type === "experimental_class" &&
+      !decision.appointment.starts_at
+    ) {
+      // Experimental: a IA não fecha horário — closer conduz (briefing §4.2).
+      await addTag("Experimental");
+      forceCloserPrefix = `AULA EXPERIMENTAL — turno preferido: ${lead.availability || "não informado"}. `;
+    } else if (
       decision.appointment?.should_schedule &&
       decision.appointment.type &&
       decision.appointment.starts_at
@@ -390,7 +445,39 @@ export async function processInbound(payload: InboundPayload) {
             .maybeSingle(),
           isBlocked(supabase, startsAt, endsAt),
         ]);
-        if (!conflict && !closed) {
+        // Já existe reunião futura? Então isto é uma REMARCAÇÃO.
+        const { data: upcoming } = await supabase
+          .from("appointments")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .in("status", ["scheduled", "confirmed"])
+          .gte("starts_at", new Date().toISOString())
+          .neq("starts_at", startsAt.toISOString())
+          .limit(1)
+          .maybeSingle();
+        let allowBooking = !conflict && !closed;
+        if (upcoming && allowBooking) {
+          if ((lead.reschedule_count || 0) >= 2) {
+            // 3ª remarcação: não agenda — transfere com etiqueta.
+            allowBooking = false;
+            await addTag("Difícil agendamento");
+            forceCloserPrefix = "DIFÍCIL AGENDAMENTO (3ª remarcação) — ajudar o lead a fechar horário. ";
+          } else {
+            await supabase
+              .from("appointments")
+              .update({ status: "cancelled", updated_at: new Date().toISOString() })
+              .eq("id", upcoming.id);
+            try {
+              await supabase
+                .from("leads")
+                .update({ reschedule_count: (lead.reschedule_count || 0) + 1 })
+                .eq("id", lead.id);
+            } catch {
+              // coluna ainda sem migração
+            }
+          }
+        }
+        if (allowBooking) {
           const { data: appointment } = await supabase
             .from("appointments")
             .insert({
@@ -442,7 +529,17 @@ export async function processInbound(payload: InboundPayload) {
     // O teste de nível NÃO é mais enviado automaticamente pela IA. O closer
     // gera o link manualmente na aba "Testes de nível" quando fizer sentido.
 
-    if (decision.should_handoff || stageRole === "handoff") {
+    if (forceCloserPrefix) {
+      // Move o lead para a fila do vendedor (Qualificado).
+      const hotStage = (stages as PipelineStage[]).find((stage) => stage.role === "hot_lead");
+      if (hotStage && lead.stage_id !== hotStage.id) {
+        await supabase
+          .from("leads")
+          .update({ stage_id: hotStage.id, updated_at: new Date().toISOString() })
+          .eq("id", lead.id);
+      }
+    }
+    if (decision.should_handoff || stageRole === "handoff" || forceCloserPrefix) {
       const { data: operationsRow } = await supabase
         .from("ai_settings")
         .select("global_prompt")
@@ -452,7 +549,7 @@ export async function processInbound(payload: InboundPayload) {
       const notification = buildCloserNotification(
         operations,
         lead,
-        lead.summary || decision.summary || "Sem resumo",
+        `${forceCloserPrefix || ""}${lead.summary || decision.summary || "Sem resumo"}`,
       );
       const closerPhone = notification.phone;
       if (operations.closer_enabled && closerPhone && notification.templateName) {
@@ -463,7 +560,7 @@ export async function processInbound(payload: InboundPayload) {
           .eq("event_type", "closer_notified")
           .limit(1)
           .maybeSingle();
-        if (!alreadyNotified) {
+        if (!alreadyNotified || forceCloserPrefix) {
           try {
             const sent = await sendWhatsAppTemplate(
               closerPhone,
