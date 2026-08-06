@@ -9,6 +9,7 @@ import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
 import { getFollowupHistory, getLeads, getMessages } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getSessionUser } from "@/lib/session";
 import { formatRelative, initials, labelTemperature } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ export const dynamic = "force-dynamic";
 export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ lead?: string }> }) {
   const configured = isSupabaseConfigured();
   if (!configured) return <><div className="page-header"><div><div className="eyebrow">Atendimento</div><h1>Conversas</h1></div></div><ConfigRequired /></>;
+  const sessionUser = await getSessionUser();
+  const isVendedor = sessionUser?.role === "vendedor";
   const leads = await getLeads();
   const params = await searchParams;
   const selected = leads.find((lead) => lead.id === params.lead) || leads[0];
@@ -54,7 +57,16 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 <span className={`mode-pill ${selected.human_takeover ? "human" : ""}`}>{selected.human_takeover ? "Humano assumiu" : "IA automática"}</span>
               </div>
               <MessageList messages={messages} />
-              <Composer leadId={selected.id} />
+              {isVendedor ? (
+                <div className="chat-wa-cta">
+                  <span>A conversa do closer acontece no WhatsApp real.</span>
+                  <a className="pv-btn-green pv-btn-sm" href={`https://wa.me/${selected.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                    Abrir WhatsApp de {selected.name || selected.phone}
+                  </a>
+                </div>
+              ) : (
+                <Composer leadId={selected.id} />
+              )}
             </section>
             <aside className="lead-panel">
               <div className="lead-panel-header">

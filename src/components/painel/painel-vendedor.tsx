@@ -14,6 +14,7 @@ type PainelData = {
   user: { id: string; name: string; unit: string | null; role: string };
   today: string;
   wonStageId: string | null;
+  indicacaoLink?: string | null;
   matriculaveis: { id: string; name: string; stage: string }[];
   hoje: {
     stats: {
@@ -28,6 +29,7 @@ type PainelData = {
     fila: {
       lead_id: string;
       name: string;
+      phone?: string;
       summary: string;
       waitingMinutes: number;
       indicacao: boolean;
@@ -479,7 +481,7 @@ export function PainelVendedor({
               </div>
               <div className="pv-grid2">
                 <div className="pv-card">
-                  <div className="pv-card-h"><h3>Fila de leads · SDR IA</h3><Link className="pv-link" href="/kanban">Ver pipeline ›</Link></div>
+                  <div className="pv-card-h"><h3>Leads quentes · atender agora</h3><Link className="pv-link" href="/kanban">Ver pipeline ›</Link></div>
                   {data.hoje.fila.length === 0 ? (
                     <p className="dia-empty">Fila zerada — nenhum lead esperando. 👏</p>
                   ) : (
@@ -497,7 +499,10 @@ export function PainelVendedor({
                           ))}
                           {item.indicacao && <span className="pv-chip pv-c-green">INDICAÇÃO</span>}
                           <span className={timerClass(item.waitingMinutes, item.overdue)}>{timerLabel(item.waitingMinutes)}</span>
-                          <Link href={`/conversations?lead=${item.lead_id}`} className="pv-btn pv-btn-sm">Atender</Link>
+                          {item.phone && (
+                            <a className="pv-btn-green pv-btn-sm" href={`https://wa.me/${item.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                          )}
+                          <Link href={`/conversations?lead=${item.lead_id}`} className="pv-btn-ghost pv-btn-sm">Ver conversa</Link>
                         </div>
                       </div>
                     ))
@@ -520,6 +525,26 @@ export function PainelVendedor({
                   )}
                 </div>
               </div>
+              {data.indicacaoLink && (
+                <div className="pv-card pv-mt">
+                  <div className="pv-card-h"><h3>Seu link de indicação</h3><span className="pv-chip pv-c-green">INDICAÇÃO</span></div>
+                  <p className="pv-sub" style={{ marginBottom: 8 }}>
+                    Envie para alunos e contatos: quem entrar por ele já chega marcado como indicação sua.
+                  </p>
+                  <div className="pv-add-task">
+                    <input readOnly value={data.indicacaoLink} onFocus={(event) => event.target.select()} />
+                    <button
+                      type="button"
+                      className="pv-btn pv-btn-sm"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(data.indicacaoLink || "");
+                      }}
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="pv-card pv-mt">
                 <div className="pv-card-h"><h3>Tarefas do dia</h3><span className="pv-chip pv-c-orange">NADA VIRA AMANHÃ</span></div>
                 {data.hoje.tarefas.length === 0 && <p className="dia-empty">Nenhuma tarefa pendente hoje.</p>}

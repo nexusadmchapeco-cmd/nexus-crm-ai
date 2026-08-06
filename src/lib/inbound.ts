@@ -125,6 +125,23 @@ export async function processInbound(payload: InboundPayload) {
     .from("lead_events")
     .insert({ lead_id: lead.id, event_type: "message_received", metadata: { channel: "whatsapp" } });
 
+  // Link de indicação (briefing §5.2): a mensagem pré-preenchida do wa.me
+  // identifica quem indicou — marca a origem e registra o indicador.
+  const referralMatch = payload.message.match(/indicad[oa]\s+por\s+([^.!?\n]{2,60})/i);
+  if (referralMatch && (!lead.source || !/indica/i.test(lead.source))) {
+    const indicador = referralMatch[1].trim();
+    await supabase
+      .from("leads")
+      .update({ source: "Indicação", campaign: `Indicado por ${indicador}` })
+      .eq("id", lead.id);
+    lead.source = "Indicação";
+    await supabase.from("lead_events").insert({
+      lead_id: lead.id,
+      event_type: "referral_detected",
+      metadata: { indicador },
+    });
+  }
+
   // Opt-out: se a mensagem for exatamente uma palavra de descadastro, marca o
   // lead e encerra aqui — não aciona a IA nem responde. (Bloqueia só marketing/
   // follow-up; atendimento iniciado pelo lead continua permitido.)

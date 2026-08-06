@@ -250,7 +250,10 @@ export function LeadModal({
         <div className="lm-head">
           <div>
             <h4>{lead.name || lead.phone}</h4>
-            <span>{stageName} · {lead.course_interest || "Curso não definido"}</span>
+            <span>
+              {stageName} · <a className="lm-phone" href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">{lead.phone}</a>
+              {lead.blocked_at ? " · 🚫 bloqueado" : ""}
+            </span>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar"><Icon name="x" size={15} /></button>
         </div>
@@ -291,6 +294,27 @@ export function LeadModal({
             </div>
             <div className="lm-actions">
               <button type="button" className="lm-delete" onClick={onDelete}>Excluir</button>
+              <button
+                type="button"
+                className={lead.blocked_at ? "pv-btn-ghost pv-btn-sm" : "lm-delete"}
+                onClick={() => {
+                  void fetch(`/api/leads/${lead.id}/block`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ block: !lead.blocked_at }),
+                  }).then(() => window.location.reload());
+                }}
+              >
+                {lead.blocked_at ? "Desbloquear" : "Bloquear contato"}
+              </button>
+              <a
+                className="pv-btn-green pv-btn-sm"
+                href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir WhatsApp
+              </a>
               <button
                 type="button"
                 className="pv-btn-green pv-btn-sm"

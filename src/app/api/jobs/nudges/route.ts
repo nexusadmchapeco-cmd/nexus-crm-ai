@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       .eq("human_takeover", false)
       .eq("ai_enabled", true)
       .is("opted_out_at", null)
+      .is("blocked_at", null)
       .lt("last_message_at", twoHoursAgo)
       .gte("last_message_at", dayAgo)
       .limit(30);

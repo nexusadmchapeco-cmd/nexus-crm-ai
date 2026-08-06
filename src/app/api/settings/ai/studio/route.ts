@@ -194,6 +194,7 @@ export async function PUT(request: Request) {
           ).trim(),
         },
         post_qualification_prompt: String(operations.post_qualification_prompt || "").trim(),
+        public_whatsapp_number: normalizePhone(String(operations.public_whatsapp_number || "")),
         language_code: String(operations.language_code || "pt_BR"),
         voice_reply_enabled: Boolean(
           operations.voice_reply_enabled ?? defaultOperationsSettings.voice_reply_enabled,

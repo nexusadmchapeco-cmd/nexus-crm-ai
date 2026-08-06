@@ -25,6 +25,7 @@ export const defaultOperationsSettings: OperationsSettings = {
   },
   language_code: "pt_BR",
   post_qualification_prompt: "",
+  public_whatsapp_number: "",
   // Quando o lead manda áudio, a Nina responde com áudio (voz gerada por IA).
   voice_reply_enabled: true,
   voice_name: "nova",

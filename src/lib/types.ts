@@ -188,6 +188,8 @@ export type OperationsSettings = {
   // Prompt pós-qualificação (briefing §1): template com {modalidade} {unidade}
   // {para_quem} {idade} {nome} {nivel} injetado quando a IA assume.
   post_qualification_prompt: string;
+  // Número público do WhatsApp da Nexus (para o link de indicação wa.me).
+  public_whatsapp_number: string;
   voice_reply_enabled: boolean;
   voice_name: string;
   elevenlabs_voice_id: string;

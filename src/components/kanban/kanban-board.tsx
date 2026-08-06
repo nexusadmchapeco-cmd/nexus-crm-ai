@@ -130,7 +130,7 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
             const historyOpen = openHistoryId === lead.id;
             return (
               <article
-                className={`lead-card ${draggedLeadId === lead.id ? "lead-card-dragging" : ""}`}
+                className={`lead-card ${lead.modalidade ? `lead-card-${lead.modalidade}` : ""} ${draggedLeadId === lead.id ? "lead-card-dragging" : ""}`}
                 key={lead.id}
                 draggable
                 onDragStart={(event) => startDragging(event, lead.id)}
@@ -151,6 +151,11 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
                   <span className={`temperature ${lead.temperature}`}>
                     {labelTemperature(lead.temperature)}
                   </span>
+                  {lead.modalidade && (
+                    <span className={`lead-tag ${lead.modalidade === "online" ? "tag-online" : "tag-presencial"}`}>
+                      {lead.modalidade === "online" ? "Online" : "Presencial"}
+                    </span>
+                  )}
                   {(lead.tags || []).map((tag) => (
                     <span key={tag} className={`lead-tag ${tag === "Experimental" ? "tag-exp" : "tag-hard"}`}>
                       {tag}
@@ -244,8 +249,93 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
 
   const openLead = openLeadId ? leads.find((lead) => lead.id === openLeadId) || null : null;
 
+  const [cadastroOpen, setCadastroOpen] = useState(false);
+  const [cadastro, setCadastro] = useState({
+    name: "",
+    phone: "",
+    modalidade: "presencial",
+    unit_interest: "Passo Fundo",
+    source: "Indicação",
+    note: "",
+    stage_id: "",
+  });
+  const [cadastroBusy, setCadastroBusy] = useState(false);
+
+  async function cadastrarLead() {
+    if (cadastroBusy) return;
+    setCadastroBusy(true);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...cadastro,
+          unit_interest: cadastro.modalidade === "online" ? "Online" : cadastro.unit_interest,
+          stage_id: cadastro.stage_id || undefined,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Erro ao cadastrar.");
+      setLeads((current) => [data.lead, ...current]);
+      setCadastroOpen(false);
+      setCadastro({ ...cadastro, name: "", phone: "", note: "" });
+      setNotice(`Lead ${data.lead.name} cadastrado.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Erro ao cadastrar.");
+    } finally {
+      setCadastroBusy(false);
+    }
+  }
+
   return (
     <div className="kanban-sections">
+      <div className="kanban-toolbar">
+        <button type="button" className="pv-btn pv-btn-sm" onClick={() => setCadastroOpen(true)}>
+          ＋ Cadastrar lead
+        </button>
+      </div>
+      {cadastroOpen && (
+        <div className="dia-modal-backdrop" onClick={() => setCadastroOpen(false)}>
+          <div className="dia-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="dia-modal-head">
+              <h4>Cadastrar lead manual</h4>
+              <button type="button" onClick={() => setCadastroOpen(false)} aria-label="Fechar">✕</button>
+            </div>
+            <div className="cadastro-grid">
+              <input placeholder="Nome" value={cadastro.name} onChange={(e) => setCadastro({ ...cadastro, name: e.target.value })} />
+              <input placeholder="Celular com DDD" inputMode="tel" value={cadastro.phone} onChange={(e) => setCadastro({ ...cadastro, phone: e.target.value })} />
+              <select value={cadastro.modalidade} onChange={(e) => setCadastro({ ...cadastro, modalidade: e.target.value })}>
+                <option value="presencial">Presencial</option>
+                <option value="online">Online</option>
+              </select>
+              {cadastro.modalidade === "presencial" && (
+                <select value={cadastro.unit_interest} onChange={(e) => setCadastro({ ...cadastro, unit_interest: e.target.value })}>
+                  <option>Passo Fundo</option>
+                  <option>Chapecó</option>
+                </select>
+              )}
+              <select value={cadastro.source} onChange={(e) => setCadastro({ ...cadastro, source: e.target.value })}>
+                <option>Indicação</option>
+                <option>Presencial</option>
+                <option>Telefone</option>
+                <option>Instagram</option>
+                <option>Outro</option>
+              </select>
+              <select value={cadastro.stage_id} onChange={(e) => setCadastro({ ...cadastro, stage_id: e.target.value })}>
+                <option value="">Etapa: Qualificado (padrão)</option>
+                {stages.filter((stage) => stage.board_visible).map((stage) => (
+                  <option key={stage.id} value={stage.id}>Etapa: {stage.name}</option>
+                ))}
+              </select>
+              <textarea placeholder="Observação (opcional)" value={cadastro.note} onChange={(e) => setCadastro({ ...cadastro, note: e.target.value })} />
+            </div>
+            <button type="button" className="dia-modal-save" disabled={cadastroBusy || !cadastro.name.trim() || cadastro.phone.replace(/\D/g, "").length < 10} onClick={() => void cadastrarLead()}>
+              {cadastroBusy ? "Salvando..." : "Cadastrar lead"}
+            </button>
+          </div>
+        </div>
+      )}
       {notice && <div className="kanban-notice" role="status">{notice}</div>}
       {openLead && (
         <LeadModal

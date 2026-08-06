@@ -664,6 +664,21 @@ export function PromptStudio({
                 />
               </div>
               <div className="field">
+                <label htmlFor="public-wa">WhatsApp público da Nexus (link de indicação)</label>
+                <input
+                  id="public-wa"
+                  inputMode="tel"
+                  placeholder="5549999999999"
+                  value={operations.public_whatsapp_number}
+                  onChange={(event) =>
+                    setOperations({ ...operations, public_whatsapp_number: event.target.value })
+                  }
+                />
+                <small className="field-hint">
+                  Usado para gerar o link de indicação que o vendedor compartilha com alunos.
+                </small>
+              </div>
+              <div className="field">
                 <label htmlFor="google-places-key">Chave Google Places (busca de empresas)</label>
                 <input
                   id="google-places-key"

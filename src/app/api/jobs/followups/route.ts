@@ -88,8 +88,9 @@ export async function GET(request: Request) {
           await followupStageIds(supabase, sequence.trigger_stage_id),
         )
         .eq("human_takeover", false)
-        // Não envia follow-up para quem pediu opt-out (SAIR/PARAR/etc.).
-        .is("opted_out_at", null),
+        // Não envia follow-up para quem pediu opt-out ou foi bloqueado.
+        .is("opted_out_at", null)
+        .is("blocked_at", null),
       supabase.from("pipeline_stages").select("id").eq("role", "not_qualified").maybeSingle(),
     ]);
     if (stepsError) throw stepsError;

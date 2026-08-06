@@ -92,6 +92,18 @@ export async function getPainelData(target: SessionUser) {
   weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
   const weekStartStr = spDateString(weekStart);
 
+  const { data: operationsRow } = await supabase
+    .from("ai_settings")
+    .select("global_prompt")
+    .eq("name", "__operations__")
+    .maybeSingle();
+  let publicWhatsApp = "";
+  try {
+    publicWhatsApp = JSON.parse(operationsRow?.global_prompt || "{}").public_whatsapp_number || "";
+  } catch {
+    publicWhatsApp = "";
+  }
+
   const [
     { data: stages },
     { data: leadsRaw },
@@ -194,6 +206,7 @@ export async function getPainelData(target: SessionUser) {
       return {
         lead_id: lead.id,
         name: lead.name || lead.phone,
+        phone: lead.phone,
         summary: detalhes || "Qualificado pela IA",
         waitingMinutes,
         indicacao: isIndicacao(lead),
@@ -490,6 +503,11 @@ export async function getPainelData(target: SessionUser) {
     user: { id: target.uid, name: target.name, unit: target.unit, role: target.role },
     today,
     wonStageId,
+    indicacaoLink: publicWhatsApp
+      ? `https://wa.me/${publicWhatsApp}?text=${encodeURIComponent(
+          `Olá! Fui indicado(a) por ${target.name.split(" ")[0]} e quero saber mais sobre a Nexus English Center 😊`,
+        )}`
+      : null,
     matriculaveis: leads
       .filter((lead) => activeRoles.has(roleOf(lead)))
       .slice(0, 200)
