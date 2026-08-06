@@ -887,6 +887,23 @@ a { color: inherit; text-decoration: none; }
 .week-appointment strong, .week-appointment small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .week-appointment strong { font-size: 7px; }
 .week-appointment small { margin-top: 4px; opacity: .75; font-size: 6px; }
+/* Presença (modelo do CRM antigo): ✓/✗/✕ no próprio card; depois de usado o
+   botão some e vira selo de status. Não compareceu deixa o card vermelho. */
+.week-appointment.st-no_show { border-color: #cf3f34; color: #8f2d26; background: #fdecea; }
+.week-appointment.st-completed { border-color: #2f9e63; color: #1f6b44; background: #eaf7f0; }
+.week-appt-actions { display: flex; gap: 3px; margin-top: 4px; }
+.week-appt-actions button {
+  width: 18px; height: 16px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 4px; background: #2f9e6322; color: #1f6b44; font-size: 8px; font-weight: 850; cursor: pointer;
+}
+.week-appt-actions button.miss { background: #cf3f3422; color: #8f2d26; }
+.week-appt-actions button.cancel { background: #92939733; color: #55565a; }
+.week-appt-actions button:hover { filter: brightness(.92); }
+.week-appt-status { display: block; margin-top: 4px; font-size: 6px; font-style: normal; font-weight: 850; }
+.agenda-status-chip { padding: 5px 10px; border-radius: 20px; font-size: 8px; font-weight: 850; }
+.agenda-status-chip.completed { color: #1f6b44; background: #eaf7f0; }
+.agenda-status-chip.no_show { color: #8f2d26; background: #fdecea; }
+.agenda-actions a.wa { color: #146c43; background: #e6f6ec; }
 .week-block {
   min-height: 41px; padding: 5px 6px; display: flex; align-items: center; justify-content: space-between; gap: 4px;
   border-left: 3px solid #929397; border-radius: 4px; color: #68696d; background: repeating-linear-gradient(135deg,#eeeeeb,#eeeeeb 5px,#e8e8e5 5px,#e8e8e5 10px);
@@ -1815,6 +1832,34 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .lm-registrar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .lm-registrar select, .lm-registrar input { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; background: #fff; }
 .lm-registrar input { flex: 1; min-width: 160px; }
+/* Sugestão do próximo follow-up (modelo antigo): pré-preenchida e editável. */
+.lm-sugestao {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -6px 0 14px;
+  padding: 9px 12px; border-left: 3px solid var(--accent, #e85d20); border-radius: 8px; background: #fdf3ee;
+}
+.lm-sugestao span { font-size: 11.5px; font-weight: 700; color: #a14a1d; }
+.lm-sugestao input { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; background: #fff; }
+.lm-sugestao .lm-sug-title { flex: 1; min-width: 140px; }
+.lm-sugestao button { border: 0; background: none; color: #a14a1d; font-size: 11px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+/* Modal de conclusão: "o que aconteceu?" + agendar o próximo com assunto. */
+.lm-conclui-backdrop {
+  position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(26, 23, 20, .5); backdrop-filter: blur(3px);
+}
+.lm-conclui { width: 100%; max-width: 430px; padding: 20px 22px; border-radius: 16px; background: #fff; box-shadow: 0 8px 40px rgba(0, 0, 0, .2); }
+.lm-conclui h4 { margin: 0 0 2px; font-size: 16px; }
+.lm-conclui-sub { margin: 0 0 14px; color: var(--muted, #85868a); font-size: 12px; }
+.lm-conclui-field { display: block; margin-bottom: 12px; font-size: 11px; font-weight: 800; color: var(--muted, #85868a); text-transform: uppercase; letter-spacing: .06em; }
+.lm-conclui-field textarea {
+  width: 100%; min-height: 84px; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 13px; resize: vertical; background: #fafafa;
+}
+.lm-conclui-next { margin-bottom: 14px; }
+.lm-conclui-next > span { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 800; color: var(--muted, #85868a); text-transform: uppercase; letter-spacing: .06em; }
+.lm-conclui-next > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.lm-conclui-next input { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; font-size: 12.5px; background: #fff; }
+.lm-conclui-next input:last-child { flex: 1; min-width: 150px; }
+.pv-row.fu-overdue { border-left: 3px solid #cf3f34; background: #fdecea66; }
 .lm-timeline { display: flex; flex-direction: column; gap: 8px; }
 .lm-entry { background: var(--canvas); border-radius: 10px; padding: 10px 13px; }
 .lm-entry.note { border-left: 3px solid var(--orange); }

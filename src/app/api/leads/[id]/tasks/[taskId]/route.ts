@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardLead } from "@/lib/lead-guard";
+import { getSessionUser } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function PATCH(
@@ -13,6 +14,10 @@ export async function PATCH(
 
     const body = await request.json();
     const status = body.status === "canceled" ? "canceled" : "done";
+    const session = await getSessionUser();
+    const authorName = body.author_name
+      ? String(body.author_name).slice(0, 120)
+      : session?.name || null;
 
     // Concluir exige a observação obrigatória do contato.
     const doneNote = String(body.done_note || "").trim();
@@ -29,7 +34,7 @@ export async function PATCH(
     if (status === "done") {
       await supabase.from("lead_notes").insert({
         lead_id: id,
-        author_name: body.author_name ? String(body.author_name).slice(0, 120) : null,
+        author_name: authorName,
         contact_type: ["whatsapp", "ligacao", "presencial", "email", "outro"].includes(
           body.contact_type,
         )
@@ -71,7 +76,7 @@ export async function PATCH(
           .from("lead_tasks")
           .insert({
             lead_id: id,
-            owner_name: body.author_name ? String(body.author_name).slice(0, 120) : null,
+            owner_name: authorName,
             title: String(body.next_contact_title || "Retomar contato").slice(0, 200),
             due_at: dueAt.toISOString(),
           })

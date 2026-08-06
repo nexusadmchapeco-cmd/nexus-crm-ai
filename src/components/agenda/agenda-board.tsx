@@ -87,6 +87,7 @@ export function AgendaBoard({
   const [modal, setModal] = useState<"appointment" | "block" | null>(null);
   const [notice, setNotice] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
   const [slotMenu, setSlotMenu] = useState<{ day: string; time: string } | null>(null);
   const [form, setForm] = useState({
     type: "closer_meeting",
@@ -200,14 +201,30 @@ export function AgendaBoard({
   }
 
   async function changeStatus(id: string, status: AppointmentStatus) {
-    const response = await fetch(`/api/appointments/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const body = await response.json();
-    if (!response.ok) return setNotice(body.error);
-    setItems((current) => current.map((item) => (item.id === id ? body : item)));
+    // Guard de duplo clique: os botões ✓/✗ existem no card e no painel de
+    // detalhes ao mesmo tempo — só uma mudança de status por vez.
+    if (statusBusyId) return;
+    setStatusBusyId(id);
+    try {
+      const response = await fetch(`/api/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const body = await response.json();
+      if (!response.ok) return setNotice(body.error);
+      setItems((current) => current.map((item) => (item.id === id ? body : item)));
+      if (status === "completed") {
+        setNotice("Compareceu ✅ — follow-up “1° Retorno Reunião” agendado para amanhã às 09:00.");
+      } else if (status === "no_show") {
+        setNotice("Marcado como não compareceu — o card fica vermelho na agenda (reunião de hoje entra amanhã na recuperação do painel).");
+      } else if (status === "cancelled") {
+        setNotice("Agendamento cancelado — horário liberado.");
+        setSelectedId((current) => (current === id ? null : current));
+      }
+    } finally {
+      setStatusBusyId(null);
+    }
   }
 
   if (migrationMissing) {
@@ -282,14 +299,67 @@ export function AgendaBoard({
                 return (
                   <div className={`week-cell ${day === localDateKey() ? "today" : ""}`} key={`${day}-${time}`}>
                     {appointment ? (
-                      <button
-                        className={`week-appointment ${appointment.type === "closer_meeting" ? "meeting" : "class"}`}
+                      <div
+                        className={`week-appointment ${appointment.type === "closer_meeting" ? "meeting" : "class"} st-${appointment.status}`}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedId(appointment.id)}
+                        onKeyDown={(event) => {
+                          // Enter num botão interno não pode abrir os detalhes junto.
+                          if (event.key === "Enter" && event.target === event.currentTarget) {
+                            setSelectedId(appointment.id);
+                          }
+                        }}
                         title={`${appointment.title} — ${appointment.leads?.name || "Sem lead"}`}
                       >
                         <strong>{appointment.leads?.name || appointment.title}</strong>
                         <small>{time} · {appointment.owner_name || "Equipe"}</small>
-                      </button>
+                        {["scheduled", "confirmed"].includes(appointment.status) ? (
+                          <span className="week-appt-actions">
+                            <button
+                              type="button"
+                              title="Compareceu"
+                              aria-label="Compareceu"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void changeStatus(appointment.id, "completed");
+                              }}
+                            >
+                              ✓
+                            </button>
+                            <button
+                              type="button"
+                              className="miss"
+                              title="Não compareceu"
+                              aria-label="Não compareceu"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void changeStatus(appointment.id, "no_show");
+                              }}
+                            >
+                              ✗
+                            </button>
+                            <button
+                              type="button"
+                              className="cancel"
+                              title="Cancelar (libera o horário)"
+                              aria-label="Cancelar agendamento"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (window.confirm("Cancelar este agendamento? O horário fica livre de novo.")) {
+                                  void changeStatus(appointment.id, "cancelled");
+                                }
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ) : (
+                          <em className="week-appt-status">
+                            {appointment.status === "completed" ? "✅ Compareceu" : "❌ Não compareceu"}
+                          </em>
+                        )}
+                      </div>
                     ) : block ? (
                       <div className="week-block" title={block.reason}>
                         <span>Fechado</span>
@@ -358,8 +428,31 @@ export function AgendaBoard({
           </div>
           <div className="agenda-actions">
             {selected.meeting_url && <a href={selected.meeting_url} target="_blank" rel="noreferrer">Abrir Meet</a>}
-            <button onClick={() => changeStatus(selected.id, "completed")}>Confirmar realização</button>
-            <button className="muted" onClick={() => changeStatus(selected.id, "no_show")}>Não compareceu</button>
+            {selected.leads && (
+              <a href={`https://wa.me/${(selected.leads as { phone?: string }).phone?.replace(/\D/g, "") || ""}`} target="_blank" rel="noreferrer" className="wa">
+                WhatsApp
+              </a>
+            )}
+            {["scheduled", "confirmed"].includes(selected.status) ? (
+              <>
+                <button onClick={() => changeStatus(selected.id, "completed")}>✅ Compareceu</button>
+                <button className="muted" onClick={() => changeStatus(selected.id, "no_show")}>❌ Não compareceu</button>
+                <button
+                  className="muted"
+                  onClick={() => {
+                    if (window.confirm("Cancelar este agendamento? O horário fica livre de novo.")) {
+                      void changeStatus(selected.id, "cancelled");
+                    }
+                  }}
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <span className={`agenda-status-chip ${selected.status}`}>
+                {selected.status === "completed" ? "✅ Compareceu" : selected.status === "no_show" ? "❌ Não compareceu" : labels[selected.status]}
+              </span>
+            )}
             <button className="icon-button" onClick={() => setSelectedId(null)} aria-label="Fechar detalhes"><Icon name="x" size={12} /></button>
           </div>
         </section>

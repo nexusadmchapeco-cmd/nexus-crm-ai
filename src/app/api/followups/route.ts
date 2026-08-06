@@ -16,27 +16,31 @@ export async function GET() {
   const todayStart = new Date();
   todayStart.setHours(todayStart.getHours() - 24);
 
-  const [{ data: rows, error }, { data: manualTasks }] = await Promise.all([
-    supabase
-      .from("followups")
-      .select("id, stage_role, attempt, scheduled_for, status, template_name, sent_at, responded_at, lead:leads(id, name, phone, unit_interest, stage_id)")
-      .in("status", ["pendente", "enviado", "respondido"])
-      .gte("scheduled_for", new Date(Date.now() - 70 * 86400000).toISOString())
-      .order("scheduled_for")
-      .limit(300),
+  // O vendedor volta ao modelo do CRM antigo: a página dele lista SÓ os
+  // follow-ups manuais (os que ele agendou na ficha). A régua automática da
+  // IA é operação do gestor/SDR e não pode virar tarefa do closer.
+  const isVendedor = session.role === "vendedor";
+  const [reguaResult, { data: manualTasks }] = await Promise.all([
+    isVendedor
+      ? Promise.resolve({ data: [], error: null })
+      : supabase
+          .from("followups")
+          .select("id, stage_role, attempt, scheduled_for, status, template_name, sent_at, responded_at, lead:leads(id, name, phone, unit_interest, stage_id)")
+          .in("status", ["pendente", "enviado", "respondido"])
+          .gte("scheduled_for", new Date(Date.now() - 70 * 86400000).toISOString())
+          .order("scheduled_for")
+          .limit(300),
     supabase
       .from("lead_tasks")
       .select("id, title, due_at, status, lead:leads(id, name, phone, unit_interest)")
       .eq("status", "pending")
       .order("due_at")
-      .limit(100),
+      .limit(300),
   ]);
-  if (error) {
-    return NextResponse.json(
-      { error: "Régua indisponível — rode a migração 015 no Supabase." },
-      { status: 503 },
-    );
-  }
+  const { data: rows, error } = reguaResult;
+  // Sem a migração 015 a régua não existe, mas os follow-ups manuais (tabela
+  // antiga) continuam funcionando — degrada em vez de esconder tudo.
+  const reguaIndisponivel = Boolean(error);
 
   type Row = {
     id: string;
@@ -64,6 +68,8 @@ export async function GET() {
   }[]).filter((task) => task.lead && unitVisibleTo(task.lead.unit_interest, unit));
 
   return NextResponse.json({
+    role: session.role,
+    regua_indisponivel: reguaIndisponivel,
     agendados: visible.filter((row) => row.status === "pendente"),
     enviados: visible.filter((row) => row.status === "enviado"),
     respondidos: respondidosHoje,
@@ -75,6 +81,11 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  // Disparar/cancelar a régua automática é operação de gestor/SDR — o
+  // vendedor só enxerga (e conclui) os follow-ups manuais dele.
+  if (session.role === "vendedor") {
+    return NextResponse.json({ error: "A régua automática é operada pelo gestor." }, { status: 403 });
+  }
   const body = await request.json().catch(() => ({}));
   const id = String(body.id || "");
   const action = String(body.action || "");

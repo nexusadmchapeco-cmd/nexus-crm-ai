@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardLead } from "@/lib/lead-guard";
+import { getSessionUser } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { LeadContactType, LeadNoteOutcome } from "@/lib/types";
 
@@ -79,7 +80,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? body.contact_type
       : "whatsapp";
     const outcome: LeadNoteOutcome = OUTCOMES.includes(body.outcome) ? body.outcome : "sem_resposta";
-    const authorName = body.author_name ? String(body.author_name).slice(0, 120) : null;
+    const session = await getSessionUser();
+    const authorName = body.author_name
+      ? String(body.author_name).slice(0, 120)
+      : session?.name || null;
 
     const supabase = createAdminClient();
     const { data: note, error: noteError } = await supabase

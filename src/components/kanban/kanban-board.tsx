@@ -255,9 +255,9 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
     phone: "",
     modalidade: "presencial",
     unit_interest: "Passo Fundo",
+    course_interest: "",
     source: "Indicação",
     note: "",
-    stage_id: "",
   });
   const [cadastroBusy, setCadastroBusy] = useState(false);
 
@@ -272,7 +272,6 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
         body: JSON.stringify({
           ...cadastro,
           unit_interest: cadastro.modalidade === "online" ? "Online" : cadastro.unit_interest,
-          stage_id: cadastro.stage_id || undefined,
         }),
       });
       const data = await response.json();
@@ -315,18 +314,20 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
                   <option>Chapecó</option>
                 </select>
               )}
+              <select value={cadastro.course_interest} onChange={(e) => setCadastro({ ...cadastro, course_interest: e.target.value })}>
+                <option value="">Curso (opcional)</option>
+                <option>Nexus Class</option>
+                <option>Nexus Flex</option>
+                <option>Nexus Private</option>
+                <option>Nexus Junior</option>
+                <option>Nexus Travel</option>
+              </select>
               <select value={cadastro.source} onChange={(e) => setCadastro({ ...cadastro, source: e.target.value })}>
                 <option>Indicação</option>
                 <option>Presencial</option>
                 <option>Telefone</option>
                 <option>Instagram</option>
                 <option>Outro</option>
-              </select>
-              <select value={cadastro.stage_id} onChange={(e) => setCadastro({ ...cadastro, stage_id: e.target.value })}>
-                <option value="">Etapa: Qualificado (padrão)</option>
-                {stages.filter((stage) => stage.board_visible).map((stage) => (
-                  <option key={stage.id} value={stage.id}>Etapa: {stage.name}</option>
-                ))}
               </select>
               <textarea placeholder="Observação (opcional)" value={cadastro.note} onChange={(e) => setCadastro({ ...cadastro, note: e.target.value })} />
             </div>

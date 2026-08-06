@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       stage_id: stageId,
       source: String(body.source || "Cadastro manual").slice(0, 80),
       unit_interest: body.unit_interest ? String(body.unit_interest).slice(0, 60) : modalidade === "online" ? "Online" : null,
+      course_interest: body.course_interest ? String(body.course_interest).slice(0, 80) : null,
       summary: body.note ? String(body.note).slice(0, 2000) : null,
       human_takeover: true, // lead manual é conduzido pelo closer, não pela IA
     };

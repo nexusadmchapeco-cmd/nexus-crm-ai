@@ -10,14 +10,24 @@ import { Icon } from "@/components/ui/icon";
 import { formatRelative, labelEventType } from "@/lib/format";
 import type { Lead, PipelineStage } from "@/lib/types";
 
-// followupDays: registrar a etapa agenda o próximo contato automaticamente
-// (modelo do CRM antigo). null = encerra sem follow-up.
+// Modelo do CRM antigo: registrar um passo da cadência SUGERE o próximo passo
+// como follow-up (data e assunto pré-preenchidos, editáveis antes de salvar).
+// nextDays replica os prazos antigos (48/72/72/48h). 5° encerra sem próximo.
 const CADENCIA = [
-  { n: 1, label: "Retorno Reunião", color: "#eceafd", followupDays: 1 },
-  { n: 2, label: "Tirar Dúvidas", color: "#eceafd", followupDays: 2 },
-  { n: 3, label: "Aula Experimental", color: "#e2f5ec", followupDays: 3 },
-  { n: 4, label: "Oferecer Promoção", color: "#fcf1dc", followupDays: 2 },
-  { n: 5, label: "Encerrar Atendimento", color: "#fce4e5", followupDays: null },
+  { n: 1, label: "Retorno Reunião", color: "#eceafd", emoji: "🤝", nextDays: 2 },
+  { n: 2, label: "Tirar Dúvidas", color: "#eceafd", emoji: "❓", nextDays: 3 },
+  { n: 3, label: "Aula Experimental", color: "#e2f5ec", emoji: "🧪", nextDays: 3 },
+  { n: 4, label: "Oferecer Promoção", color: "#fcf1dc", emoji: "🎁", nextDays: 2 },
+  { n: 5, label: "Encerrar Atendimento", color: "#fce4e5", emoji: "🔚", nextDays: null },
+];
+
+// "Outros" do CRM antigo: tipos de contato avulsos, com o emoji na timeline.
+const OUTROS: { value: string; label: string; emoji: string }[] = [
+  { value: "whatsapp", label: "WhatsApp", emoji: "💬" },
+  { value: "ligacao", label: "Ligação", emoji: "📞" },
+  { value: "email", label: "Email", emoji: "📧" },
+  { value: "presencial", label: "Reunião", emoji: "🤝" },
+  { value: "outro", label: "Anotação", emoji: "📝" },
 ];
 
 function isoInDays(days: number) {
@@ -74,15 +84,42 @@ export function LeadModal({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Cadência
+  // Registro de contato: "c1".."c5" (cadência) ou tipo avulso dos OUTROS.
   const [etapa, setEtapa] = useState("");
+  const [tipo, setTipo] = useState("");
   const [nota, setNota] = useState("");
   const [registrando, setRegistrando] = useState(false);
+
+  // Sugestão de próximo contato (modelo antigo): aparece pré-preenchida ao
+  // escolher um passo da cadência; o closer edita ou limpa antes de registrar.
+  const [sugDate, setSugDate] = useState("");
+  const [sugTitle, setSugTitle] = useState("");
 
   // Follow-up
   const [fuDate, setFuDate] = useState("");
   const [fuNote, setFuNote] = useState("");
   const [fuBusy, setFuBusy] = useState(false);
+
+  // Concluir follow-up (modelo antigo): modal com "o que aconteceu?" e a
+  // opção de já agendar o próximo com assunto.
+  const [concluiOpen, setConcluiOpen] = useState(false);
+  const [concluiObs, setConcluiObs] = useState("");
+  const [proxDate, setProxDate] = useState("");
+  const [proxTitle, setProxTitle] = useState("");
+
+  function pickEtapa(value: string) {
+    setEtapa(value);
+    if (value) setTipo("");
+    const step = CADENCIA.find((c) => String(c.n) === value);
+    const next = step ? CADENCIA.find((c) => c.n === step.n + 1) : null;
+    if (step?.nextDays && next) {
+      setSugDate(isoInDays(step.nextDays).slice(0, 10));
+      setSugTitle(`${next.n}° ${next.label}`);
+    } else {
+      setSugDate("");
+      setSugTitle("");
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -119,17 +156,21 @@ export function LeadModal({
     setError(null);
     try {
       const step = etapa ? CADENCIA.find((c) => String(c.n) === etapa) : null;
-      const autoFollowup = step?.followupDays ?? null;
+      const outro = !step ? OUTROS.find((o) => o.value === tipo) : null;
       const body: Record<string, unknown> = {
-        content: step ? `${step.n}° ${step.label} — ${nota.trim()}` : nota.trim(),
-        outcome: step ? "atendeu" : "sem_resposta",
+        content: step
+          ? `${step.n}° ${step.label} — ${nota.trim()}`
+          : outro && outro.value !== "outro"
+            ? `${outro.emoji} ${outro.label} — ${nota.trim()}`
+            : nota.trim(),
+        contact_type: step ? "whatsapp" : outro?.value || "outro",
+        outcome: step || outro ? "atendeu" : "sem_resposta",
         author_name: authorName,
       };
-      if (step && autoFollowup) {
-        // Novo follow-up automático substitui o pendente anterior.
-        await cancelPendingTask();
-        body.next_contact_at = isoInDays(autoFollowup);
-        body.next_contact_title = `${step.n}° ${step.label}`;
+      const replacesPending = Boolean(step && sugDate && pendingTask);
+      if (step && sugDate) {
+        body.next_contact_at = `${sugDate}T09:00:00-03:00`;
+        body.next_contact_title = sugTitle.trim() || "Retomar contato";
       }
       const response = await fetch(`/api/leads/${lead.id}/notes`, {
         method: "POST",
@@ -138,8 +179,14 @@ export function LeadModal({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao registrar.");
+      // Só depois do novo follow-up existir é que o pendente antigo sai — se o
+      // registro falhar, o lead não fica sem nenhum follow-up na fila.
+      if (replacesPending) await cancelPendingTask();
       setEtapa("");
+      setTipo("");
       setNota("");
+      setSugDate("");
+      setSugTitle("");
       await load();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Erro ao registrar.");
@@ -153,7 +200,7 @@ export function LeadModal({
     setFuBusy(true);
     setError(null);
     try {
-      await cancelPendingTask();
+      const hadPending = Boolean(pendingTask);
       const title = fuNote.trim() || "Retomar contato";
       const response = await fetch(`/api/leads/${lead.id}/notes`, {
         method: "POST",
@@ -168,6 +215,7 @@ export function LeadModal({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao salvar follow-up.");
+      if (hadPending) await cancelPendingTask();
       setFuNote("");
       await load();
     } catch (saveError) {
@@ -177,23 +225,49 @@ export function LeadModal({
     }
   }
 
+  // Abre o modal de conclusão já sugerindo o próximo passo da cadência
+  // quando o follow-up atual é um passo dela (modelo do CRM antigo).
+  function abrirConcluir() {
+    if (!pendingTask) return;
+    const stepMatch = pendingTask.title.match(/^(\d)° /);
+    const step = stepMatch ? CADENCIA.find((c) => String(c.n) === stepMatch[1]) : null;
+    const next = step ? CADENCIA.find((c) => c.n === step.n + 1) : null;
+    if (step?.nextDays && next) {
+      setProxDate(isoInDays(step.nextDays).slice(0, 10));
+      setProxTitle(`${next.n}° ${next.label}`);
+    } else {
+      setProxDate("");
+      setProxTitle("");
+    }
+    setConcluiObs("");
+    setConcluiOpen(true);
+  }
+
   async function concluirFollowup() {
-    if (!pendingTask || fuBusy) return;
+    if (!pendingTask || fuBusy || !concluiObs.trim()) return;
     setFuBusy(true);
     setError(null);
     try {
+      const body: Record<string, unknown> = {
+        status: "done",
+        done_note: `✅ Follow-up concluído (${pendingTask.title}): ${concluiObs.trim()}`,
+        author_name: authorName,
+      };
+      if (proxDate) {
+        body.next_contact_at = `${proxDate}T09:00:00-03:00`;
+        body.next_contact_title = proxTitle.trim() || "Retomar contato";
+      }
       const response = await fetch(`/api/leads/${lead.id}/tasks/${pendingTask.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "done",
-          done_note: fuNote.trim() || `Follow-up concluído: ${pendingTask.title}`,
-          author_name: authorName,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao concluir.");
-      setFuNote("");
+      setConcluiOpen(false);
+      setConcluiObs("");
+      setProxDate("");
+      setProxTitle("");
       await load();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Erro ao concluir.");
@@ -202,10 +276,21 @@ export function LeadModal({
     }
   }
 
+  // Título da entrada como no CRM antigo: emoji + tipo do contato. Passo da
+  // cadência vem do prefixo "N° " do texto; o resto vem do contact_type.
+  function noteTitle(note: Note) {
+    const stepMatch = note.content.match(/^(\d)° /);
+    const step = stepMatch ? CADENCIA.find((c) => String(c.n) === stepMatch[1]) : null;
+    if (step) return `${step.emoji} ${step.n}° ${step.label}`;
+    const outro = OUTROS.find((o) => o.value === note.contact_type);
+    if (outro && outro.value !== "whatsapp") return `${outro.emoji} ${outro.label}`;
+    return OUTCOME_LABELS[note.outcome] || "Contato";
+  }
+
   const timeline = [
     ...notes.map((note) => ({
       id: `n-${note.id}`,
-      title: OUTCOME_LABELS[note.outcome] || "Contato",
+      title: noteTitle(note),
       detail: note.content,
       author: note.author_name,
       created_at: note.created_at,
@@ -339,25 +424,46 @@ export function LeadModal({
           <div>
             <div className="lm-label">Cadência closer</div>
             <div className="lm-cadencia">
-              {CADENCIA.map((step) => (
-                <button
-                  key={step.n}
-                  type="button"
-                  className={etapa === String(step.n) ? "on" : ""}
-                  style={{ background: step.color }}
-                  onClick={() => setEtapa(etapa === String(step.n) ? "" : String(step.n))}
-                >
-                  <b>{step.n}°</b> {step.label}
-                  <small>{step.followupDays ? `follow-up +${step.followupDays}d` : "sem follow-up"}</small>
-                </button>
-              ))}
+              {CADENCIA.map((step) => {
+                const next = CADENCIA.find((c) => c.n === step.n + 1);
+                return (
+                  <button
+                    key={step.n}
+                    type="button"
+                    className={etapa === String(step.n) ? "on" : ""}
+                    style={{ background: step.color }}
+                    onClick={() => pickEtapa(etapa === String(step.n) ? "" : String(step.n))}
+                  >
+                    <b>{step.n}°</b> {step.label}
+                    <small>{step.nextDays && next ? `sugere ${next.n}° em +${step.nextDays}d` : "encerra a cadência"}</small>
+                  </button>
+                );
+              })}
             </div>
             <div className="lm-registrar">
-              <select value={etapa} onChange={(event) => setEtapa(event.target.value)}>
-                <option value="">Sem etapa (anotação livre)</option>
-                {CADENCIA.map((step) => (
-                  <option key={step.n} value={step.n}>{step.n}° {step.label}</option>
-                ))}
+              <select
+                value={etapa ? `c${etapa}` : tipo ? `t${tipo}` : ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value.startsWith("c")) {
+                    pickEtapa(value.slice(1));
+                  } else {
+                    pickEtapa("");
+                    setTipo(value.slice(1));
+                  }
+                }}
+              >
+                <option value="">Selecione...</option>
+                <optgroup label="Cadência Closer">
+                  {CADENCIA.map((step) => (
+                    <option key={step.n} value={`c${step.n}`}>{step.n}° {step.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Outros">
+                  {OUTROS.map((outro) => (
+                    <option key={outro.value} value={`t${outro.value}`}>{outro.emoji} {outro.label}</option>
+                  ))}
+                </optgroup>
               </select>
               <input
                 placeholder="O que aconteceu?"
@@ -369,6 +475,29 @@ export function LeadModal({
                 {registrando ? "Salvando..." : "+ Registrar"}
               </button>
             </div>
+            {etapa && (
+              <div className="lm-sugestao">
+                {sugDate ? (
+                  <>
+                    <span>Próximo follow-up junto com o registro:</span>
+                    <input type="date" value={sugDate} onChange={(event) => setSugDate(event.target.value)} />
+                    <input
+                      className="lm-sug-title"
+                      placeholder="Assunto"
+                      value={sugTitle}
+                      onChange={(event) => setSugTitle(event.target.value)}
+                    />
+                    <button type="button" onClick={() => { setSugDate(""); setSugTitle(""); }}>não agendar</button>
+                  </>
+                ) : (
+                  <span>
+                    {CADENCIA.find((c) => String(c.n) === etapa)?.nextDays
+                      ? "Sem próximo follow-up — registrar só o contato."
+                      : "5° encerra a cadência — nenhum follow-up será agendado."}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="lm-timeline">
               {timeline.length === 0 && <p className="dia-empty">Nenhum contato registrado ainda.</p>}
               {timeline.map((item) => (
@@ -391,7 +520,7 @@ export function LeadModal({
                 <b>✓ Agendado</b>
                 <span>Data: <strong>{new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short" }).format(new Date(pendingTask.due_at))}</strong></span>
                 <span>{pendingTask.title}</span>
-                <em>Aparece nas Tarefas do dia do Painel do Vendedor na data marcada.</em>
+                <em>Aparece no menu Follow-up na data marcada.</em>
               </div>
             ) : (
               <p className="pv-sub" style={{ marginBottom: 10 }}>Nenhum follow-up agendado — marque o próximo contato abaixo.</p>
@@ -406,13 +535,55 @@ export function LeadModal({
             </div>
             <div className="lm-actions">
               {pendingTask && (
-                <button type="button" className="pv-btn-green pv-btn-sm" disabled={fuBusy} onClick={() => void concluirFollowup()}>
+                <button type="button" className="pv-btn-green pv-btn-sm" disabled={fuBusy} onClick={abrirConcluir}>
                   ✓ Concluído
                 </button>
               )}
               <button type="button" className="pv-btn pv-btn-sm" disabled={!fuDate || fuBusy} onClick={() => void salvarFollowup()}>
                 {fuBusy ? "Salvando..." : "Salvar follow-up"}
               </button>
+            </div>
+          </div>
+        )}
+
+        {concluiOpen && pendingTask && (
+          <div className="lm-conclui-backdrop" onClick={() => setConcluiOpen(false)}>
+            <div className="lm-conclui" onClick={(event) => event.stopPropagation()}>
+              <h4>✅ Concluir follow-up</h4>
+              <p className="lm-conclui-sub">
+                {pendingTask.title} · {new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short" }).format(new Date(pendingTask.due_at))}
+              </p>
+              <label className="lm-conclui-field">
+                O que aconteceu? *
+                <textarea
+                  autoFocus
+                  placeholder="Ex.: Cliente confirmou interesse, vai pensar e retorna semana que vem."
+                  value={concluiObs}
+                  onChange={(event) => setConcluiObs(event.target.value)}
+                />
+              </label>
+              <div className="lm-conclui-next">
+                <span>Já agendar o próximo (opcional)</span>
+                <div>
+                  <input type="date" value={proxDate} onChange={(event) => setProxDate(event.target.value)} />
+                  <input
+                    placeholder="Assunto — ex.: 2° Tirar Dúvidas"
+                    value={proxTitle}
+                    onChange={(event) => setProxTitle(event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="lm-actions">
+                <button type="button" className="pv-btn-ghost pv-btn-sm" onClick={() => setConcluiOpen(false)}>Cancelar</button>
+                <button
+                  type="button"
+                  className="pv-btn-green pv-btn-sm"
+                  disabled={!concluiObs.trim() || fuBusy}
+                  onClick={() => void concluirFollowup()}
+                >
+                  {fuBusy ? "Salvando..." : proxDate ? "Concluir e agendar próximo" : "Concluir"}
+                </button>
+              </div>
             </div>
           </div>
         )}
