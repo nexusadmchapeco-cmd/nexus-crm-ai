@@ -10,6 +10,7 @@ const nav = [
   { href: "/painel-vendedor", label: "Painel do Vendedor", icon: "user" as const },
   { href: "/kanban", label: "Pipeline", icon: "board" as const },
   { href: "/conversations", label: "Conversas", icon: "chat" as const },
+  { href: "/follow-up", label: "Follow-up", icon: "check" as const },
   { href: "/agenda", label: "Agenda", icon: "calendar" as const },
   { href: "/level-tests", label: "Testes de nível", icon: "report" as const },
   { href: "/reports", label: "Relatório diário", icon: "report" as const },

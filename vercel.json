@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/jobs/followups",
-      "schedule": "0 12 * * *"
+      "path": "/api/jobs/regua",
+      "schedule": "*/30 13-22 * * *"
     },
     {
       "path": "/api/jobs/nudges",

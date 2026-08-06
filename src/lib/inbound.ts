@@ -10,6 +10,7 @@ import {
 } from "@/lib/qualification";
 import { buildCloserNotification } from "@/lib/closer-notify";
 import { parseOperationsSettings } from "@/lib/operations";
+import { cancelPendingFollowups } from "@/lib/regua";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
 import { isWhatsAppConfigured, sendWhatsAppButtons, sendWhatsAppTemplate } from "@/lib/whatsapp";
 
@@ -125,6 +126,10 @@ export async function processInbound(payload: InboundPayload) {
     .from("lead_events")
     .insert({ lead_id: lead.id, event_type: "message_received", metadata: { channel: "whatsapp" } });
 
+  // Qualquer resposta do lead cancela os follow-ups pendentes e registra a
+  // tentativa que o recuperou (briefing §6.1).
+  await cancelPendingFollowups(supabase, lead.id, "respondeu");
+
   // Link de indicação (briefing §5.2): a mensagem pré-preenchida do wa.me
   // identifica quem indicou — marca a origem e registra o indicador.
   const referralMatch = payload.message.match(/indicad[oa]\s+por\s+([^.!?\n]{2,60})/i);
@@ -218,6 +223,130 @@ export async function processInbound(payload: InboundPayload) {
     // oferece horários ou transfere na 3ª vez).
   }
 
+
+  // Botões da régua de follow-up (payloads fixos — briefing §6.3).
+  if (payload.button_payload === "HANDOFF_CONSULTOR") {
+    const hotStage = stageByRole.get("hot_lead");
+    if (hotStage && lead.stage_id !== hotStage.id) {
+      await supabase
+        .from("leads")
+        .update({ stage_id: hotStage.id, updated_at: new Date().toISOString() })
+        .eq("id", lead.id);
+    }
+    await cancelPendingFollowups(supabase, lead.id, "cancelado");
+    const { data: operationsRowBtn } = await supabase
+      .from("ai_settings")
+      .select("global_prompt")
+      .eq("name", "__operations__")
+      .maybeSingle();
+    const operationsBtn = parseOperationsSettings(operationsRowBtn?.global_prompt);
+    const notificationBtn = buildCloserNotification(
+      operationsBtn,
+      lead,
+      `RESPONDEU FOLLOW-UP — quer falar com o consultor. ${lead.summary || ""}`,
+    );
+    if (notificationBtn.phone && notificationBtn.templateName) {
+      try {
+        await sendWhatsAppTemplate(
+          notificationBtn.phone,
+          notificationBtn.templateName,
+          operationsBtn.language_code,
+          notificationBtn.params,
+        );
+        await supabase.from("lead_events").insert({
+          lead_id: lead.id,
+          event_type: "closer_notified",
+          metadata: { via: "followup_button", closer_phone: notificationBtn.phone },
+        });
+      } catch {
+        // notificação falhou; o lead segue na fila mesmo assim
+      }
+    }
+    const handoffReply =
+      "Perfeito! Já avisei nosso consultor — ele vai falar com você em instantes. 😊";
+    await supabase.from("messages").insert({
+      conversation_id: conversation.id,
+      lead_id: lead.id,
+      sender_type: "ai",
+      content: handoffReply,
+      status: "sent",
+      is_ai: true,
+    });
+    return {
+      lead,
+      conversation,
+      ai_reply: handoffReply,
+      ai_reply_parts: [handoffReply],
+      stage: newStage,
+      skipped_ai: true,
+    };
+  }
+  if (payload.button_payload === "ADIAR") {
+    await cancelPendingFollowups(supabase, lead.id, "cancelado");
+    const nqStage = stageByRole.get("not_qualified");
+    if (nqStage) {
+      await supabase
+        .from("leads")
+        .update({ stage_id: nqStage.id, updated_at: new Date().toISOString() })
+        .eq("id", lead.id);
+    }
+    try {
+      await supabase.from("followups").insert({
+        lead_id: lead.id,
+        stage_role: "not_qualified",
+        attempt: 1,
+        scheduled_for: new Date(Date.now() + 60 * 86400000).toISOString(),
+        status: "pendente",
+      });
+    } catch {
+      // tabela ainda sem migração
+    }
+    const adiarReply =
+      "Tranquilo! Vou deixar seu contato guardado e daqui um tempo volto pra saber se faz sentido. Qualquer coisa antes disso, é só chamar. 😊";
+    await supabase.from("messages").insert({
+      conversation_id: conversation.id,
+      lead_id: lead.id,
+      sender_type: "ai",
+      content: adiarReply,
+      status: "sent",
+      is_ai: true,
+    });
+    return {
+      lead,
+      conversation,
+      ai_reply: adiarReply,
+      ai_reply_parts: [adiarReply],
+      stage: newStage,
+      skipped_ai: true,
+    };
+  }
+  if (payload.button_payload === "OPTOUT") {
+    await Promise.all([
+      supabase.from("leads").update({ blocked_at: new Date().toISOString() }).eq("id", lead.id),
+      cancelPendingFollowups(supabase, lead.id, "cancelado"),
+      supabase
+        .from("lead_events")
+        .insert({ lead_id: lead.id, event_type: "contact_blocked", metadata: { via: "button" } }),
+    ]);
+    const optoutReply = "Entendido! Não vou mais te mandar mensagens. Se mudar de ideia, é só chamar por aqui. 👋";
+    await supabase.from("messages").insert({
+      conversation_id: conversation.id,
+      lead_id: lead.id,
+      sender_type: "ai",
+      content: optoutReply,
+      status: "sent",
+      is_ai: true,
+    });
+    return {
+      lead,
+      conversation,
+      ai_reply: optoutReply,
+      ai_reply_parts: [optoutReply],
+      stage: newStage,
+      skipped_ai: true,
+    };
+  }
+  // DUVIDA_IA: segue direto para a IA responder (pendentes já cancelados).
 
   if (["sair", "parar", "cancelar", "descadastrar"].includes(optOutWord)) {
     const optedOutAt = new Date().toISOString();

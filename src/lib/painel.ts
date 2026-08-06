@@ -250,23 +250,24 @@ export async function getPainelData(target: SessionUser) {
   }
   const tarefas: PainelTask[] = [];
 
-  // 1) Follow-ups agendados manualmente (ficha do lead → aba Follow-up).
+  let followupsHoje = 0;
+  try {
+    const { count } = await supabase
+      .from("followups")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pendente")
+      .lte("scheduled_for", dayEnd.toISOString());
+    followupsHoje = (count || 0) + (leadTasksRaw || []).length;
+  } catch {
+    followupsHoje = (leadTasksRaw || []).length;
+  }
+
+  // Follow-ups (automáticos e manuais) NÃO entram nas Tarefas do dia — eles
+  // vivem no menu dedicado /follow-up (briefing §6 + pedido do closer).
   const scheduledLeadIds = new Set<string>();
   for (const task of leadTasksRaw || []) {
-    const taskLead = task.lead as { id?: string; name?: string | null; phone?: string; unit_interest?: string | null } | null;
-    if (!taskLead?.id || !unitVisibleTo(taskLead.unit_interest, unit)) continue;
-    scheduledLeadIds.add(taskLead.id);
-    const overdueDays = Math.floor((now.getTime() - new Date(task.due_at).getTime()) / 86400000);
-    tarefas.push({
-      id: null,
-      source: null,
-      title: `Contato agendado: ${taskLead.name || taskLead.phone} — ${task.title}${overdueDays > 0 ? ` (atrasado ${overdueDays}d)` : ""}`,
-      chip: "followup",
-      done: false,
-      manual: false,
-      lead_id: taskLead.id,
-      lead_task_id: task.id,
-    });
+    const taskLead = task.lead as { id?: string } | null;
+    if (taskLead?.id) scheduledLeadIds.add(taskLead.id);
   }
 
   const followupLeads = leads.filter(
@@ -276,19 +277,6 @@ export async function getPainelData(target: SessionUser) {
       lead.last_message_at < new Date(now.getTime() - 3 * 86400000).toISOString() &&
       lead.last_message_at >= new Date(now.getTime() - 30 * 86400000).toISOString(),
   );
-  for (const lead of followupLeads.filter((l) => !scheduledLeadIds.has(l.id)).slice(0, 12)) {
-    const source = `fu:${lead.id}:${today}`;
-    const state = taskState.get(source);
-    tarefas.push({
-      id: state?.id || null,
-      source,
-      title: `Follow-up: ${lead.name || lead.phone} (3+ dias sem resposta)`,
-      chip: isIndicacao(lead) ? "indicacao" : "followup",
-      done: state?.done || false,
-      manual: false,
-      lead_id: lead.id,
-    });
-  }
   for (const appointment of noShows) {
     const source = `ns:${appointment.id}`;
     const state = taskState.get(source);
@@ -520,7 +508,7 @@ export async function getPainelData(target: SessionUser) {
       stats: {
         fila: fila.length,
         regra10: fila.filter((f) => f.overdue).length,
-        followups: tarefas.filter((t) => t.chip === "followup" && !t.done).length,
+        followups: followupsHoje,
         reunioes: agendaHoje.length,
         matriculasMes,
         metaMatriculas,
