@@ -3,10 +3,15 @@ import { defaultStagePrompts } from "@/lib/ai/prompt-defaults";
 import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isBlocked, slotRulesPrompt, validateSlotRules } from "@/lib/agenda-rules";
+import {
+  advanceQualification,
+  DEFAULT_POST_QUALIFICATION_PROMPT,
+  renderPostQualificationPrompt,
+} from "@/lib/qualification";
 import { buildCloserNotification } from "@/lib/closer-notify";
 import { parseOperationsSettings } from "@/lib/operations";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
-import { sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { isWhatsAppConfigured, sendWhatsAppButtons, sendWhatsAppTemplate } from "@/lib/whatsapp";
 
 export type InboundPayload = {
   phone: string;
@@ -48,20 +53,26 @@ export async function processInbound(payload: InboundPayload) {
 
   let lead: Lead;
   if (!existingLead) {
-    const { data, error } = await supabase
-      .from("leads")
-      .insert({
+    // Lead novo entra na sequência de qualificação por botões (briefing §1).
+    // Se a coluna ainda não existir (migração 015 pendente), refaz sem ela.
+    const baseInsert = {
         phone,
         name: payload.name?.trim() || null,
         stage_id: newStage.id,
         source: payload.source || "simulador",
         campaign: payload.campaign || null,
         ad_name: payload.ad_name || null,
-      })
+      };
+    let created = await supabase
+      .from("leads")
+      .insert({ ...baseInsert, qualification_step: "modalidade" })
       .select()
       .single();
-    if (error) throw error;
-    lead = data;
+    if (created.error) {
+      created = await supabase.from("leads").insert(baseInsert).select().single();
+    }
+    if (created.error) throw created.error;
+    lead = created.data;
   } else {
     const { data, error } = await supabase
       .from("leads")
@@ -209,6 +220,76 @@ export async function processInbound(payload: InboundPayload) {
     };
   }
 
+  // ── Qualificação por botões (briefing §1): enquanto a sequência não
+  // terminar, quem conversa é o fluxo fixo — a IA só assume depois.
+  const qualStep = lead.qualification_step;
+  if (qualStep && qualStep !== "done") {
+    // Primeira interação = ainda não enviamos nenhuma pergunta.
+    const { data: alreadyAsked } = await supabase
+      .from("lead_events")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .eq("event_type", "qualification_question_sent")
+      .limit(1)
+      .maybeSingle();
+    const result = advanceQualification(
+      lead,
+      payload.message,
+      payload.button_payload || null,
+      !alreadyAsked,
+    );
+    if (Object.keys(result.updates).length) {
+      const { data: updatedLead, error: qualError } = await supabase
+        .from("leads")
+        .update({ ...result.updates, updated_at: new Date().toISOString() })
+        .eq("id", lead.id)
+        .select()
+        .single();
+      if (!qualError && updatedLead) lead = updatedLead;
+    }
+    if (result.question) {
+      const optionsSuffix = result.question.buttons.length
+        ? `\n${result.question.buttons.map((b) => `▫️ ${b.title}`).join("  ")}`
+        : "";
+      if (isWhatsAppConfigured()) {
+        try {
+          if (result.question.buttons.length) {
+            await sendWhatsAppButtons(lead.phone, result.question.body, result.question.buttons);
+          } else {
+            const { sendWhatsAppMessage } = await import("@/lib/whatsapp");
+            await sendWhatsAppMessage(lead.phone, result.question.body);
+          }
+        } catch {
+          // falha de envio não derruba o fluxo; fica registrado na conversa
+        }
+      }
+      await Promise.all([
+        supabase.from("messages").insert({
+          conversation_id: conversation.id,
+          lead_id: lead.id,
+          sender_type: "ai",
+          content: `${result.question.body}${optionsSuffix}`,
+          status: "sent",
+          is_ai: true,
+        }),
+        supabase.from("lead_events").insert({
+          lead_id: lead.id,
+          event_type: "qualification_question_sent",
+          metadata: { step: lead.qualification_step || qualStep, understood: result.understood },
+        }),
+      ]);
+      return {
+        lead,
+        conversation,
+        ai_reply: null,
+        ai_reply_parts: [] as string[],
+        stage: newStage,
+        skipped_ai: true,
+      };
+    }
+    // Sequência concluída neste turno: a IA assume já com os dados coletados.
+  }
+
   if (!lead.ai_enabled || lead.human_takeover) {
     return {
       lead,
@@ -330,16 +411,30 @@ export async function processInbound(payload: InboundPayload) {
       .join("\n")
       .slice(0, 6000);
     const slotsContext = `${slotRulesPrompt()}\n\nHorários da semana:\n${availableSlots}`;
+    const { data: operationsPromptRow } = await supabase
+      .from("ai_settings")
+      .select("global_prompt")
+      .eq("name", "__operations__")
+      .maybeSingle();
+    const operationsForPrompt = parseOperationsSettings(operationsPromptRow?.global_prompt);
     const decision = await runSdr({
       lead,
       settings,
       messages: orderedMessages,
-      stagePrompt:
+      stagePrompt: `${
+        lead.qualification_step === "done"
+          ? `${renderPostQualificationPrompt(
+              operationsForPrompt.post_qualification_prompt || DEFAULT_POST_QUALIFICATION_PROMPT,
+              lead,
+            )}\n\n`
+          : ""
+      }${
         stagePromptRow?.global_prompt ||
         defaultStagePrompts[
           (stages as PipelineStage[]).find((stage) => stage.id === lead.stage_id)?.role || ""
         ] ||
-        null,
+        ""
+      }`,
       knowledgeContext: knowledgeContext || null,
       availableSlots: slotsContext,
     });

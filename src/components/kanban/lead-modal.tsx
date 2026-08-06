@@ -232,6 +232,16 @@ export function LeadModal({
     { label: "Cidade", value: lead.city || "—" },
     { label: "Objetivo", value: lead.objective || "—" },
     { label: "Nível", value: lead.level || "—" },
+    { label: "Modalidade", value: lead.modalidade === "online" ? "Online" : lead.modalidade === "presencial" ? "Presencial" : "—" },
+    {
+      label: "Curso para",
+      value:
+        lead.para_quem === "outra"
+          ? `Outra pessoa${lead.idade_aluno ? ` (${lead.idade_aluno} anos)` : ""}`
+          : lead.para_quem === "propria"
+            ? "A própria pessoa"
+            : "—",
+    },
   ];
 
   return (

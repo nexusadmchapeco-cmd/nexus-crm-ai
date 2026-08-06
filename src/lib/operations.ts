@@ -24,6 +24,7 @@ export const defaultOperationsSettings: OperationsSettings = {
     next_month_classes: "turmas_proximo_mes",
   },
   language_code: "pt_BR",
+  post_qualification_prompt: "",
   // Quando o lead manda áudio, a Nina responde com áudio (voz gerada por IA).
   voice_reply_enabled: true,
   voice_name: "nova",

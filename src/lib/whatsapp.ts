@@ -187,3 +187,44 @@ export async function sendWhatsAppTemplate(
   }
   return response.json();
 }
+
+// Mensagem interativa com botões de resposta (máx. 3 por mensagem — limite da
+// Cloud API). O clique volta no webhook como interactive.button_reply
+// {id, title}; roteamos pelo id.
+export async function sendWhatsAppButtons(
+  phone: string,
+  bodyText: string,
+  buttons: { id: string; title: string }[],
+) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
+  if (!token || !phoneNumberId) throw new Error("WhatsApp Cloud API não configurada");
+  const response = await fetch(
+    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: phone.replace(/\D/g, ""),
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: bodyText.slice(0, 1024) },
+          action: {
+            buttons: buttons.slice(0, 3).map((button) => ({
+              type: "reply",
+              reply: { id: button.id, title: button.title.slice(0, 20) },
+            })),
+          },
+        },
+      }),
+    },
+  );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Falha nos botões do WhatsApp (${response.status}): ${body.slice(0, 300)}`);
+  }
+  return response.json();
+}

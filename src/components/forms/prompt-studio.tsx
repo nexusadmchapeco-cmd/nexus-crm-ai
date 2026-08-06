@@ -301,6 +301,22 @@ export function PromptStudio({
                   }
                 />
               </div>
+              <div className="field">
+                <label htmlFor="post-qual-prompt">Prompt pós-qualificação (depois dos botões)</label>
+                <textarea
+                  className="studio-prompt"
+                  id="post-qual-prompt"
+                  style={{ minHeight: 110 }}
+                  placeholder="Deixe em branco para usar o padrão. Variáveis: {modalidade} {unidade} {para_quem} {idade} {nome} {nivel}"
+                  value={operations.post_qualification_prompt}
+                  onChange={(event) =>
+                    setOperations({ ...operations, post_qualification_prompt: event.target.value })
+                  }
+                />
+                <small className="field-hint">
+                  A IA assume a conversa com este texto já preenchido com as respostas dos botões (modalidade, unidade, para quem, idade, nome e nível).
+                </small>
+              </div>
               <div className="operations-callout" style={{ marginTop: 4 }}>
                 <Icon name="chat" size={16} />
                 <div style={{ flex: 1 }}>

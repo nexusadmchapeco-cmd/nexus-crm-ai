@@ -185,6 +185,9 @@ export type OperationsSettings = {
     next_month_classes: string;
   };
   language_code: string;
+  // Prompt pós-qualificação (briefing §1): template com {modalidade} {unidade}
+  // {para_quem} {idade} {nome} {nivel} injetado quando a IA assume.
+  post_qualification_prompt: string;
   voice_reply_enabled: boolean;
   voice_name: string;
   elevenlabs_voice_id: string;

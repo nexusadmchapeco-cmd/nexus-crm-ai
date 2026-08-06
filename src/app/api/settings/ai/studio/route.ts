@@ -193,6 +193,7 @@ export async function PUT(request: Request) {
             operations.campaign_template_names?.next_month_classes || "",
           ).trim(),
         },
+        post_qualification_prompt: String(operations.post_qualification_prompt || "").trim(),
         language_code: String(operations.language_code || "pt_BR"),
         voice_reply_enabled: Boolean(
           operations.voice_reply_enabled ?? defaultOperationsSettings.voice_reply_enabled,
