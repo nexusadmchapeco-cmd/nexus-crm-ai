@@ -23,6 +23,11 @@ const CADENCIAS: Record<string, { key: string; delaysHours: number[] }> = {
 
 const FALLBACK_TEMPLATES = ["followup_ctx_dia1", "followup_ctx_dia3", "followup_ctx_dia7"];
 
+// Status na Meta (05/08/2026): followup_contato_1, followup_info_1 e
+// followup_qualificado_1 APROVADOS em pt_BR com os 3 botões. O
+// followup_naoqualif_1 só existe em inglês — até criarem a versão pt_BR, o
+// reengajamento de 2 meses cai no fallback abaixo (sem botões).
+
 export function reguaConfigFor(stageRole: string) {
   return CADENCIAS[stageRole] || null;
 }

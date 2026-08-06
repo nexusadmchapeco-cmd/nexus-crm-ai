@@ -6,7 +6,7 @@ export const defaultOperationsSettings: OperationsSettings = {
   closer_phone: "",
   closer_phone_passo_fundo: "",
   closer_phone_chapeco: "",
-  closer_template_name: "resumo_closer",
+  closer_template_name: "lead_quente",
   followup_template_name: "",
   followup_template_names: {
     // Templates com contexto (2 variáveis: nome + objetivo). Após aprovados

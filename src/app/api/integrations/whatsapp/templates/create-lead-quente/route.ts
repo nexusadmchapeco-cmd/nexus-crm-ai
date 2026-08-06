@@ -16,18 +16,16 @@ const TEMPLATE = {
     "Número do celular: {{2}}\n" +
     "Objetivo: {{3}}\n" +
     "Unidade: {{4}}\n" +
-    "Disponibilidade: {{5}}\n" +
-    "Modalidade: {{6}}\n\n" +
-    "Resumo da IA: {{7}}\n\n" +
-    "Nexus CRM AI",
+    "Modalidade do curso: {{5}}\n\n" +
+    "Resumo do atendimento: {{6}}\n\n" +
+    "Mensagem automática enviada pelo Nexus CRM AI para a equipe comercial da Nexus English Center.",
   example: [
     "Maria Souza",
     "+55 49 99999-0000",
     "Inglês para trabalho",
     "Chapecó",
-    "Noite, após as 19h",
     "Presencial",
-    "Quer começar em agosto, já fez teste de nível A1, prefere aulas 2x por semana.",
+    "Disponibilidade: noite, após as 19h. Quer começar em agosto, nível A1, prefere aulas 2x por semana.",
   ],
 };
 

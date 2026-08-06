@@ -51,15 +51,18 @@ export function buildCloserNotification(
   const phone = closerPhoneForLead(operations, lead.unit_interest || lead.city);
   const templateName = String(operations.closer_template_name || "").trim();
   const isNewFormat = templateName.includes("lead_quente");
+  // Formato novo (lead_quente): 6 variáveis. A disponibilidade entra no
+  // resumo — a Meta recusa modelos com variáveis demais para o tamanho.
   const params = isNewFormat
     ? [
         sanitizeParam(lead.name || "Lead sem nome"),
         sanitizeParam(formatPhoneDisplay(lead.phone)),
         sanitizeParam(lead.objective || "Não informado"),
         sanitizeParam(lead.unit_interest || lead.city || "Não informada"),
-        sanitizeParam(lead.availability || "Não informada"),
         sanitizeParam(leadModalidade(lead)),
-        sanitizeParam(resumo || "Sem resumo"),
+        sanitizeParam(
+          `${lead.availability ? `Disponibilidade: ${lead.availability}. ` : ""}${resumo || "Sem resumo"}`,
+        ),
       ]
     : [
         sanitizeParam(lead.name || "Lead sem nome"),
