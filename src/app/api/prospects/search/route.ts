@@ -5,6 +5,35 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Busca no Google Places (API nova, searchText). A chamada é feita no servidor;
 // a chave nunca vai ao cliente. Guardamos só o place_id + status no banco; os
 // dados vêm ao vivo a cada busca, conforme os termos da Places API.
+// O erro cru do Google vem em inglês e num JSON longo, que aparecia inteiro na
+// tela do vendedor. Traduz para a causa real e o que fazer.
+function explainGoogleError(status: number, raw: string): string {
+  let message = "";
+  try {
+    message = String(JSON.parse(raw)?.error?.message || "");
+  } catch {
+    message = raw.slice(0, 200);
+  }
+  const lower = message.toLowerCase();
+
+  if (lower.includes("api key not valid") || lower.includes("api key expired")) {
+    return "A chave do Google Places não foi aceita. Confira se colou a chave inteira (sem espaços) no Estúdio de IA e se ela é do mesmo projeto do Google Cloud onde a Places API (New) está ativada.";
+  }
+  if (lower.includes("referer") || lower.includes("referrer")) {
+    return "A chave está restrita a sites (HTTP referrers), mas a busca é feita pelo servidor. No Google Cloud, em Credenciais, mude a restrição de aplicativo dessa chave para \"Nenhuma\".";
+  }
+  if (lower.includes("has not been used") || lower.includes("is disabled") || lower.includes("service_disabled")) {
+    return "A Places API (New) não está ativada no projeto do Google Cloud. Ative em APIs e serviços → Biblioteca → \"Places API (New)\" e tente de novo em alguns minutos.";
+  }
+  if (lower.includes("billing")) {
+    return "O projeto do Google Cloud está sem faturamento ativo — a Places API exige um cartão cadastrado (há cota gratuita mensal).";
+  }
+  if (status === 429 || lower.includes("quota") || lower.includes("resource_exhausted")) {
+    return "Cota do Google Places esgotada por agora. Tente mais tarde ou revise os limites do projeto no Google Cloud.";
+  }
+  return `Google Places recusou a busca (${status}). ${message.slice(0, 160)}`;
+}
+
 export async function POST(request: Request) {
   try {
     let apiKey: string | null = null;
@@ -42,8 +71,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({ textQuery, regionCode: "BR", maxResultCount: 20 }),
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Google Places respondeu ${response.status}: ${errorText.slice(0, 200)}`);
+      throw new Error(explainGoogleError(response.status, await response.text()));
     }
     const payload = (await response.json()) as {
       places?: {

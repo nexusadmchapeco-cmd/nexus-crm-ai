@@ -225,6 +225,7 @@ export function PainelVendedor({
   // Prospecção
   const [segmento, setSegmento] = useState("");
   const [cidade, setCidade] = useState("Passo Fundo, RS");
+  const [cidadeEscolhida, setCidadeEscolhida] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [resultados, setResultados] = useState<PlaceResult[]>([]);
   const [waModal, setWaModal] = useState<{ place: PlaceResult; message: string; loading: boolean } | null>(null);
@@ -417,6 +418,15 @@ export function PainelVendedor({
   }
 
   const firstName = useMemo(() => (data?.user.name || viewer?.name || "").split(" ")[0], [data, viewer]);
+
+  // A prospecção abre na cidade do vendedor que está sendo visto (o gestor
+  // troca de vendedor sem precisar trocar a cidade na mão).
+  useEffect(() => {
+    if (cidadeEscolhida) return;
+    const unit = data?.user.unit;
+    if (!unit) return;
+    setCidade(unit === "chapeco" ? "Chapecó, SC" : "Passo Fundo, RS");
+  }, [data?.user.unit, cidadeEscolhida]);
 
   if (!viewer) {
     return (
@@ -770,7 +780,13 @@ export function PainelVendedor({
                     onChange={(event) => setSegmento(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && void buscar()}
                   />
-                  <select value={cidade} onChange={(event) => setCidade(event.target.value)}>
+                  <select
+                    value={cidade}
+                    onChange={(event) => {
+                      setCidade(event.target.value);
+                      setCidadeEscolhida(true);
+                    }}
+                  >
                     <option>Passo Fundo, RS</option>
                     <option>Chapecó, SC</option>
                   </select>
