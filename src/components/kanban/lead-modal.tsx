@@ -149,6 +149,38 @@ export function LeadModal({
     void load();
   }, [load]);
 
+  // Envio pro vendedor: sem retorno visual, o closer clicava e achava que
+  // nada tinha acontecido.
+  const [enviando, setEnviando] = useState(false);
+  const [envioAviso, setEnvioAviso] = useState<{ text: string; tone: "ok" | "warn" } | null>(null);
+
+  async function enviarProVendedor() {
+    if (enviando) return;
+    setEnviando(true);
+    setEnvioAviso(null);
+    try {
+      const response = await fetch(`/api/leads/${lead.id}/send-to-seller`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || "Erro ao enviar.");
+      setEnvioAviso(
+        data.notified
+          ? { text: "✓ Lead na fila do vendedor — ele foi avisado no WhatsApp.", tone: "ok" }
+          : {
+              text: `Lead entrou na fila do vendedor, mas o aviso no WhatsApp falhou: ${data.notify_error || "erro desconhecido"}`,
+              tone: "warn",
+            },
+      );
+      await load();
+    } catch (sendError) {
+      setEnvioAviso({
+        text: sendError instanceof Error ? sendError.message : "Erro ao enviar pro vendedor.",
+        tone: "warn",
+      });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   const pendingTask = tasks.find((task) => task.status === "pending") || null;
   const stageName = stages.find((s) => s.id === lead.stage_id)?.name || "";
 
@@ -396,23 +428,10 @@ export function LeadModal({
                 <p>{lead.summary}</p>
               </div>
             )}
-            <div className="lm-actions">
-              <button type="button" className="lm-delete" onClick={onDelete}>Excluir</button>
-              <button
-                type="button"
-                className={lead.blocked_at ? "pv-btn-ghost pv-btn-sm" : "lm-delete"}
-                onClick={() => {
-                  void fetch(`/api/leads/${lead.id}/block`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ block: !lead.blocked_at }),
-                  }).then(() => window.location.reload());
-                }}
-              >
-                {lead.blocked_at ? "Desbloquear" : "Bloquear contato"}
-              </button>
+            {envioAviso && <div className={`lm-envio ${envioAviso.tone}`}>{envioAviso.text}</div>}
+            <div className="lm-actions lm-actions-main">
               <a
-                className="pv-btn-green pv-btn-sm"
+                className="pv-btn-green"
                 href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
@@ -421,20 +440,29 @@ export function LeadModal({
               </a>
               <button
                 type="button"
-                className="pv-btn-green pv-btn-sm"
+                className="pv-btn"
+                disabled={enviando}
+                onClick={() => void enviarProVendedor()}
+              >
+                {enviando ? "Enviando..." : "Enviar pro vendedor"}
+              </button>
+              <Link className="pv-btn-ghost" href={`/conversations?lead=${lead.id}`}>Abrir conversa</Link>
+            </div>
+            <div className="lm-actions lm-actions-danger">
+              <button
+                type="button"
+                className="lm-quiet"
                 onClick={() => {
-                  void fetch(`/api/leads/${lead.id}/send-to-seller`, { method: "POST" })
-                    .then((response) => response.json())
-                    .then((data) => {
-                      if (data.error) setError(data.error);
-                      else if (data.notified) setError(null);
-                      else setError(`Lead na fila, mas o aviso no WhatsApp falhou: ${data.notify_error || "erro"}`);
-                    });
+                  void fetch(`/api/leads/${lead.id}/block`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ block: !lead.blocked_at }),
+                  }).then(() => window.location.reload());
                 }}
               >
-                Enviar pro vendedor
+                {lead.blocked_at ? "Desbloquear contato" : "Bloquear contato"}
               </button>
-              <Link className="pv-btn pv-btn-sm" href={`/conversations?lead=${lead.id}`}>Abrir conversa</Link>
+              <button type="button" className="lm-quiet lm-quiet-danger" onClick={onDelete}>Excluir lead</button>
             </div>
           </div>
         )}
