@@ -29,6 +29,33 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const value = body?.entry?.[0]?.changes?.[0]?.value;
+
+    // Avisos de ENTREGA da Meta (sent → delivered → read, ou failed com o
+    // motivo). Sem isso, uma mensagem que a Meta aceita mas não entrega some
+    // sem deixar rastro. Falha vira log de erro (aparece nos logs da Vercel).
+    const statuses = value?.statuses as
+      | {
+          id?: string;
+          status?: string;
+          recipient_id?: string;
+          errors?: { code?: number; title?: string; message?: string; error_data?: { details?: string } }[];
+        }[]
+      | undefined;
+    if (statuses?.length) {
+      for (const status of statuses) {
+        const linha = `[whatsapp-status] ${status.status} para ${status.recipient_id} (msg ${status.id})`;
+        if (status.status === "failed") {
+          const erro = status.errors?.[0];
+          console.error(
+            `${linha} — FALHOU: código ${erro?.code} · ${erro?.title || ""} · ${erro?.message || ""} · ${erro?.error_data?.details || ""}`,
+          );
+        } else {
+          console.log(linha);
+        }
+      }
+      if (!value?.messages?.length) return NextResponse.json({ received: true });
+    }
+
     const incoming = value?.messages?.[0];
     const supportedTypes = ["text", "audio", "button", "interactive"];
     if (!incoming || !supportedTypes.includes(incoming.type)) {
