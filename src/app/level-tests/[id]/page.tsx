@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { LevelTestReview } from "@/components/level-test/level-test-review";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getSessionUser } from "@/lib/session";
+import { scopedUnit, unitVisibleTo } from "@/lib/units";
 import type { LevelTest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +18,22 @@ export default async function LevelTestReviewPage({
   if (!isSupabaseConfigured()) notFound();
   const { data: test } = await createAdminClient()
     .from("level_tests")
-    .select("*, leads(id,name,phone,city)")
+    .select("*, leads(id,name,phone,city,unit_interest)")
     .eq("id", id)
     .maybeSingle();
   if (!test) notFound();
+
+  // Closer só abre testes da própria unidade (mesma regra da listagem).
+  const unit = scopedUnit(await getSessionUser());
+  if (
+    unit &&
+    !unitVisibleTo(
+      (test.leads as { unit_interest?: string | null } | null)?.unit_interest ?? null,
+      unit,
+    )
+  ) {
+    notFound();
+  }
 
   return (
     <div className="page-shell">

@@ -1,7 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { scopedUnit, unitOrExpression } from "@/lib/units";
+import { scopedUnit, unitOrExpression, unitVisibleTo } from "@/lib/units";
 import { defaultFollowupSteps, defaultStagePrompts, editableStageRoles } from "@/lib/ai/prompt-defaults";
 import { defaultOperationsSettings, parseOperationsSettings } from "@/lib/operations";
 import type {
@@ -188,13 +188,23 @@ export async function getLevelTests(): Promise<LevelTest[]> {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await createAdminClient()
     .from("level_tests")
-    .select("*, leads(id,name,phone,city)")
+    .select("*, leads(id,name,phone,city,unit_interest)")
     .order("created_at", { ascending: false });
   if (error) {
     if (error.code === "42P01") return [];
     throw error;
   }
-  return data as LevelTest[];
+  // Closer vê só os testes da unidade dele (mesma regra dos leads: Chapecó
+  // exclusivo; PF leva Online e sem unidade — inclui testes avulsos).
+  const unit = scopedUnit(await getSessionUser());
+  const rows = (data || []) as LevelTest[];
+  if (!unit) return rows;
+  return rows.filter((test) =>
+    unitVisibleTo(
+      (test.leads as { unit_interest?: string | null } | null)?.unit_interest ?? null,
+      unit,
+    ),
+  );
 }
 
 export async function getFollowupHistory(leadId?: string): Promise<FollowupHistoryItem[]> {

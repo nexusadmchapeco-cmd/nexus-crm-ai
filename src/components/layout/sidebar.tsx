@@ -23,12 +23,13 @@ const nav = [
 // bloqueia os críticos). Menu do closer, super minimalista: Painel, Pipeline
 // (só o funil dele), Follow-up e Agenda — todo o resto é gestão do diretor
 // e do SDR. Conversas sai do menu mas a rota continua acessível pela ficha.
+// Testes de nível ficam VISÍVEIS pro closer (cada um vê só os da própria
+// unidade — o recorte é feito no servidor, em getLevelTests).
 const MANAGEMENT_HREFS = new Set([
   "/",
   "/reports",
   "/test-inbound",
   "/campaigns",
-  "/level-tests",
   "/conversations",
 ]);
 
