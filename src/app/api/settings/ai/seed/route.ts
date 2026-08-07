@@ -83,11 +83,18 @@ export async function GET(request: Request) {
       situational_prompts: situational,
     };
 
-    const { error } = await supabase.from("ai_settings").upsert(
-      { name: "__operations__", global_prompt: JSON.stringify(next) },
-      { onConflict: "name" },
-    );
-    if (error) throw error;
+    // ai_settings.name não tem constraint única — mesmo padrão do Estúdio:
+    // select → update/insert.
+    const { data: existing } = await supabase
+      .from("ai_settings")
+      .select("id")
+      .eq("name", "__operations__")
+      .maybeSingle();
+    const record = { name: "__operations__", global_prompt: JSON.stringify(next) };
+    const result = existing?.id
+      ? await supabase.from("ai_settings").update(record).eq("id", existing.id)
+      : await supabase.from("ai_settings").insert(record);
+    if (result.error) throw result.error;
 
     return NextResponse.json({
       ok: true,
@@ -102,7 +109,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erro ao preencher." },
+      { error: error instanceof Error ? error.message : `Erro ao preencher: ${JSON.stringify(error)}` },
       { status: 500 },
     );
   }
