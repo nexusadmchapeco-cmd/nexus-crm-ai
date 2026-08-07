@@ -188,6 +188,9 @@ export type OperationsSettings = {
   // Prompt pós-qualificação (briefing §1): template com {modalidade} {unidade}
   // {para_quem} {idade} {nome} {nivel} injetado quando a IA assume.
   post_qualification_prompt: string;
+  // Engenharia condicional: texto por situação (chaves de SITUACOES em
+  // qualification.ts). Vazio = usa o texto padrão do código.
+  situational_prompts: Record<string, string>;
   // Número público do WhatsApp da Nexus (para o link de indicação wa.me).
   public_whatsapp_number: string;
   voice_reply_enabled: boolean;

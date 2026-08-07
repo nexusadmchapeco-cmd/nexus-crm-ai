@@ -4,6 +4,32 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const STATUSES = ["novo", "contatado", "respondeu", "reuniao", "negociacao", "fechado", "descartado"];
 
+// Lista o funil de parcerias do usuário logado (módulo Parcerias com
+// Empresas). Vendedor vê as dele + as sem dono; gestor vê tudo.
+export async function GET() {
+  try {
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    const supabase = createAdminClient();
+    let query = supabase
+      .from("prospects")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (session.role === "vendedor") {
+      query = query.or(`user_id.eq.${session.uid},user_id.is.null`);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    return NextResponse.json({ prospects: data || [] });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro ao listar parcerias." },
+      { status: 500 },
+    );
+  }
+}
+
 // Salva/atualiza uma empresa no funil de parcerias (dedupe por place_id).
 export async function POST(request: Request) {
   try {

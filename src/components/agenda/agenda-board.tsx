@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LeadFicha } from "@/components/kanban/lead-ficha";
 import { Icon } from "@/components/ui/icon";
 import type {
   Appointment,
@@ -88,6 +89,7 @@ export function AgendaBoard({
   const [notice, setNotice] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [fichaLeadId, setFichaLeadId] = useState<string | null>(null);
   const [slotMenu, setSlotMenu] = useState<{ day: string; time: string } | null>(null);
   const [form, setForm] = useState({
     type: "closer_meeting",
@@ -427,6 +429,9 @@ export function AgendaBoard({
             <p>{new Date(selected.starts_at).toLocaleString("pt-BR", { timeZone: timezone, dateStyle: "full", timeStyle: "short" })} · 30 minutos · {labels[selected.status]}</p>
           </div>
           <div className="agenda-actions">
+            {selected.lead_id && (
+              <button onClick={() => setFichaLeadId(selected.lead_id)}>Abrir ficha</button>
+            )}
             {selected.meeting_url && <a href={selected.meeting_url} target="_blank" rel="noreferrer">Abrir Meet</a>}
             {selected.leads && (
               <a href={`https://wa.me/${(selected.leads as { phone?: string }).phone?.replace(/\D/g, "") || ""}`} target="_blank" rel="noreferrer" className="wa">
@@ -483,6 +488,16 @@ export function AgendaBoard({
             <div className="agenda-modal-footer"><button type="button" className="button" onClick={() => setModal(null)}>Cancelar</button><button className="button button-primary">Agendar 30 minutos</button></div>
           </form>
         </div>
+      )}
+
+      {fichaLeadId && (
+        <LeadFicha
+          leadId={fichaLeadId}
+          onClose={() => setFichaLeadId(null)}
+          // A agenda é renderizada com dados do servidor — mudou algo pela
+          // ficha (mover/excluir), recarrega pra não mostrar card órfão.
+          onChanged={() => window.location.reload()}
+        />
       )}
 
       {modal === "block" && (

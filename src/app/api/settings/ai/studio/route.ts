@@ -194,6 +194,12 @@ export async function PUT(request: Request) {
           ).trim(),
         },
         post_qualification_prompt: String(operations.post_qualification_prompt || "").trim(),
+        // Engenharia condicional: só guarda o que foi realmente sobrescrito.
+        situational_prompts: Object.fromEntries(
+          Object.entries(operations.situational_prompts || {})
+            .map(([key, text]) => [String(key).slice(0, 40), String(text || "").trim().slice(0, 2000)])
+            .filter(([, text]) => text),
+        ),
         public_whatsapp_number: normalizePhone(String(operations.public_whatsapp_number || "")),
         language_code: String(operations.language_code || "pt_BR"),
         voice_reply_enabled: Boolean(

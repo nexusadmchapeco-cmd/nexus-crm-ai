@@ -25,6 +25,7 @@ export const defaultOperationsSettings: OperationsSettings = {
   },
   language_code: "pt_BR",
   post_qualification_prompt: "",
+  situational_prompts: {},
   public_whatsapp_number: "",
   // Quando o lead manda áudio, a Nina responde com áudio (voz gerada por IA).
   voice_reply_enabled: true,
@@ -48,6 +49,7 @@ export function parseOperationsSettings(value?: string | null): OperationsSettin
         ...defaultOperationsSettings.campaign_template_names,
         ...(parsed.campaign_template_names || {}),
       },
+      situational_prompts: { ...(parsed.situational_prompts || {}) },
     };
   } catch {
     return defaultOperationsSettings;

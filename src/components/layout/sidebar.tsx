@@ -12,6 +12,7 @@ const nav = [
   { href: "/conversations", label: "Conversas", icon: "chat" as const },
   { href: "/follow-up", label: "Follow-up", icon: "check" as const },
   { href: "/agenda", label: "Agenda", icon: "calendar" as const },
+  { href: "/parcerias", label: "Parcerias", icon: "grid" as const },
   { href: "/level-tests", label: "Testes de nível", icon: "report" as const },
   { href: "/reports", label: "Relatório diário", icon: "report" as const },
   { href: "/test-inbound", label: "Simulador", icon: "flask" as const },
@@ -19,9 +20,17 @@ const nav = [
 ];
 
 // Itens de gestão: escondidos do papel "vendedor" (o middleware também
-// bloqueia). Menu do vendedor (spec): Painel, Pipeline, Conversas, Agenda,
-// Disparos.
-const MANAGEMENT_HREFS = new Set(["/", "/reports", "/test-inbound"]);
+// bloqueia os críticos). Menu do closer, super minimalista: Painel, Pipeline
+// (só o funil dele), Follow-up e Agenda — todo o resto é gestão do diretor
+// e do SDR. Conversas sai do menu mas a rota continua acessível pela ficha.
+const MANAGEMENT_HREFS = new Set([
+  "/",
+  "/reports",
+  "/test-inbound",
+  "/campaigns",
+  "/level-tests",
+  "/conversations",
+]);
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -50,11 +59,14 @@ export function Sidebar() {
   const visibleNav = nav.filter((item) => !isVendedor || !MANAGEMENT_HREFS.has(item.href));
 
   // Barra inferior do celular/PWA: atalhos principais no alcance do polegar;
-  // "Menu" abre a gaveta com todo o resto.
+  // "Menu" abre a gaveta com todo o resto. Closer troca Conversas por
+  // Follow-up (a rotina dele).
   const tabbar = [
     { href: "/painel-vendedor", label: "Painel", icon: "user" as const },
     { href: "/kanban", label: "Pipeline", icon: "board" as const },
-    { href: "/conversations", label: "Conversas", icon: "chat" as const },
+    isVendedor
+      ? { href: "/follow-up", label: "Follow-up", icon: "check" as const }
+      : { href: "/conversations", label: "Conversas", icon: "chat" as const },
     { href: "/agenda", label: "Agenda", icon: "calendar" as const },
   ];
 

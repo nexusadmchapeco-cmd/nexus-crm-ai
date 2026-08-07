@@ -170,9 +170,151 @@ export function advanceQualification(
   }
 }
 
+// ── Engenharia situacional: para CADA combinação de variáveis coletadas nos
+// botões, a Nina recebe a instrução de venda certa. Os textos abaixo são o
+// PADRÃO; cada um pode ser sobrescrito no Estúdio de IA (aba Qualificação).
+// Placeholders aceitos nos textos: {nome}, {idade}, {objetivo}.
+export const SITUACOES: { key: string; label: string; default: string }[] = [
+  {
+    key: "modalidade_presencial",
+    label: "Modalidade: Presencial",
+    default:
+      "MODALIDADE PRESENCIAL: venda a EXPERIÊNCIA — turmas pequenas, contato direto com o professor, imersão na escola. Convide para conhecer a unidade pessoalmente; a reunião com o consultor pode ser na própria escola.",
+  },
+  {
+    key: "modalidade_online",
+    label: "Modalidade: Online",
+    default:
+      "MODALIDADE ONLINE: venda a FLEXIBILIDADE — aula ao vivo com professor, de onde a pessoa estiver, sem deslocamento. Deixe claro que NÃO é curso gravado: é turma ao vivo. A reunião com o consultor acontece por videochamada (Google Meet).",
+  },
+  {
+    key: "modalidade_indefinida",
+    label: "Modalidade ainda não definida",
+    default:
+      "MODALIDADE AINDA NÃO DEFINIDA: descubra com naturalidade (presencial ou online) antes de falar de horários ou agendar.",
+  },
+  {
+    key: "unidade_chapeco",
+    label: "Unidade: Chapecó",
+    default:
+      "UNIDADE CHAPECÓ: ao citar endereço, turmas, horários e professores, use SOMENTE os dados de Chapecó da base de conhecimento — nunca misture com Passo Fundo.",
+  },
+  {
+    key: "unidade_passo_fundo",
+    label: "Unidade: Passo Fundo",
+    default:
+      "UNIDADE PASSO FUNDO: ao citar endereço, turmas, horários e professores, use SOMENTE os dados de Passo Fundo da base de conhecimento — nunca misture com Chapecó.",
+  },
+  {
+    key: "para_crianca",
+    label: "Curso para criança (até 11 anos)",
+    default:
+      "CURSO PARA CRIANÇA ({idade} anos): você conversa com o RESPONSÁVEL, não com o aluno. Chame {nome} pelo nome ao falar da criança, pergunte sobre a rotina escolar e destaque o método para crianças (confira o curso certo na base de conhecimento), o acompanhamento próximo e o retorno que os pais recebem. A decisão é do responsável — construa CONFIANÇA antes de falar de valores.",
+  },
+  {
+    key: "para_adolescente",
+    label: "Curso para adolescente (12–17)",
+    default:
+      "CURSO PARA ADOLESCENTE ({idade} anos): quem decide é o responsável no WhatsApp. Conecte o inglês ao FUTURO de {nome}: escola, vestibular, intercâmbio, primeiras oportunidades de trabalho. Sugira horários compatíveis com a rotina escolar.",
+  },
+  {
+    key: "para_outra_adulto",
+    label: "Curso para outra pessoa (adulto)",
+    default:
+      "CURSO PARA OUTRA PESSOA (adulto): quem conversa não é quem vai estudar. Antes de agendar, confirme a disponibilidade de horários DO ALUNO ({nome}) e convide os dois para a reunião com o consultor.",
+  },
+  {
+    key: "para_propria",
+    label: "Curso para a própria pessoa",
+    default:
+      "CURSO PARA A PRÓPRIA PESSOA: fale diretamente com {nome} e amarre cada argumento ao objetivo DELE(A) com o inglês.",
+  },
+  {
+    key: "nivel_basico",
+    label: "Nível: Básico",
+    default:
+      "NÍVEL BÁSICO: acolha sem julgamento — muita gente tem vergonha de começar do zero. Reforce que as turmas de iniciantes começam do início DE VERDADE e que o método foi pensado para quem nunca estudou inglês. Evite termos em inglês nas suas mensagens. Não apresente teste de nivelamento como barreira.",
+  },
+  {
+    key: "nivel_intermediario",
+    label: "Nível: Intermediário",
+    default:
+      "NÍVEL INTERMEDIÁRIO: o inimigo aqui é a estagnação — a pessoa entende mas TRAVA na hora de falar. Foque em conversação e destravamento. Ofereça o teste de nivelamento como forma de cair na turma exata, sem repetir conteúdo que já sabe.",
+  },
+  {
+    key: "nivel_avancado",
+    label: "Nível: Avançado",
+    default:
+      "NÍVEL AVANÇADO: fale de fluência plena, conversação avançada e manutenção do nível; se a base de conhecimento tiver preparação para certificações, cite. Ofereça o teste de nivelamento. Pode responder em inglês leve SE o lead puxar primeiro.",
+  },
+  {
+    key: "objetivo",
+    label: "Quando o objetivo já foi declarado",
+    default:
+      'OBJETIVO DECLARADO: "{objetivo}" — conecte benefícios, horários e o convite pra reunião a ESSE objetivo, não a argumentos genéricos.',
+  },
+  {
+    key: "regras_fixas",
+    label: "Regras fixas (sempre entram)",
+    default:
+      "REGRAS FIXAS: nunca invente preço, horário de turma, endereço ou nome de professor — tudo isso sai da base de conhecimento. O próximo passo é sempre UM só: agendar a reunião com o consultor (ou a aula experimental, quando o lead pedir).",
+  },
+];
+
+// Decide QUAIS situações se aplicam a este lead. Os textos vêm do padrão
+// acima ou da versão editada no Estúdio (overrides).
+function situationalInstructions(lead: Lead, overrides: Record<string, string>): string {
+  const idade = Number.parseInt(lead.idade_aluno || "", 10);
+  const unit = (lead.unit_interest || "").toLowerCase();
+  const keys: string[] = [];
+
+  if (lead.modalidade === "presencial") keys.push("modalidade_presencial");
+  else if (lead.modalidade === "online") keys.push("modalidade_online");
+  else keys.push("modalidade_indefinida");
+
+  if (unit.includes("chapec")) keys.push("unidade_chapeco");
+  else if (unit.includes("passo")) keys.push("unidade_passo_fundo");
+
+  if (lead.para_quem === "outra") {
+    if (!Number.isNaN(idade) && idade <= 11) keys.push("para_crianca");
+    else if (!Number.isNaN(idade) && idade <= 17) keys.push("para_adolescente");
+    else keys.push("para_outra_adulto");
+  } else if (lead.para_quem === "propria") {
+    keys.push("para_propria");
+  }
+
+  if (lead.level === "básico") keys.push("nivel_basico");
+  else if (lead.level === "intermediário") keys.push("nivel_intermediario");
+  else if (lead.level === "avançado") keys.push("nivel_avancado");
+
+  if (lead.objective) keys.push("objetivo");
+  keys.push("regras_fixas");
+
+  const values: Record<string, string> = {
+    nome: (lead.name || "").split(" ")[0] || "o aluno",
+    idade: lead.idade_aluno || "não informada",
+    objetivo: lead.objective || "",
+  };
+  const lines = keys
+    .map((key) => {
+      const situation = SITUACOES.find((s) => s.key === key);
+      if (!situation) return null;
+      const text = (overrides[key] || "").trim() || situation.default;
+      return text.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? `{${k}}`);
+    })
+    .filter(Boolean);
+
+  return `INSTRUÇÕES PARA ESTE PERFIL (siga à risca):\n- ${lines.join("\n- ")}`;
+}
+
 // Prompt pós-qualificação: template com variáveis preenchidas com o que os
-// botões coletaram (editável no Estúdio de IA).
-export function renderPostQualificationPrompt(template: string, lead: Lead) {
+// botões coletaram (editável no Estúdio de IA) + o bloco situacional da
+// combinação exata de respostas deste lead (também editável, por situação).
+export function renderPostQualificationPrompt(
+  template: string,
+  lead: Lead,
+  situationalOverrides: Record<string, string> = {},
+) {
   const values: Record<string, string> = {
     modalidade: lead.modalidade || "não informada",
     unidade: lead.unit_interest || "não informada",
@@ -181,7 +323,8 @@ export function renderPostQualificationPrompt(template: string, lead: Lead) {
     nome: lead.name || "não informado",
     nivel: lead.level || "não informado",
   };
-  return template.replace(/\{(\w+)\}/g, (_, key: string) => values[key] ?? `{${key}}`);
+  const rendered = template.replace(/\{(\w+)\}/g, (_, key: string) => values[key] ?? `{${key}}`);
+  return `${rendered}\n\n${situationalInstructions(lead, situationalOverrides)}`;
 }
 
 export const DEFAULT_POST_QUALIFICATION_PROMPT =

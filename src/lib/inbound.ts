@@ -572,6 +572,7 @@ export async function processInbound(payload: InboundPayload) {
           ? `${renderPostQualificationPrompt(
               operationsForPrompt.post_qualification_prompt || DEFAULT_POST_QUALIFICATION_PROMPT,
               lead,
+              operationsForPrompt.situational_prompts,
             )}\n\n`
           : ""
       }${

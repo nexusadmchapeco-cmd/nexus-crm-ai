@@ -11,6 +11,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { stage_id } = await request.json();
     if (!stage_id) return NextResponse.json({ error: "stage_id é obrigatório" }, { status: 400 });
     const supabase = createAdminClient();
+    // Closer só move dentro do funil dele — as etapas da IA são do gestor.
+    if (guard.session?.role === "vendedor") {
+      const { data: targetStage } = await supabase
+        .from("pipeline_stages")
+        .select("board_group")
+        .eq("id", stage_id)
+        .maybeSingle();
+      if (targetStage?.board_group !== "closer") {
+        return NextResponse.json(
+          { error: "Essa etapa faz parte do atendimento da IA — fale com o gestor." },
+          { status: 403 },
+        );
+      }
+    }
     const { data, error } = await supabase.from("leads").update({
       stage_id, updated_at: new Date().toISOString(),
     }).eq("id", id).select().single();

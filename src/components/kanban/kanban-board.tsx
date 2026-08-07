@@ -12,9 +12,11 @@ type Props = {
   followups: FollowupHistoryItem[];
   events: Record<string, LeadEvent[]>;
   authorName?: string | null;
+  // Etapa "Não Qualificado" — habilita a aba Leads bucha (gestão).
+  buchaStageId?: string | null;
 };
 
-export function KanbanBoard({ initialLeads, stages, followups, events, authorName = null }: Props) {
+export function KanbanBoard({ initialLeads, stages, followups, events, authorName = null, buchaStageId = null }: Props) {
   const [leads, setLeads] = useState(initialLeads);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropStageId, setDropStageId] = useState<string | null>(null);
@@ -249,6 +251,16 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
 
   const openLead = openLeadId ? leads.find((lead) => lead.id === openLeadId) || null : null;
 
+  // Aba Leads bucha (pipeline do closer): não qualificados da unidade dele —
+  // material pra trabalhar quando o movimento está fraco. Sem encaminhamento,
+  // sem aviso: ele abre a ficha e toca direto.
+  const [view, setView] = useState<"funil" | "bucha">("funil");
+  const buchaLeads = buchaStageId
+    ? leads
+        .filter((lead) => lead.stage_id === buchaStageId)
+        .sort((a, b) => (b.last_message_at || "").localeCompare(a.last_message_at || ""))
+    : [];
+
   const [cadastroOpen, setCadastroOpen] = useState(false);
   const [cadastro, setCadastro] = useState({
     name: "",
@@ -290,6 +302,16 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
   return (
     <div className="kanban-sections">
       <div className="kanban-toolbar">
+        {buchaStageId && (
+          <div className="kanban-views">
+            <button type="button" className={view === "funil" ? "on" : ""} onClick={() => setView("funil")}>
+              Funil
+            </button>
+            <button type="button" className={view === "bucha" ? "on" : ""} onClick={() => setView("bucha")}>
+              Leads bucha {buchaLeads.length > 0 && <b>{buchaLeads.length}</b>}
+            </button>
+          </div>
+        )}
         <button type="button" className="pv-btn pv-btn-sm" onClick={() => setCadastroOpen(true)}>
           ＋ Cadastrar lead
         </button>
@@ -351,27 +373,61 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
           }}
         />
       )}
-      <div className="kanban-section kanban-section-ia">
-        <div className="kanban-section-label">
-          Atendimento da IA
-          <em>arraste um cartão ou use “Mover para”</em>
+      {view === "bucha" && buchaStageId && (
+        <div className="kanban-section">
+          <div className="kanban-section-label">
+            Leads bucha · não qualificados pela IA
+            <em>pra trabalhar quando o movimento está fraco — abra a ficha e toque direto</em>
+          </div>
+          <div className="pv-card">
+            {buchaLeads.length === 0 && <p className="dia-empty">Nenhum lead bucha na fila. 👏</p>}
+            {buchaLeads.map((lead) => (
+              <div className="pv-row" key={lead.id}>
+                <button type="button" className="pv-nm pv-nm-click" onClick={() => setOpenLeadId(lead.id)}>
+                  {lead.name || lead.phone}
+                  <small>{lead.summary || lead.objective || "Sem resumo — abrir a ficha"}</small>
+                </button>
+                <div className="pv-row-actions">
+                  <span className="pv-chip pv-c-orange">{formatRelative(lead.last_message_at)}</span>
+                  <a
+                    className="pv-btn-green pv-btn-sm"
+                    href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    WhatsApp
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div
-          className="kanban-grid"
-          style={{ "--kanban-cols": iaStages.length } as React.CSSProperties}
-        >
-          {iaStages.map(renderColumn)}
+      )}
+      {view === "funil" && iaStages.length > 0 && (
+        <div className="kanban-section kanban-section-ia">
+          <div className="kanban-section-label">
+            Atendimento da IA
+            <em>arraste um cartão ou use “Mover para”</em>
+          </div>
+          <div
+            className="kanban-grid"
+            style={{ "--kanban-cols": iaStages.length } as React.CSSProperties}
+          >
+            {iaStages.map(renderColumn)}
+          </div>
         </div>
-      </div>
-      <div className="kanban-section kanban-section-closer">
-        <div className="kanban-section-label kanban-section-label-closer">Closer · manual</div>
-        <div
-          className="kanban-grid"
-          style={{ "--kanban-cols": closerStages.length } as React.CSSProperties}
-        >
-          {closerStages.map(renderColumn)}
+      )}
+      {view === "funil" && closerStages.length > 0 && (
+        <div className="kanban-section kanban-section-closer">
+          {iaStages.length > 0 && <div className="kanban-section-label kanban-section-label-closer">Closer · manual</div>}
+          <div
+            className="kanban-grid"
+            style={{ "--kanban-cols": closerStages.length } as React.CSSProperties}
+          >
+            {closerStages.map(renderColumn)}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

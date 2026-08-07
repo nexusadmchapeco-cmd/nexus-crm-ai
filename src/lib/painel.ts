@@ -17,6 +17,8 @@ export type PainelTask = {
   lead_id?: string | null;
   // Follow-up agendado na ficha do lead (lead_tasks): concluir marca a task.
   lead_task_id?: string | null;
+  // Atalho de WhatsApp com mensagem pronta (ex.: link de indicação 30 dias).
+  wa_url?: string | null;
 };
 
 const DEFAULT_GOALS: { key: string; label: string; target: number; suffix?: string }[] = [
@@ -307,6 +309,40 @@ export async function getPainelData(target: SessionUser) {
   // ── Números do mês.
   const monthIso = monthStart.toISOString();
   const wonLeads = leads.filter((lead) => roleOf(lead) === "won");
+
+  // ── Indicação 30 dias pós-matrícula (decisão do diretor: SEM IA e sem
+  // template — o sistema só lembra e o closer manda na mão). O aluno ganha o
+  // PRÓPRIO link, com mensagem pronta; a tarefa some quando marcada feita.
+  if (publicWhatsApp) {
+    const now30 = new Date(now.getTime() - 30 * 86400000).toISOString();
+    const now90 = new Date(now.getTime() - 90 * 86400000).toISOString();
+    const elegiveis = wonLeads.filter(
+      (lead) => lead.phone && lead.updated_at <= now30 && lead.updated_at >= now90,
+    );
+    for (const lead of elegiveis) {
+      const source = `ind:${lead.id}`;
+      const state = taskState.get(source);
+      const firstName = (lead.name || "").split(" ")[0] || "aluno(a)";
+      const linkAluno = `https://wa.me/${publicWhatsApp}?text=${encodeURIComponent(
+        `Olá! Fui indicado(a) por ${firstName} e quero saber mais sobre a Nexus English Center 😊`,
+      )}`;
+      const mensagem =
+        `Oi ${firstName}! 🎉 Agora que você faz parte da Nexus English Center, ` +
+        `você tem direito a um link de indicação próprio e único. Mande para até 5 amigos: ` +
+        `assim que eles fizerem a matrícula, você ganha um crédito aqui com a gente — ` +
+        `e seu amigo recebe uma condição especial para começar na Nexus. Seu link: ${linkAluno}`;
+      tarefas.push({
+        id: state?.id || null,
+        source,
+        title: `Enviar link de indicação: ${lead.name || lead.phone} (30 dias de matrícula)`,
+        chip: "indicacao",
+        done: state?.done || false,
+        manual: false,
+        lead_id: lead.id,
+        wa_url: `https://wa.me/${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(mensagem)}`,
+      });
+    }
+  }
   const matriculasMes = wonLeads.filter((lead) => lead.updated_at >= monthIso).length;
   const matriculasSemana = wonLeads.filter((lead) => lead.updated_at >= weekStart.toISOString()).length;
   const indicacoesMes = leads.filter((lead) => isIndicacao(lead) && lead.created_at >= monthIso).length;

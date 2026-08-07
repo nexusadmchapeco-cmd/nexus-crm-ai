@@ -84,6 +84,17 @@ export function LeadModal({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Papel do usuário: o closer (vendedor) vê a ficha minimalista — resumo da
+  // IA + os contatos que ELE registrou, sem a linha do tempo do sistema.
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((response) => response.json())
+      .then((data) => setRole(data.user?.role || null))
+      .catch(() => {});
+  }, []);
+  const minimal = role === "vendedor";
+
   // Registro de contato: "c1".."c5" (cadência) ou tipo avulso dos OUTROS.
   const [etapa, setEtapa] = useState("");
   const [tipo, setTipo] = useState("");
@@ -296,14 +307,16 @@ export function LeadModal({
       created_at: note.created_at,
       isNote: true,
     })),
-    ...events.map((event) => ({
-      id: `e-${event.id}`,
-      title: labelEventType(event.event_type),
-      detail: "",
-      author: null,
-      created_at: event.created_at,
-      isNote: false,
-    })),
+    ...(minimal
+      ? []
+      : events.map((event) => ({
+          id: `e-${event.id}`,
+          title: labelEventType(event.event_type),
+          detail: "",
+          author: null,
+          created_at: event.created_at,
+          isNote: false,
+        }))),
   ]
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 30);
@@ -377,6 +390,12 @@ export function LeadModal({
                 </div>
               ))}
             </div>
+            {lead.summary && (
+              <div className="lm-resumo">
+                <span>Resumo do atendimento (IA)</span>
+                <p>{lead.summary}</p>
+              </div>
+            )}
             <div className="lm-actions">
               <button type="button" className="lm-delete" onClick={onDelete}>Excluir</button>
               <button

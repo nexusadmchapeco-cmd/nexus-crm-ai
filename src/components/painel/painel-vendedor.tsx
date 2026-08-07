@@ -1,11 +1,12 @@
 "use client";
 
-// Painel do Vendedor — 5 sub-abas (Hoje, Semana, Mês & Metas, Disparos,
-// Prospecção de Empresas), replicando o HTML de referência aprovado com o
-// design system do projeto.
+// Painel do Vendedor. Closer vê só o "Hoje" (minimalista); gestor/SDR têm as
+// abas Semana, Mês & Metas e Disparos. Prospecção de Empresas virou o módulo
+// próprio /parcerias.
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { LeadFicha } from "@/components/kanban/lead-ficha";
 
 type Viewer = { uid: string; name: string; role: string; unit: string | null };
 type Vendedor = { id: string; name: string; unit: string | null };
@@ -55,6 +56,7 @@ type PainelData = {
       manual: boolean;
       lead_id?: string | null;
       lead_task_id?: string | null;
+      wa_url?: string | null;
     }[];
   };
   semana: {
@@ -109,21 +111,13 @@ type PainelData = {
   };
 };
 
-type PlaceResult = {
-  place_id: string;
-  name: string;
-  address: string | null;
-  phone: string | null;
-  rating: number | null;
-  status: string;
-};
-
+// Prospecção de Empresas saiu daqui: virou o módulo próprio /parcerias
+// (menu lateral), operado pelo closer.
 const TABS = [
   { key: "hoje", label: "Hoje" },
   { key: "semana", label: "Semana" },
   { key: "mes", label: "Mês & Metas" },
   { key: "disparos", label: "Disparos" },
-  { key: "prosp", label: "Prospecção de Empresas" },
 ];
 
 const REVIEW_ITEMS = [
@@ -133,14 +127,6 @@ const REVIEW_ITEMS = [
   "Follow-ups da próxima semana agendados",
   "Status das parcerias ativas + benefícios de indicação pagos",
   "O que travou vendas na semana → anotar e reportar",
-];
-
-const FUNIL_ETAPAS: { key: string; label: string; color: string }[] = [
-  { key: "novo", label: "MAPEADAS", color: "#3d8bfd" },
-  { key: "contatado", label: "CONTATO FEITO", color: "#14b8a6" },
-  { key: "reuniao", label: "REUNIÃO", color: "#8b5cf6" },
-  { key: "negociacao", label: "NEGOCIAÇÃO", color: "#f5a623" },
-  { key: "fechado", label: "PARCERIA ATIVA", color: "#22a06b" },
 ];
 
 const CHIP_LABELS: Record<string, string> = {
@@ -222,13 +208,8 @@ export function PainelVendedor({
   const [editGoals, setEditGoals] = useState(false);
   const [goalDraft, setGoalDraft] = useState<Record<string, string>>({});
 
-  // Prospecção
-  const [segmento, setSegmento] = useState("");
-  const [cidade, setCidade] = useState("Passo Fundo, RS");
-  const [cidadeEscolhida, setCidadeEscolhida] = useState(false);
-  const [buscando, setBuscando] = useState(false);
-  const [resultados, setResultados] = useState<PlaceResult[]>([]);
-  const [waModal, setWaModal] = useState<{ place: PlaceResult; message: string; loading: boolean } | null>(null);
+  // Ficha do lead aberta por clique (modelo do CRM antigo)
+  const [fichaLeadId, setFichaLeadId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (initialData) return; // modo demonstração: dados vêm prontos do servidor
@@ -367,66 +348,8 @@ export function PainelVendedor({
     void load();
   }
 
-  async function buscar() {
-    if (!segmento.trim() || buscando) return;
-    setBuscando(true);
-    try {
-      const response = await fetch("/api/prospects/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: segmento.trim(), city: cidade }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Erro na busca.");
-      setResultados(payload.results || payload.places || []);
-      setError(null);
-    } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : "Erro na busca.");
-    } finally {
-      setBuscando(false);
-    }
-  }
-
-  async function salvarNoFunil(place: PlaceResult, status = "novo") {
-    await fetch("/api/prospects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        place_id: place.place_id,
-        status,
-        company_name: place.name,
-        segment: segmento.trim() || null,
-        city: cidade,
-        user_id: targetUserId,
-      }),
-    });
-    setResultados((current) =>
-      current.map((r) => (r.place_id === place.place_id ? { ...r, status } : r)),
-    );
-    void load();
-  }
-
-  async function abrirWhatsApp(place: PlaceResult) {
-    setWaModal({ place, message: "", loading: true });
-    const response = await fetch("/api/prospects/ai-message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: place.name, segment: segmento.trim(), city: cidade }),
-    });
-    const payload = await response.json();
-    setWaModal({ place, message: payload.message || "", loading: false });
-  }
-
   const firstName = useMemo(() => (data?.user.name || viewer?.name || "").split(" ")[0], [data, viewer]);
 
-  // A prospecção abre na cidade do vendedor que está sendo visto (o gestor
-  // troca de vendedor sem precisar trocar a cidade na mão).
-  useEffect(() => {
-    if (cidadeEscolhida) return;
-    const unit = data?.user.unit;
-    if (!unit) return;
-    setCidade(unit === "chapeco" ? "Chapecó, SC" : "Passo Fundo, RS");
-  }, [data?.user.unit, cidadeEscolhida]);
 
   if (!viewer) {
     return (
@@ -467,13 +390,23 @@ export function PainelVendedor({
         </div>
       ) : null}
 
-      <div className="pv-tabs">
-        {TABS.map((t) => (
-          <button key={t.key} type="button" className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {data && data.hoje.stats.followups > 0 && (
+        <Link className="pv-alert pv-alert-fu" href="/follow-up">
+          ⏰ {data.hoje.stats.followups} follow-up{data.hoje.stats.followups > 1 ? "s" : ""} para hoje ou atrasado{data.hoje.stats.followups > 1 ? "s" : ""} — abrir Follow-up ›
+        </Link>
+      )}
+
+      {/* Closer: só o "Hoje", super minimalista. Semana/Metas/Disparos/
+          Prospecção são gestão — ficam com o admin e o SDR. */}
+      {isGestor && (
+        <div className="pv-tabs">
+          {TABS.map((t) => (
+            <button key={t.key} type="button" className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {!data ? (
         <p className="dia-empty">Carregando painel...</p>
@@ -482,12 +415,12 @@ export function PainelVendedor({
           {/* ═══ HOJE ═══ */}
           {tab === "hoje" && (
             <section>
+              {/* Minimalista: 3 números. Regra dos 10 min já tem o alerta
+                  vermelho no topo; follow-ups têm menu próprio. */}
               <div className="pv-stats">
                 <div className="pv-stat b-blue"><h5>Leads na sua fila</h5><div className="v">{data.hoje.stats.fila}</div><span>Qualificados pela IA</span></div>
-                <div className="pv-stat b-red"><h5>Regra dos 10 min</h5><div className="v">{data.hoje.stats.regra10}</div><span>Aguardando 1º contato</span></div>
-                <div className="pv-stat b-yellow"><h5>Follow-ups de hoje</h5><div className="v">{data.hoje.stats.followups}</div><span>Agendados pelo sistema</span></div>
                 <div className="pv-stat b-purple"><h5>Reuniões hoje</h5><div className="v">{data.hoje.stats.reunioes}</div><span>{data.hoje.agenda.slice(0, 3).map((a) => horaDe(a.starts_at)).join(" · ") || "Agenda livre"}</span></div>
-                <div className="pv-stat b-green"><h5>Matrículas no mês</h5><div className="v">{data.hoje.stats.matriculasMes}</div><span>Meta {data.hoje.stats.metaMatriculas} · desafio {data.hoje.stats.desafio}</span></div>
+                <div className="pv-stat b-green"><h5>Matrículas no mês</h5><div className="v">{data.hoje.stats.matriculasMes}</div><span>Meta {data.hoje.stats.metaMatriculas}</span></div>
               </div>
               <div className="pv-grid2">
                 <div className="pv-card">
@@ -497,10 +430,10 @@ export function PainelVendedor({
                   ) : (
                     data.hoje.fila.map((item) => (
                       <div className="pv-row" key={item.lead_id}>
-                        <div className="pv-nm">
+                        <button type="button" className="pv-nm pv-nm-click" onClick={() => setFichaLeadId(item.lead_id)}>
                           {item.name}
                           <small>{item.summary}</small>
-                        </div>
+                        </button>
                         <div className="pv-row-actions">
                           {(item.tags || []).map((tag) => (
                             <span key={tag} className={`pv-chip ${tag === "Experimental" ? "pv-c-blue" : "pv-c-red"}`}>
@@ -530,33 +463,33 @@ export function PainelVendedor({
                           <b>{horaDe(item.starts_at)}</b> — {item.lead_name || item.title} {item.parceria && <span className="pv-chip pv-c-blue">PARCERIA</span>}
                           {item.context && <small>{item.context}</small>}
                         </label>
+                        {item.lead_id && (
+                          <button type="button" className="pv-link" onClick={() => setFichaLeadId(item.lead_id)}>
+                            Ficha ›
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
                 </div>
               </div>
               {data.indicacaoLink && (
-                <div className="pv-card pv-mt">
-                  <div className="pv-card-h"><h3>Seu link de indicação</h3><span className="pv-chip pv-c-green">INDICAÇÃO</span></div>
-                  <p className="pv-sub" style={{ marginBottom: 8 }}>
-                    Envie para alunos e contatos: quem entrar por ele já chega marcado como indicação sua.
-                  </p>
-                  <div className="pv-add-task">
-                    <input readOnly value={data.indicacaoLink} onFocus={(event) => event.target.select()} />
-                    <button
-                      type="button"
-                      className="pv-btn pv-btn-sm"
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(data.indicacaoLink || "");
-                      }}
-                    >
-                      Copiar
-                    </button>
-                  </div>
+                <div className="pv-indicacao pv-mt">
+                  <span>Link de indicação</span>
+                  <input readOnly value={data.indicacaoLink} onFocus={(event) => event.target.select()} />
+                  <button
+                    type="button"
+                    className="pv-btn pv-btn-sm"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(data.indicacaoLink || "");
+                    }}
+                  >
+                    Copiar
+                  </button>
                 </div>
               )}
               <div className="pv-card pv-mt">
-                <div className="pv-card-h"><h3>Tarefas do dia</h3><span className="pv-chip pv-c-orange">NADA VIRA AMANHÃ</span></div>
+                <div className="pv-card-h"><h3>Tarefas do dia</h3></div>
                 {data.hoje.tarefas.length === 0 && <p className="dia-empty">Nenhuma tarefa pendente hoje.</p>}
                 {data.hoje.tarefas.map((task, index) => (
                   <div className={`pv-task ${task.done ? "done" : ""}`} key={task.source || task.id || index}>
@@ -564,7 +497,16 @@ export function PainelVendedor({
                     <label htmlFor={`tk-${index}`}>
                       {task.title} {task.chip && <span className={CHIP_CLASS[task.chip]}>{CHIP_LABELS[task.chip]}</span>}
                     </label>
-                    {task.lead_id && <Link className="pv-link" href={`/conversations?lead=${task.lead_id}`}>Abrir ›</Link>}
+                    {task.wa_url && !task.done && (
+                      <a className="pv-btn-green pv-btn-sm" href={task.wa_url} target="_blank" rel="noreferrer">
+                        Enviar no WhatsApp
+                      </a>
+                    )}
+                    {task.lead_id && (
+                      <button type="button" className="pv-link" onClick={() => setFichaLeadId(task.lead_id!)}>
+                        Ficha ›
+                      </button>
+                    )}
                   </div>
                 ))}
                 <div className="pv-add-task">
@@ -760,113 +702,6 @@ export function PainelVendedor({
             </section>
           )}
 
-          {/* ═══ PROSPECÇÃO ═══ */}
-          {tab === "prosp" && (
-            <section>
-              <div className="pv-pipe">
-                {FUNIL_ETAPAS.map((etapa) => (
-                  <div className="st" style={{ borderTopColor: etapa.color }} key={etapa.key}>
-                    <b style={etapa.key === "fechado" ? { color: etapa.color } : undefined}>{data.prospeccao.counts[etapa.key] || 0}</b>
-                    <span>{etapa.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="pv-card">
-                <div className="pv-card-h"><h3>Buscar empresas para prospectar</h3><span className="pv-gtag"><i className="pv-gdot" /> Google Places API</span></div>
-                <div className="pv-search">
-                  <input
-                    placeholder="Segmento (academias, escritórios, escolas...)"
-                    value={segmento}
-                    onChange={(event) => setSegmento(event.target.value)}
-                    onKeyDown={(event) => event.key === "Enter" && void buscar()}
-                  />
-                  <select
-                    value={cidade}
-                    onChange={(event) => {
-                      setCidade(event.target.value);
-                      setCidadeEscolhida(true);
-                    }}
-                  >
-                    <option>Passo Fundo, RS</option>
-                    <option>Chapecó, SC</option>
-                  </select>
-                  <button type="button" className="pv-btn" onClick={() => void buscar()} disabled={buscando || !segmento.trim()}>
-                    {buscando ? "Buscando..." : "Buscar"}
-                  </button>
-                </div>
-                {resultados.map((place) => (
-                  <div className="pv-emp" key={place.place_id}>
-                    <div>
-                      <div className="nm">{place.name}</div>
-                      <div className="dt">
-                        {[place.address, place.rating ? `★ ${place.rating}` : null, place.phone].filter(Boolean).join(" · ")}
-                      </div>
-                    </div>
-                    <div className="acts">
-                      {place.phone && (
-                        <button type="button" className="pv-btn-green pv-btn-sm" onClick={() => void abrirWhatsApp(place)}>WhatsApp</button>
-                      )}
-                      {place.phone && (
-                        <a className="pv-btn-ghost pv-btn-sm" href={`tel:${place.phone.replace(/\D/g, "")}`}>Ligar</a>
-                      )}
-                      <button
-                        type="button"
-                        className="pv-btn-ghost pv-btn-sm"
-                        disabled={place.status !== "novo" && Boolean(place.status)}
-                        onClick={() => void salvarNoFunil(place)}
-                      >
-                        {place.status && place.status !== "novo" ? "No funil ✓" : "+ Funil"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <div className="pv-tip">💡 Ao clicar em <b>WhatsApp</b>, a IA gera a abordagem personalizada pelo segmento — você só revisa e envia. Cada contato conta na meta de prospecção.</div>
-              </div>
-              {data.prospeccao.funil.length > 0 && (
-                <div className="pv-card pv-mt">
-                  <div className="pv-card-h"><h3>Funil de parcerias</h3></div>
-                  {data.prospeccao.funil.map((empresa) => (
-                    <div className="pv-emp" key={empresa.id}>
-                      <div>
-                        <div className="nm">{empresa.company_name}</div>
-                        <div className="dt">
-                          {[empresa.segment, empresa.city, empresa.next_action ? `Próxima ação: ${empresa.next_action}${empresa.next_action_at ? ` (${empresa.next_action_at.slice(8)}/${empresa.next_action_at.slice(5, 7)})` : ""}` : null]
-                            .filter(Boolean)
-                            .join(" · ") || "Sem detalhes"}
-                        </div>
-                      </div>
-                      <div className="acts">
-                        <select
-                          className="pv-select"
-                          value={empresa.status}
-                          onChange={(event) =>
-                            void fetch("/api/prospects", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                place_id: empresa.place_id,
-                                status: event.target.value,
-                                company_name: empresa.company_name,
-                                note: empresa.note,
-                              }),
-                            }).then(() => load())
-                          }
-                        >
-                          <option value="novo">Mapeada</option>
-                          <option value="contatado">Contato feito</option>
-                          <option value="respondeu">Respondeu</option>
-                          <option value="reuniao">Reunião</option>
-                          <option value="negociacao">Negociação</option>
-                          <option value="fechado">Parceria ativa</option>
-                          <option value="descartado">Descartada</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
         </>
       )}
 
@@ -891,36 +726,14 @@ export function PainelVendedor({
         </div>
       )}
 
-      {/* Modal mensagem de WhatsApp gerada pela IA */}
-      {waModal && (
-        <div className="dia-modal-backdrop" onClick={() => setWaModal(null)}>
-          <div className="dia-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="dia-modal-head"><h4>Abordagem — {waModal.place.name}</h4>
-              <button type="button" onClick={() => setWaModal(null)} aria-label="Fechar">✕</button>
-            </div>
-            {waModal.loading ? (
-              <p className="dia-empty">A IA está escrevendo a abordagem...</p>
-            ) : (
-              <>
-                <textarea
-                  className="pv-blockers"
-                  value={waModal.message}
-                  onChange={(event) => setWaModal({ ...waModal, message: event.target.value })}
-                />
-                <a
-                  className="dia-modal-save"
-                  style={{ textAlign: "center", textDecoration: "none" }}
-                  href={`https://wa.me/${(waModal.place.phone || "").replace(/\D/g, "").replace(/^(?!55)/, "55")}?text=${encodeURIComponent(waModal.message)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => void salvarNoFunil(waModal.place, "contatado")}
-                >
-                  Abrir no WhatsApp e marcar contato feito
-                </a>
-              </>
-            )}
-          </div>
-        </div>
+      {/* Ficha completa do lead — clicou na pessoa, abre tudo (modelo antigo) */}
+      {fichaLeadId && (
+        <LeadFicha
+          leadId={fichaLeadId}
+          authorName={viewer?.name || null}
+          onClose={() => setFichaLeadId(null)}
+          onChanged={() => void load()}
+        />
       )}
     </div>
   );

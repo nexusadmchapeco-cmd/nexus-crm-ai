@@ -46,6 +46,9 @@ const ADMIN_ONLY_PREFIXES = [
   // PUBLIC_PREFIXES é avaliada antes desta).
   "/api/integrations",
   "/api/messages",
+  // Disparos são gestão do diretor comercial — o closer não dispara nada.
+  "/campaigns",
+  "/api/campaigns",
 ];
 
 function isPublicPath(pathname: string) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type DragEvent } from "react";
 import { conversationModels } from "@/lib/ai/openai";
+import { SITUACOES } from "@/lib/qualification";
 import { voiceOptions } from "@/lib/voice";
 import { Icon } from "@/components/ui/icon";
 import type {
@@ -317,6 +318,35 @@ export function PromptStudio({
                   A IA assume a conversa com este texto já preenchido com as respostas dos botões (modalidade, unidade, para quem, idade, nome e nível).
                 </small>
               </div>
+              <details className="studio-situacoes">
+                <summary>Engenharia condicional — instrução por situação ({SITUACOES.length} blocos)</summary>
+                <p className="field-hint" style={{ margin: "8px 0 12px" }}>
+                  Para cada combinação de respostas, a Nina recebe automaticamente só os blocos daquele perfil
+                  (ex.: presencial + Chapecó + criança de 8 anos + básico). Edite o que quiser — em branco, vale o
+                  texto padrão mostrado como exemplo. Placeholders: {"{nome}"} {"{idade}"} {"{objetivo}"}.
+                </p>
+                {SITUACOES.map((situation) => (
+                  <div className="field" key={situation.key}>
+                    <label htmlFor={`sit-${situation.key}`}>{situation.label}</label>
+                    <textarea
+                      className="studio-prompt"
+                      id={`sit-${situation.key}`}
+                      style={{ minHeight: 72 }}
+                      placeholder={situation.default}
+                      value={operations.situational_prompts?.[situation.key] || ""}
+                      onChange={(event) =>
+                        setOperations({
+                          ...operations,
+                          situational_prompts: {
+                            ...(operations.situational_prompts || {}),
+                            [situation.key]: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </details>
               <div className="operations-callout" style={{ marginTop: 4 }}>
                 <Icon name="chat" size={16} />
                 <div style={{ flex: 1 }}>

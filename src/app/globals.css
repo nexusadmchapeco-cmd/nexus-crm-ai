@@ -1701,6 +1701,8 @@ strong, b { font-weight: 600; }
 .pv-select { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; background: #fff; }
 .pv-select-full { width: 100%; margin-bottom: 12px; }
 .pv-alert { background: #fdecec; color: #b3261e; border: 1px solid #f5c6c6; border-radius: 11px; padding: 11px 15px; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+.pv-alert-fu { display: block; background: #fdf3e4; color: #9a6215; border-color: #f0d9b0; text-decoration: none; cursor: pointer; }
+.pv-alert-fu:hover { filter: brightness(.97); }
 .pv-tabs { display: flex; gap: 8px; margin: 18px 0 22px; flex-wrap: wrap; }
 .pv-tabs button { border: 1px solid var(--line); background: #fff; color: var(--muted); font-weight: 600; font-size: 12.5px; padding: 9px 17px; border-radius: 30px; cursor: pointer; }
 .pv-tabs button.on { background: var(--orange); border-color: var(--orange); color: #fff; box-shadow: 0 5px 14px rgba(255, 107, 24, .3); }
@@ -1860,6 +1862,38 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .lm-conclui-next input { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; font-size: 12.5px; background: #fff; }
 .lm-conclui-next input:last-child { flex: 1; min-width: 150px; }
 .pv-row.fu-overdue { border-left: 3px solid #cf3f34; background: #fdecea66; }
+/* Nome do lead clicável: abre a ficha completa (modelo do CRM antigo). */
+.pv-nm-click { border: 0; background: none; padding: 0; font: inherit; text-align: left; cursor: pointer; }
+.pv-nm-click:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* Link de indicação compacto (uma linha em vez de card inteiro). */
+.pv-indicacao { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.pv-indicacao > span { flex: 0 0 auto; font-size: 11px; font-weight: 800; color: var(--muted, #85868a); text-transform: uppercase; letter-spacing: .06em; }
+.pv-indicacao input { flex: 1; min-width: 0; border: 0; background: none; font-size: 12px; color: inherit; }
+/* Resumo da IA na ficha: o closer recebe o essencial do que foi conversado. */
+.lm-resumo { margin: 12px 0 2px; padding: 11px 14px; border-left: 3px solid var(--accent, #e85d20); border-radius: 9px; background: #fdf3ee; }
+.lm-resumo span { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 800; color: #a14a1d; text-transform: uppercase; letter-spacing: .07em; }
+.lm-resumo p { margin: 0; font-size: 13px; line-height: 1.5; color: #6b4a37; }
+/* Alternador Funil / Leads bucha no topo do Kanban (visão de gestão). */
+.kanban-views { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: #f4f4f2; }
+.kanban-views button { border: 0; border-radius: 7px; padding: 6px 13px; background: transparent; color: var(--muted, #85868a); font-size: 12px; font-weight: 700; cursor: pointer; }
+.kanban-views button.on { background: #fff; color: var(--ink, #1d1e20); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.kanban-views button b { margin-left: 5px; padding: 1px 7px; border-radius: 12px; background: #fdecec; color: #b3261e; font-size: 10.5px; }
+/* Engenharia condicional no Estúdio: bloco recolhível com um textarea por situação. */
+.studio-situacoes { margin: 4px 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: #fafaf8; }
+.studio-situacoes summary { font-size: 13px; font-weight: 700; cursor: pointer; color: var(--ink, #1d1e20); }
+.studio-situacoes[open] summary { margin-bottom: 4px; }
+.studio-situacoes .field { margin-top: 10px; }
+/* Parcerias com Empresas: filtros do funil + status apontado na mão. */
+.parcerias-filtro-tel { display: flex; align-items: center; gap: 7px; margin: -4px 0 10px; font-size: 12px; color: var(--muted, #85868a); cursor: pointer; }
+.parcerias-filtros { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.parcerias-filtros button {
+  border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; background: #fff;
+  color: var(--muted, #85868a); font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.parcerias-filtros button.on { border-color: var(--st-color, var(--ink, #1d1e20)); color: var(--st-color, var(--ink, #1d1e20)); background: color-mix(in srgb, var(--st-color, #1d1e20) 8%, #fff); }
+.parcerias-filtros input { flex: 1; min-width: 140px; border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; font-size: 12px; background: #fff; }
+.parcerias-status { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; background: #fff; cursor: pointer; }
+.parcerias-status-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
 .lm-timeline { display: flex; flex-direction: column; gap: 8px; }
 .lm-entry { background: var(--canvas); border-radius: 10px; padding: 10px 13px; }
 .lm-entry.note { border-left: 3px solid var(--orange); }
@@ -1914,6 +1948,18 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
   .mobile-tabbar a.on { color: var(--orange); }
   .page-content { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   .conversations-shell { height: calc(100dvh - 65px - 61px - 70px); }
+
+  /* PWA/celular: elementos novos com alvo de toque decente e sem estouro. */
+  .lm-conclui { max-width: none; border-radius: 14px; }
+  .lm-conclui-backdrop { padding: 12px; align-items: flex-end; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .week-appt-actions button { width: 24px; height: 22px; font-size: 11px; }
+  .pv-indicacao { flex-wrap: wrap; }
+  .pv-indicacao input { flex-basis: 100%; order: 3; }
+  .pv-row { flex-wrap: wrap; }
+  .pv-row-actions { flex-wrap: wrap; row-gap: 6px; }
+  .kanban-toolbar { flex-wrap: wrap; justify-content: flex-start; }
+  .lm-sugestao input[type="date"] { min-width: 130px; }
+  .agenda-actions { flex-wrap: wrap; row-gap: 6px; }
 }
 
 /* Agenda: métricas + bloqueios */
@@ -1930,7 +1976,7 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .lead-card-online { border-left: 3px solid #3d8bfd; }
 .lead-tag.tag-presencial { background: #ffefe5; color: var(--orange-dark); }
 .lead-tag.tag-online { background: #e4efff; color: #2a62c4; }
-.kanban-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.kanban-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
 .cadastro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .cadastro-grid input, .cadastro-grid select, .cadastro-grid textarea { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; background: var(--canvas); }
 .cadastro-grid textarea { grid-column: 1 / -1; min-height: 60px; resize: vertical; }
