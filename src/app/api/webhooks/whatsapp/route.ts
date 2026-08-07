@@ -42,17 +42,49 @@ export async function POST(request: Request) {
         }[]
       | undefined;
     if (statuses?.length) {
-      for (const status of statuses) {
-        const linha = `[whatsapp-status] ${status.status} para ${status.recipient_id} (msg ${status.id})`;
-        if (status.status === "failed") {
-          const erro = status.errors?.[0];
-          console.error(
-            `${linha} — FALHOU: código ${erro?.code} · ${erro?.title || ""} · ${erro?.message || ""} · ${erro?.error_data?.details || ""}`,
+      // Guarda os últimos 30 retornos em app_secrets (sem migração) para
+      // consulta em /api/settings/ai/whatsapp-status — os logs da Vercel não
+      // indexam saída de console, e sem isso a falha fica invisível.
+      after(async () => {
+        try {
+          const supabase = createAdminClient();
+          const { data: row } = await supabase
+            .from("app_secrets")
+            .select("value")
+            .eq("name", "whatsapp_delivery_log")
+            .maybeSingle();
+          let anteriores: unknown[] = [];
+          try {
+            anteriores = JSON.parse(row?.value || "[]");
+          } catch {
+            anteriores = [];
+          }
+          const novos = statuses.map((status) => ({
+            quando: new Date().toISOString(),
+            status: status.status,
+            para: status.recipient_id,
+            message_id: status.id,
+            erro: status.errors?.[0]
+              ? {
+                  codigo: status.errors[0].code,
+                  titulo: status.errors[0].title,
+                  mensagem: status.errors[0].message,
+                  detalhes: status.errors[0].error_data?.details,
+                }
+              : null,
+          }));
+          await supabase.from("app_secrets").upsert(
+            {
+              name: "whatsapp_delivery_log",
+              value: JSON.stringify([...novos, ...anteriores].slice(0, 30)),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "name" },
           );
-        } else {
-          console.log(linha);
+        } catch {
+          // diagnóstico não pode derrubar o webhook
         }
-      }
+      });
       if (!value?.messages?.length) return NextResponse.json({ received: true });
     }
 
