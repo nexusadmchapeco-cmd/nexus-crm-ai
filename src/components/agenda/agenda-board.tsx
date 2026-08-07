@@ -269,6 +269,76 @@ export function AgendaBoard({
         <div><span>Horários bloqueados</span><strong>{blocks.filter((block) => block.starts_at < `${weekEnd}T03:00:00.000Z` && block.ends_at > `${weekStart}T03:00:00.000Z`).length}</strong></div>
       </div>
 
+      {/* Celular: visão de DIA (modelo do CRM antigo) — a grade semanal é
+          impossível de ler em tela pequena. */}
+      <section className="agenda-day" aria-label="Agenda do dia">
+        <div className="agenda-day-nav">
+          <button className="icon-button" onClick={() => setAnchorDate(addDays(anchorDate, -1))} aria-label="Dia anterior">‹</button>
+          <strong>
+            {dateFromKey(anchorDate).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "short" })}
+            {anchorDate === localDateKey() && <em> · hoje</em>}
+          </strong>
+          <button className="icon-button" onClick={() => setAnchorDate(addDays(anchorDate, 1))} aria-label="Próximo dia">›</button>
+        </div>
+        {(() => {
+          const dayItems = items
+            .filter(
+              (item) =>
+                localDateKey(new Date(item.starts_at)) === anchorDate &&
+                item.status !== "cancelled",
+            )
+            .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+          if (!dayItems.length) {
+            return <p className="dia-empty">Nenhum compromisso neste dia.</p>;
+          }
+          return dayItems.map((item) => (
+            <div className={`agenda-day-card ${item.type === "closer_meeting" ? "meeting" : "class"} st-${item.status}`} key={item.id}>
+              <div className="agenda-day-card-top">
+                <div>
+                  <strong>{item.leads?.name || item.title}</strong>
+                  <small>
+                    {timeKey(item.starts_at)}–{timeKey(item.ends_at)} · {item.type === "closer_meeting" ? "Reunião" : "Aula experimental"}
+                  </small>
+                </div>
+                {!["scheduled", "confirmed"].includes(item.status) && (
+                  <span className={`agenda-status-chip ${item.status}`}>
+                    {item.status === "completed" ? "✅ Compareceu" : item.status === "no_show" ? "❌ Não compareceu" : labels[item.status]}
+                  </span>
+                )}
+              </div>
+              <div className="agenda-day-card-actions">
+                {["scheduled", "confirmed"].includes(item.status) && (
+                  <>
+                    <button type="button" onClick={() => void changeStatus(item.id, "completed")}>✅ Compareceu</button>
+                    <button type="button" className="miss" onClick={() => void changeStatus(item.id, "no_show")}>❌ Faltou</button>
+                    <button
+                      type="button"
+                      className="mut"
+                      onClick={() => {
+                        if (window.confirm("Cancelar este agendamento? O horário fica livre de novo.")) {
+                          void changeStatus(item.id, "cancelled");
+                        }
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </>
+                )}
+                {item.lead_id && (
+                  <button type="button" className="mut" onClick={() => setFichaLeadId(item.lead_id)}>Ficha</button>
+                )}
+                {item.leads?.phone && (
+                  <a className="wa" href={`https://wa.me/${item.leads.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                )}
+              </div>
+            </div>
+          ));
+        })()}
+        <button type="button" className="button agenda-day-add" onClick={() => openAppointment(anchorDate, "09:00")}>
+          ＋ Agendar neste dia
+        </button>
+      </section>
+
       <section className="week-calendar" aria-label="Agenda semanal">
         <div className="week-grid week-grid-header">
           <div className="week-corner">BRASÍLIA</div>

@@ -915,6 +915,28 @@ body:has(.login-shell) .page-content { animation: none; padding: 0; }
 .week-appt-actions button.cancel { background: #92939733; color: #55565a; }
 .week-appt-actions button:hover { filter: brightness(.92); }
 .week-appt-status { display: block; margin-top: 4px; font-size: 6px; font-style: normal; font-weight: 850; }
+/* Agenda do dia (celular): cartões grandes, ações no alcance do polegar. */
+.agenda-day { display: none; flex-direction: column; gap: 10px; }
+.agenda-day-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 0 4px; }
+.agenda-day-nav strong { font-size: 14px; text-transform: capitalize; }
+.agenda-day-nav em { font-style: normal; color: var(--orange); font-weight: 800; }
+.agenda-day-card { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 13px 14px; background: var(--surface); }
+.agenda-day-card.meeting { border-left-color: #7657e8; }
+.agenda-day-card.class { border-left-color: #10a6c8; }
+.agenda-day-card.st-no_show { border-left-color: #cf3f34; background: #fdecea66; }
+.agenda-day-card.st-completed { border-left-color: #2f9e63; background: #eaf7f066; }
+.agenda-day-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.agenda-day-card-top strong { display: block; font-size: 15px; }
+.agenda-day-card-top small { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); }
+.agenda-day-card-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 11px; }
+.agenda-day-card-actions button, .agenda-day-card-actions a {
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 13px; font-size: 12.5px; font-weight: 700;
+  background: #eaf7f0; color: #1f6b44; cursor: pointer; text-decoration: none;
+}
+.agenda-day-card-actions button.miss { background: #fdecea; color: #8f2d26; }
+.agenda-day-card-actions button.mut { background: var(--canvas); color: var(--muted); }
+.agenda-day-card-actions a.wa { background: #e6f6ec; color: #146c43; }
+.agenda-day-add { width: 100%; margin-top: 4px; }
 .agenda-status-chip { padding: 5px 10px; border-radius: 20px; font-size: 8px; font-weight: 850; }
 .agenda-status-chip.completed { color: #1f6b44; background: #eaf7f0; }
 .agenda-status-chip.no_show { color: #8f2d26; background: #fdecea; }
@@ -2161,6 +2183,24 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
   .mobile-tabbar a.on { color: var(--orange); }
   .page-content { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   .conversations-shell { height: calc(100dvh - 65px - 61px - 70px); }
+
+  /* Agenda no celular: a grade semanal sai, entra a lista do dia. */
+  .agenda-day { display: flex; }
+  .week-calendar, .agenda-kpis, .agenda-legend { display: none; }
+
+  /* Ficha do lead vira tela cheia no celular (era ilegível como caixinha). */
+  .dia-modal-backdrop:has(.lm-modal) { padding: 0; align-items: stretch; }
+  .lm-modal {
+    width: 100vw; max-width: none; height: 100dvh; max-height: none; border-radius: 0;
+    padding: 16px 15px calc(20px + env(safe-area-inset-bottom));
+  }
+  .lm-head h4 { font-size: 17px; }
+  .lm-stages button { font-size: 10.5px; padding: 5px 10px; }
+  .lm-tabs { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+  .lm-cadencia { grid-template-columns: 1fr 1fr; }
+  .lm-registrar { flex-direction: column; align-items: stretch; }
+  .lm-registrar select, .lm-registrar input, .lm-registrar button { width: 100%; }
+  .lm-timeline { max-height: none; }
 
   /* PWA/celular: elementos novos com alvo de toque decente e sem estouro. */
   .lm-conclui { max-width: none; border-radius: 14px; }
