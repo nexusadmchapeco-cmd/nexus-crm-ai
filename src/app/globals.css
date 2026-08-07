@@ -51,7 +51,12 @@ body:has(.login-shell) .page-content { animation: none; padding: 0; }
 .brand strong, .brand span { display: block; }
 .brand strong { font-size: 17px; letter-spacing: -.2px; }
 .brand span { font-size: 10px; color: #a7a7aa; text-transform: uppercase; letter-spacing: 1.6px; margin-top: 2px; }
-.main-nav { display: flex; flex-direction: column; gap: 4px; margin-top: 31px; flex: 1; }
+/* A navegação rola sozinha quando o menu passa da altura da tela — o topo
+   (logo) e o rodapé (status + Sair) ficam sempre visíveis. */
+.main-nav { display: flex; flex-direction: column; gap: 4px; margin-top: 31px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .18) transparent; }
+.main-nav::-webkit-scrollbar { width: 5px; }
+.main-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 4px; }
+.main-nav a { flex-shrink: 0; }
 .nav-label { color: #6f7075; text-transform: uppercase; letter-spacing: 1.2px; font-size: 9px; font-weight: 700; padding: 0 12px 9px; }
 .nav-label-spaced { margin-top: 22px; }
 .main-nav a {

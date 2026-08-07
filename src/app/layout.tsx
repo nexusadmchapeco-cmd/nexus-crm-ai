@@ -16,8 +16,9 @@ export const metadata: Metadata = {
   description: "Operação comercial inteligente da Nexus English Center",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/apple-touch-icon.png",
+    // ?v=2: fura o cache de favicon dos navegadores (marca nova de 07/08).
+    icon: "/icons/icon-192.png?v=2",
+    apple: "/icons/apple-touch-icon.png?v=2",
   },
   appleWebApp: {
     capable: true,
