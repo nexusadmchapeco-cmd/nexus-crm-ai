@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import type { Lead, StageRole } from "@/lib/types";
 
-type SimMessage = { sender_type: "lead" | "ai"; content: string };
+type SimButton = { id: string; title: string };
+type SimMessage = { sender_type: "lead" | "ai"; content: string; buttons?: SimButton[] };
 
 type SimLead = Pick<
   Lead,
@@ -20,6 +21,10 @@ type SimLead = Pick<
   | "temperature"
   | "summary"
   | "next_action"
+  | "modalidade"
+  | "para_quem"
+  | "idade_aluno"
+  | "qualification_step"
 >;
 
 type SimFlags = {
@@ -45,6 +50,8 @@ const temperatureLabels: Record<string, string> = {
 
 const leadFields: { key: keyof SimLead; label: string }[] = [
   { key: "name", label: "Nome" },
+  { key: "modalidade", label: "Modalidade" },
+  { key: "idade_aluno", label: "Idade do aluno" },
   { key: "city", label: "Cidade" },
   { key: "unit_interest", label: "Unidade" },
   { key: "course_interest", label: "Curso" },
@@ -81,9 +88,7 @@ export function SimulatorChat() {
     setError(null);
   }
 
-  async function send(event: FormEvent) {
-    event.preventDefault();
-    const content = draft.trim();
+  async function sendContent(content: string, buttonPayload: string | null = null) {
     if (!content || sending) return;
     const history = [...messages, { sender_type: "lead" as const, content }];
     setMessages(history);
@@ -94,11 +99,16 @@ export function SimulatorChat() {
       const response = await fetch("/api/simulator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, lead: lead || undefined, stage_role: stageRole }),
+        body: JSON.stringify({
+          messages: history,
+          lead: lead || undefined,
+          stage_role: stageRole,
+          button_payload: buttonPayload,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao rodar a IA");
-      setMessages([...history, { sender_type: "ai", content: data.reply }]);
+      setMessages([...history, { sender_type: "ai", content: data.reply, buttons: data.buttons }]);
       setStageRole(data.stage_role);
       setStageName(data.stage_name);
       setLead(data.lead);
@@ -108,6 +118,11 @@ export function SimulatorChat() {
     } finally {
       setSending(false);
     }
+  }
+
+  async function send(event: FormEvent) {
+    event.preventDefault();
+    await sendContent(draft.trim());
   }
 
   return (
@@ -134,6 +149,20 @@ export function SimulatorChat() {
           {messages.map((message, index) => (
             <div className={`message ${message.sender_type}`} key={index}>
               <div className="bubble">{message.content}</div>
+              {message.buttons && message.buttons.length > 0 && (
+                <div className="sim-buttons">
+                  {message.buttons.map((button) => (
+                    <button
+                      key={button.id}
+                      type="button"
+                      disabled={sending || index !== messages.length - 1}
+                      onClick={() => void sendContent(button.title, button.id)}
+                    >
+                      {button.title}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="message-meta">
                 <span>{message.sender_type === "lead" ? "Você (cliente)" : "Nina · IA"}</span>
               </div>
@@ -173,6 +202,16 @@ export function SimulatorChat() {
         <div className="simulator-panel-row">
           <span>Temperatura</span>
           <strong>{lead ? temperatureLabels[lead.temperature] || lead.temperature : "—"}</strong>
+        </div>
+        <div className="simulator-panel-row">
+          <span>Qualificação</span>
+          <strong>
+            {lead?.qualification_step === "done"
+              ? "Concluída ✓"
+              : lead?.qualification_step
+                ? `Perguntando: ${lead.qualification_step}`
+                : "Não iniciada"}
+          </strong>
         </div>
         {flags?.should_handoff && (
           <div className="simulator-flag">🔥 A IA acionaria o closer agora (resumo_closer).</div>

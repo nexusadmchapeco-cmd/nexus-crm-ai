@@ -252,22 +252,31 @@ export async function getPainelData(target: SessionUser) {
   }
   const tarefas: PainelTask[] = [];
 
+  // Contagem SEMPRE com recorte de unidade: o alerta do Lucas não pode somar
+  // follow-ups de Chapecó (e vice-versa).
+  const visibleLeadTasks = (leadTasksRaw || []).filter((task) =>
+    unitVisibleTo((task.lead as { unit_interest?: string | null } | null)?.unit_interest, unit),
+  );
   let followupsHoje = 0;
   try {
-    const { count } = await supabase
+    const { data: reguaRows } = await supabase
       .from("followups")
-      .select("id", { count: "exact", head: true })
+      .select("id, lead:leads(unit_interest)")
       .eq("status", "pendente")
-      .lte("scheduled_for", dayEnd.toISOString());
-    followupsHoje = (count || 0) + (leadTasksRaw || []).length;
+      .lte("scheduled_for", dayEnd.toISOString())
+      .limit(500);
+    const reguaVisiveis = (reguaRows || []).filter((row) =>
+      unitVisibleTo((row.lead as { unit_interest?: string | null } | null)?.unit_interest, unit),
+    );
+    followupsHoje = reguaVisiveis.length + visibleLeadTasks.length;
   } catch {
-    followupsHoje = (leadTasksRaw || []).length;
+    followupsHoje = visibleLeadTasks.length;
   }
 
   // Follow-ups (automáticos e manuais) NÃO entram nas Tarefas do dia — eles
   // vivem no menu dedicado /follow-up (briefing §6 + pedido do closer).
   const scheduledLeadIds = new Set<string>();
-  for (const task of leadTasksRaw || []) {
+  for (const task of visibleLeadTasks) {
     const taskLead = task.lead as { id?: string } | null;
     if (taskLead?.id) scheduledLeadIds.add(taskLead.id);
   }

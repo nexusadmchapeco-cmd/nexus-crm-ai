@@ -2093,6 +2093,15 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 .parcerias-filtros input { flex: 1; min-width: 140px; border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; font-size: 12px; background: #fff; }
 .parcerias-status { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; background: #fff; cursor: pointer; }
 .parcerias-status-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+/* Botões de resposta rápida no simulador (iguais aos do WhatsApp). */
+.sim-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.sim-buttons button {
+  border: 1px solid rgba(38, 118, 96, .4); border-radius: 18px; padding: 6px 14px;
+  background: #f0faf6; color: #14735a; font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: background .12s, transform .12s;
+}
+.sim-buttons button:hover:not(:disabled) { background: #dff5eb; transform: translateY(-1px); }
+.sim-buttons button:disabled { opacity: .45; cursor: default; }
 .lm-timeline { display: flex; flex-direction: column; gap: 8px; }
 .lm-entry { background: var(--canvas); border-radius: 10px; padding: 10px 13px; }
 .lm-entry.note { border-left: 3px solid var(--orange); }
