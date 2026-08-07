@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCloserStage } from "@/lib/closer-board";
 import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -24,10 +25,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       );
     }
     // Mesma regra do Kanban: o closer só enxerga (e só pode mover para) as
-    // etapas do funil dele — as da IA nem aparecem na ficha.
+    // etapas do funil dele — as de atendimento da IA nem aparecem na ficha.
     const visibleStages =
       guard.session?.role === "vendedor"
-        ? (stages || []).filter((stage) => stage.board_group === "closer")
+        ? (stages || []).filter(isCloserStage)
         : stages || [];
     return NextResponse.json({ lead, stages: visibleStages });
   } catch (error) {

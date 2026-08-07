@@ -3,6 +3,7 @@ import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { ConfigRequired } from "@/components/ui/config-required";
 import { Icon } from "@/components/ui/icon";
+import { isCloserStage } from "@/lib/closer-board";
 import { getFollowupHistory, getLeadEventsMap, getLeads, getStages } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
@@ -17,13 +18,13 @@ export default async function KanbanPage() {
     : [[], [], []];
   const events = configured ? await getLeadEventsMap(leads.map((lead) => lead.id)) : {};
 
-  // Closer vê SÓ o funil dele: as etapas manuais da parte de baixo. A parte
-  // da IA (SDR) é operação do gestor — some inteira para o vendedor. Exceção:
-  // os "leads bucha" (não qualificados da unidade dele) entram numa aba à
-  // parte, para trabalhar quando o movimento está fraco.
+  // Closer vê o funil dele: da chegada do lead (Qualificado / Reunião
+  // Agendada) até Matriculado/Perdido. As etapas de atendimento da IA são
+  // operação do gestor. Exceção: os "leads bucha" (não qualificados da
+  // unidade dele) entram numa aba à parte, pros dias fracos.
   const isVendedor = sessionUser?.role === "vendedor";
   const buchaStageId = stages.find((stage) => stage.role === "not_qualified")?.id || null;
-  const visibleStages = isVendedor ? stages.filter((stage) => stage.board_group === "closer") : stages;
+  const visibleStages = isVendedor ? stages.filter(isCloserStage) : stages;
   const stageIds = new Set(visibleStages.map((stage) => stage.id));
   if (isVendedor && buchaStageId) stageIds.add(buchaStageId);
   const visibleLeads = isVendedor ? leads.filter((lead) => stageIds.has(lead.stage_id)) : leads;

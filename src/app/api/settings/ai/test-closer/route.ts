@@ -59,18 +59,36 @@ export async function GET(request: Request) {
       );
     }
 
-    await sendWhatsAppTemplate(
+    const meta = (await sendWhatsAppTemplate(
       notification.phone,
       notification.templateName,
       operations.language_code,
       notification.params,
-    );
+    )) as {
+      messages?: { id: string; message_status?: string }[];
+      contacts?: { input: string; wa_id: string }[];
+    };
+
+    // A Meta devolve o wa_id do destinatário. Se ele vier DIFERENTE do número
+    // enviado, o WhatsApp corrigiu o número (ex.: nono dígito) — e a mensagem
+    // foi para o número corrigido, não para o digitado.
+    const waId = meta.contacts?.[0]?.wa_id || null;
+    const numeroDivergente = Boolean(waId && waId !== notification.phone.replace(/\D/g, ""));
+
     return NextResponse.json({
       ok: true,
       unidade: unitLabel,
       enviado_para: notification.phone,
+      whatsapp_do_destinatario: waId,
+      numero_divergente: numeroDivergente,
+      aviso: numeroDivergente
+        ? `Atenção: o WhatsApp entregou em ${waId}, diferente do número cadastrado. Cadastre exatamente ${waId}.`
+        : null,
+      message_id: meta.messages?.[0]?.id || null,
+      status: meta.messages?.[0]?.message_status || null,
       template: notification.templateName,
-      confira: "O closer deve receber a notificação de teste no WhatsApp agora.",
+      confira:
+        "A Meta ACEITOU o envio. Se não chegar: confirme que esse número tem WhatsApp ativo e peça pra ele mandar um 'oi' pro número da Nexus (a primeira mensagem de empresa pode ser retida).",
     });
   } catch (error) {
     return NextResponse.json(

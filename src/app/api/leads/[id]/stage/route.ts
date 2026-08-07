@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCloserStage } from "@/lib/closer-board";
 import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -11,14 +12,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { stage_id } = await request.json();
     if (!stage_id) return NextResponse.json({ error: "stage_id é obrigatório" }, { status: 400 });
     const supabase = createAdminClient();
-    // Closer só move dentro do funil dele — as etapas da IA são do gestor.
+    // Closer só move dentro do funil dele — as etapas de atendimento da IA
+    // (Novo Lead, Contato Feito, Informações Passadas) são do gestor.
     if (guard.session?.role === "vendedor") {
       const { data: targetStage } = await supabase
         .from("pipeline_stages")
-        .select("board_group")
+        .select("board_group, role")
         .eq("id", stage_id)
         .maybeSingle();
-      if (targetStage?.board_group !== "closer") {
+      if (!targetStage || !isCloserStage(targetStage)) {
         return NextResponse.json(
           { error: "Essa etapa faz parte do atendimento da IA — fale com o gestor." },
           { status: 403 },
