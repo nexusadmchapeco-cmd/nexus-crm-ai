@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
+import { Splash } from "@/components/layout/splash";
 import { Topbar } from "@/components/layout/topbar";
 import "./globals.css";
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR" className={montserrat.variable}>
       <body>
+        <Splash />
         <Sidebar />
         <div className="app-shell">
           <Topbar />

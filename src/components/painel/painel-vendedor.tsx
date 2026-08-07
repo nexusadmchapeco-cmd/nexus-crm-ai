@@ -473,6 +473,32 @@ export function PainelVendedor({
                   )}
                 </div>
               </div>
+              {/* Meta do mês na tela do closer: o painel dele é só "Hoje",
+                  mas ele precisa saber onde está na meta (pedido do diretor). */}
+              {data.mes.metas.length > 0 && (
+                <div className="pv-card pv-mt pv-metas-hoje">
+                  <div className="pv-card-h">
+                    <h3>Sua meta do mês</h3>
+                    <span className="pv-sub">{data.mes.stats.diasUteisRestantes} dias úteis restantes</span>
+                  </div>
+                  {data.mes.metas
+                    .filter((meta) => meta.key !== "parados")
+                    .slice(0, 3)
+                    .map((meta) => (
+                      <div className="pv-meta" key={meta.key}>
+                        <div className="mr">
+                          <span>{meta.label}</span>
+                          <span>
+                            <b>{meta.pct}%</b> · {meta.current}
+                            {meta.suffix} de {meta.target}
+                            {meta.suffix}
+                          </span>
+                        </div>
+                        <div className="pv-bar"><i className={meta.tone} style={{ width: `${meta.pct}%` }} /></div>
+                      </div>
+                    ))}
+                </div>
+              )}
               {data.indicacaoLink && (
                 <div className="pv-indicacao pv-mt">
                   <span>Link de indicação</span>
