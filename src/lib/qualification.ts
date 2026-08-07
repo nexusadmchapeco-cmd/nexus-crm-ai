@@ -233,19 +233,19 @@ export const SITUACOES: { key: string; label: string; default: string }[] = [
     key: "nivel_basico",
     label: "Nível: Básico",
     default:
-      "NÍVEL BÁSICO: acolha sem julgamento — muita gente tem vergonha de começar do zero. Reforce que as turmas de iniciantes começam do início DE VERDADE e que o método foi pensado para quem nunca estudou inglês. Evite termos em inglês nas suas mensagens. Não apresente teste de nivelamento como barreira.",
+      'NÍVEL BÁSICO: acolha sem julgamento — muita gente tem vergonha de começar do zero. PITCH DE CONEXÃO: "Legal, {nome}! Então a Nexus vai ser ideal pra ti: nossas turmas de iniciantes começam do início DE VERDADE, com foco em já sair FALANDO desde as primeiras aulas — e temos vários alunos que chegaram exatamente como você, sem nunca ter estudado inglês." Evite termos em inglês nas suas mensagens. Não apresente teste de nivelamento como barreira.',
   },
   {
     key: "nivel_intermediario",
     label: "Nível: Intermediário",
     default:
-      "NÍVEL INTERMEDIÁRIO: o inimigo aqui é a estagnação — a pessoa entende mas TRAVA na hora de falar. Foque em conversação e destravamento. Ofereça o teste de nivelamento como forma de cair na turma exata, sem repetir conteúdo que já sabe.",
+      'NÍVEL INTERMEDIÁRIO: o inimigo aqui é a estagnação — a pessoa entende mas TRAVA na hora de falar. PITCH DE CONEXÃO: "Legal, {nome}! Então a Nexus vai ser ideal pra ti: nosso foco é justamente CONVERSAÇÃO — temos vários alunos que chegaram entendendo tudo mas travando na hora de falar, e é exatamente isso que a gente destrava." Ofereça o teste de nivelamento como forma de cair na turma exata, sem repetir conteúdo que já sabe.',
   },
   {
     key: "nivel_avancado",
     label: "Nível: Avançado",
     default:
-      "NÍVEL AVANÇADO: fale de fluência plena, conversação avançada e manutenção do nível; se a base de conhecimento tiver preparação para certificações, cite. Ofereça o teste de nivelamento. Pode responder em inglês leve SE o lead puxar primeiro.",
+      'NÍVEL AVANÇADO: fluência plena, conversação avançada e manutenção do nível. PITCH DE CONEXÃO: "Legal, {nome}! Então a Nexus vai ser ideal pra ti: temos turmas avançadas focadas em conversação de alto nível, com vários alunos no teu estágio que vêm pra manter e refinar a fluência." Se a base de conhecimento tiver preparação para certificações, cite. Ofereça o teste de nivelamento. Pode responder em inglês leve SE o lead puxar primeiro.',
   },
   {
     key: "objetivo",
@@ -331,5 +331,8 @@ export const DEFAULT_POST_QUALIFICATION_PROMPT =
   "DADOS COLETADOS NA QUALIFICAÇÃO (o lead JÁ respondeu — NUNCA pergunte de novo): " +
   "modalidade: {modalidade} · unidade: {unidade} · curso para: {para_quem} · idade: {idade} · " +
   "nome do aluno: {nome} · nível: {nivel}. " +
-  "Use essas informações naturalmente na conversa (chame pelo nome, personalize pelo nível e modalidade) " +
-  "e siga o roteiro a partir do objetivo do lead com o inglês.";
+  "SUA PRIMEIRA MENSAGEM AGORA É O PITCH DE CONEXÃO: comece com \"Legal, {nome}!\" e diga por que a " +
+  "Nexus é a escola ideal PARA ESSE PERFIL exato (use o pitch do bloco de nível abaixo), mencionando que " +
+  "temos vários alunos em situação parecida. No máximo 3 frases curtas, e FECHE perguntando se é isso que " +
+  "a pessoa está buscando. Só depois da resposta avance para objetivo, horários e o convite pra reunião. " +
+  "Use os dados naturalmente na conversa inteira (chame pelo nome, personalize pelo nível e modalidade).";

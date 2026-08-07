@@ -16,12 +16,17 @@ const KNOWN = {
 };
 
 export async function GET(request: Request) {
-  const confirm = new URL(request.url).searchParams.get("confirm");
+  const url = new URL(request.url);
+  const confirm = url.searchParams.get("confirm");
+  // prompts=refazer força os textos NOVOS do pitch de conexão por cima dos
+  // blocos atuais (use quando os padrões do código evoluírem).
+  const refazerPrompts = url.searchParams.get("prompts") === "refazer";
   if (confirm !== "sim") {
     return NextResponse.json({
       warning:
         "Isso preenche o Estúdio de IA com os telefones dos closers, o template lead_quente, o prompt pós-qualificação e os 14 blocos condicionais (sem apagar nada já configurado).",
-      howTo: "Chame novamente com ?confirm=sim para aplicar.",
+      howTo:
+        "Chame novamente com ?confirm=sim para aplicar. Acrescente &prompts=refazer para atualizar os blocos de prompt para a versão mais recente do pitch.",
     });
   }
   try {
@@ -46,7 +51,7 @@ export async function GET(request: Request) {
 
     const situational: Record<string, string> = { ...current.situational_prompts };
     for (const situation of SITUACOES) {
-      if (!(situational[situation.key] || "").trim()) {
+      if (refazerPrompts || !(situational[situation.key] || "").trim()) {
         situational[situation.key] = situation.default;
         filled.push(`situacional:${situation.key}`);
       } else {
@@ -68,11 +73,13 @@ export async function GET(request: Request) {
         KNOWN.closer_phone_chapeco,
       ),
       closer_template_name: "lead_quente",
-      post_qualification_prompt: setIfEmpty(
-        "post_qualification_prompt",
-        current.post_qualification_prompt,
-        DEFAULT_POST_QUALIFICATION_PROMPT,
-      ),
+      post_qualification_prompt: refazerPrompts
+        ? DEFAULT_POST_QUALIFICATION_PROMPT
+        : setIfEmpty(
+            "post_qualification_prompt",
+            current.post_qualification_prompt,
+            DEFAULT_POST_QUALIFICATION_PROMPT,
+          ),
       situational_prompts: situational,
     };
 
