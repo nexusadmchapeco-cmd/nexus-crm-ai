@@ -1,5 +1,11 @@
 "use client";
 
+// A porta de entrada do sistema — a experiência "wow" (pedido do diretor):
+// atmosfera de sala de controle, com o núcleo orbital da marca (leads
+// circulando até a IA puxar pro centro), grade de horizonte, aurora e o
+// ticker vivo da operação. Tudo CSS puro — nada de libs, nada pesado.
+// O gem central troca a letra "N" pela logo nova quando os assets chegarem.
+
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -47,13 +53,10 @@ function LoginForm() {
   return (
     <form className="login-card" onSubmit={submit}>
       <div className="login-brand">
-        <div className="brand-mark">N</div>
-        <div>
-          <strong>Nexus</strong>
-          <span>CRM AI</span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/branding/nexus-crm-logo-transparent.svg" alt="Nexus CRM" />
       </div>
-      <h1>{bootstrap ? "Criar administrador" : "Entrar"}</h1>
+      <h1>{bootstrap ? "Criar administrador" : "Entrar na operação"}</h1>
       <p>
         {bootstrap
           ? "Primeiro acesso: crie a conta administrativa do painel."
@@ -95,6 +98,10 @@ function LoginForm() {
       >
         {loading ? "Entrando..." : bootstrap ? "Criar e entrar" : "Entrar"}
       </button>
+      <div className="login-live">
+        <i />
+        Nina em operação — atendendo leads agora
+      </div>
     </form>
   );
 }
@@ -102,9 +109,42 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="login-shell">
-      <Suspense>
-        <LoginForm />
-      </Suspense>
+      {/* Atmosfera: aurora, estrelas e a grade de horizonte */}
+      <div className="lg-aurora lg-aurora-ember" aria-hidden />
+      <div className="lg-aurora lg-aurora-nebula" aria-hidden />
+      <div className="lg-stars" aria-hidden>
+        <span /><span /><span /><span /><span /><span /><span /><span />
+      </div>
+      <div className="lg-grid" aria-hidden />
+
+      <div className="login-stage">
+        <div className="lg-hero">
+          {/* Núcleo orbital: os leads circulam, a IA puxa pro centro. */}
+          <div className="lg-core" aria-hidden>
+            <div className="lg-orbit lg-orbit-a"><i /><i className="d2" /></div>
+            <div className="lg-orbit lg-orbit-b"><i /><i className="d2" /><i className="d3" /></div>
+            <div className="lg-halo" />
+            <div className="lg-gem">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/branding/nexus-crm-icon.svg" alt="" />
+            </div>
+          </div>
+          <div className="lg-copy">
+            <div className="lg-eyebrow">Nexus English Center · Operação comercial</div>
+            <h2 className="lg-headline">
+              A IA atende.
+              <em>O seu time fecha.</em>
+            </h2>
+            <p className="lg-sub">
+              Leads do WhatsApp qualificados pela Nina e entregues quentes, dia e noite.
+            </p>
+          </div>
+        </div>
+
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </div>
     </div>
   );
 }

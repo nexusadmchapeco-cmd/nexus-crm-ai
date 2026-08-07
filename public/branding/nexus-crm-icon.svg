@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Nexus CRM">
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF6A00"/>
+      <stop offset="100%" stop-color="#D84A24"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#DCE2E8"/>
+      <stop offset="100%" stop-color="#9CA7B3"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#07111F"/>
+  <path d="M150 143
+           C210 76 333 80 391 147
+           C444 209 434 308 378 363
+           C322 418 225 429 158 387
+           L103 404
+           L129 354
+           C87 292 94 207 150 143Z"
+        fill="none" stroke="url(#orange)" stroke-width="22"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M178 340V176h41l78 104V176h43v164h-40l-79-105v105z"
+        fill="url(#metal)"/>
+</svg>

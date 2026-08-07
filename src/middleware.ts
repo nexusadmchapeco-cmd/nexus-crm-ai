@@ -24,6 +24,8 @@ const PUBLIC_PREFIXES = [
   // PWA: manifest e ícones são buscados pelo navegador sem sessão.
   "/manifest.webmanifest",
   "/icons/",
+  // Identidade visual (logo/ícone aparecem na tela de login, sem sessão).
+  "/branding/",
 ];
 
 // Dentro de /api/level-test, a revisão é interna (closer) — exige login.

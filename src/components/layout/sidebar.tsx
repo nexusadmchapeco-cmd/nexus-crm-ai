@@ -78,11 +78,8 @@ export function Sidebar() {
       {open && <button className="sidebar-overlay" onClick={() => setOpen(false)} aria-label="Fechar menu" />}
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">N</div>
-          <div>
-            <strong>Nexus</strong>
-            <span>CRM AI</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="brand-logo" src="/branding/nexus-crm-logo-transparent.svg" alt="Nexus CRM" />
           <button className="sidebar-close" onClick={() => setOpen(false)} aria-label="Fechar menu">
             <Icon name="x" />
           </button>
