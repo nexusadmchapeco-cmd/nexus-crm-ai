@@ -1,6 +1,8 @@
 // Qualificação por botões antes da IA (briefing §1): sequência FIXA —
-// modalidade → unidade (se presencial) → para quem → idade (se outra pessoa)
-// → nome → nível. As respostas vão para campos estruturados do lead; depois a
+// modalidade → para quem → idade (se outra pessoa) → nome → nível.
+// SISTEMA EXCLUSIVO DE CHAPECÓ (decisão do diretor, 07/08): não existe mais
+// pergunta de unidade — presencial é Chapecó, online é a turma online de
+// Chapecó. As respostas vão para campos estruturados do lead; depois a
 // IA assume com o prompt pós-qualificação (variáveis injetadas).
 //
 // O lead pode responder pelo botão (id fixo) ou por texto livre — o texto é
@@ -38,18 +40,10 @@ export function questionFor(step: string, lead: Lead): QualificationQuestion | n
   switch (step) {
     case "modalidade":
       return {
-        body: `Oi${firstNameGreeting(lead)}! Eu sou a Nina, da Nexus English Center. 😊 Pra agilizar seu atendimento, me conta: você prefere estudar presencial ou online?`,
+        body: `Oi${firstNameGreeting(lead)}! Eu sou a Nina, da Nexus English Center de Chapecó. 😊 Pra agilizar seu atendimento, me conta: você prefere estudar presencial ou online?`,
         buttons: [
           { id: "QUAL_MOD_PRESENCIAL", title: "Presencial" },
           { id: "QUAL_MOD_ONLINE", title: "Online" },
-        ],
-      };
-    case "unidade":
-      return {
-        body: "Perfeito! Qual unidade fica melhor pra você?",
-        buttons: [
-          { id: "QUAL_UNI_CHAPECO", title: "Chapecó" },
-          { id: "QUAL_UNI_PASSO_FUNDO", title: "Passo Fundo" },
         ],
       };
     case "para_quem":
@@ -114,27 +108,33 @@ export function advanceQualification(
     understood: false,
   });
 
+  // No canal não oficial os botões viram opções numeradas — o lead responde
+  // "1", "2", "3" e o dígito precisa valer como clique.
+  const digit = /^[123]$/.test(text) ? text : null;
+
   switch (step) {
     case "modalidade": {
-      const online = buttonPayload === "QUAL_MOD_ONLINE" || /\bonline|a distancia|ead\b/.test(text);
+      // Sistema exclusivo de Chapecó: presencial = unidade Chapecó direto,
+      // online = turma online DE Chapecó. Não existe mais pergunta de unidade.
+      const online =
+        buttonPayload === "QUAL_MOD_ONLINE" || digit === "2" || /\bonline|a distancia|ead\b/.test(text);
       const presencial =
-        buttonPayload === "QUAL_MOD_PRESENCIAL" || /presencial|na escola|na unidade/.test(text);
+        buttonPayload === "QUAL_MOD_PRESENCIAL" || digit === "1" || /presencial|na escola|na unidade/.test(text);
       if (online) return next({ modalidade: "online", unit_interest: "Online" }, "para_quem");
-      if (presencial) return next({ modalidade: "presencial" }, "unidade");
+      if (presencial) return next({ modalidade: "presencial", unit_interest: "Chapecó" }, "para_quem");
       return reask();
     }
     case "unidade": {
-      const chapeco = buttonPayload === "QUAL_UNI_CHAPECO" || text.includes("chapec");
-      const passo = buttonPayload === "QUAL_UNI_PASSO_FUNDO" || text.includes("passo");
-      if (chapeco) return next({ unit_interest: "Chapecó" }, "para_quem");
-      if (passo) return next({ unit_interest: "Passo Fundo" }, "para_quem");
-      return reask();
+      // Etapa legada (leads que estavam no meio da sequência antiga): resolve
+      // como Chapecó e segue.
+      return next({ unit_interest: "Chapecó" }, "para_quem");
     }
     case "para_quem": {
       const propria =
-        buttonPayload === "QUAL_QUEM_PROPRIA" || /pra mim|para mim|\beu\b|proprio|mesma/.test(text);
+        buttonPayload === "QUAL_QUEM_PROPRIA" || digit === "1" || /pra mim|para mim|\beu\b|proprio|mesma/.test(text);
       const outra =
         buttonPayload === "QUAL_QUEM_OUTRA" ||
+        digit === "2" ||
         /outra|filh[oa]|espos[oa]|marido|mulher|amig[oa]|sobrinh[oa]|net[o|a]/.test(text);
       if (outra) return next({ para_quem: "outra" }, "idade");
       if (propria) return next({ para_quem: "propria" }, "nome");
@@ -157,9 +157,12 @@ export function advanceQualification(
       return reask();
     }
     case "nivel": {
-      const basico = buttonPayload === "QUAL_NIVEL_BASICO" || /basic|iniciante|zero|nunca/.test(text);
-      const inter = buttonPayload === "QUAL_NIVEL_INTER" || /inter|medio|mais ou menos/.test(text);
-      const avancado = buttonPayload === "QUAL_NIVEL_AVANCADO" || /avanc|fluente/.test(text);
+      const basico =
+        buttonPayload === "QUAL_NIVEL_BASICO" || digit === "1" || /basic|iniciante|zero|nunca/.test(text);
+      const inter =
+        buttonPayload === "QUAL_NIVEL_INTER" || digit === "2" || /inter|medio|mais ou menos/.test(text);
+      const avancado =
+        buttonPayload === "QUAL_NIVEL_AVANCADO" || digit === "3" || /avanc|fluente/.test(text);
       if (basico) return next({ level: "básico" }, null);
       if (inter) return next({ level: "intermediário" }, null);
       if (avancado) return next({ level: "avançado" }, null);
@@ -197,13 +200,7 @@ export const SITUACOES: { key: string; label: string; default: string }[] = [
     key: "unidade_chapeco",
     label: "Unidade: Chapecó",
     default:
-      "UNIDADE CHAPECÓ: ao citar endereço, turmas, horários e professores, use SOMENTE os dados de Chapecó da base de conhecimento — nunca misture com Passo Fundo.",
-  },
-  {
-    key: "unidade_passo_fundo",
-    label: "Unidade: Passo Fundo",
-    default:
-      "UNIDADE PASSO FUNDO: ao citar endereço, turmas, horários e professores, use SOMENTE os dados de Passo Fundo da base de conhecimento — nunca misture com Chapecó.",
+      "UNIDADE CHAPECÓ: a escola fica em Chapecó — endereço, turmas, horários e professores saem da base de conhecimento. Convide para conhecer a unidade pessoalmente.",
   },
   {
     key: "para_crianca",
@@ -272,8 +269,7 @@ function situationalInstructions(lead: Lead, overrides: Record<string, string>):
   else if (lead.modalidade === "online") keys.push("modalidade_online");
   else keys.push("modalidade_indefinida");
 
-  if (unit.includes("chapec")) keys.push("unidade_chapeco");
-  else if (unit.includes("passo")) keys.push("unidade_passo_fundo");
+  if (unit.includes("chapec") || lead.modalidade === "presencial") keys.push("unidade_chapeco");
 
   if (lead.para_quem === "outra") {
     if (!Number.isNaN(idade) && idade <= 11) keys.push("para_crianca");

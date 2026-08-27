@@ -12,7 +12,7 @@ import { buildCloserNotification } from "@/lib/closer-notify";
 import { parseOperationsSettings } from "@/lib/operations";
 import { cancelPendingFollowups } from "@/lib/regua";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
-import { isWhatsAppConfigured, sendWhatsAppButtons, sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { isAnyWhatsAppChannelReady, sendWhatsAppButtons, sendWhatsAppTemplate } from "@/lib/whatsapp";
 
 export type InboundPayload = {
   phone: string;
@@ -397,7 +397,7 @@ export async function processInbound(payload: InboundPayload) {
       const optionsSuffix = result.question.buttons.length
         ? `\n${result.question.buttons.map((b) => `▫️ ${b.title}`).join("  ")}`
         : "";
-      if (isWhatsAppConfigured()) {
+      if (await isAnyWhatsAppChannelReady()) {
         try {
           if (result.question.buttons.length) {
             await sendWhatsAppButtons(lead.phone, result.question.body, result.question.buttons);

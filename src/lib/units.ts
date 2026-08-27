@@ -1,9 +1,9 @@
 // Filtro por unidade. O interesse do lead fica em leads.unit_interest como
-// texto livre preenchido pela IA ("Chapecó", "Passo Fundo", "Online"...).
-// Regra combinada com o Guilherme (31/07/2026):
-// - Chapecó (Jaziel): vê EXCLUSIVAMENTE leads de Chapecó.
-// - Passo Fundo (Lucas): vê Passo Fundo + Online + leads ainda sem unidade
-//   (Online pertence ao Lucas; sem unidade fica com ele para nada sumir).
+// texto livre preenchido pela IA ("Chapecó", "Online"...).
+// SISTEMA EXCLUSIVO DE CHAPECÓ (decisão do diretor, 07/08/2026):
+// - Chapecó (closer): vê Chapecó + Online + leads sem unidade — tudo que é
+//   da operação. Só ficam de fora leads legados marcados como Passo Fundo.
+// - Passo Fundo (legado): regra antiga mantida caso o usuário ainda exista.
 // - Admin e SDR veem tudo.
 
 import type { SessionUser } from "@/lib/auth";
@@ -16,13 +16,20 @@ export const UNIT_LABELS: Record<string, string> = {
 export function unitVisibleTo(unitInterest: string | null | undefined, unit: SessionUser["unit"]) {
   if (!unit) return true;
   const value = (unitInterest || "").toLowerCase();
-  if (unit === "chapeco") return value.includes("chapec");
+  if (unit === "chapeco") return !value.includes("passo");
   return !value || value.includes("passo") || value.includes("online");
 }
 
 // Expressão para .or() do PostgREST com a mesma regra do unitVisibleTo.
 export function unitOrExpression(unit: "chapeco" | "passo_fundo", column = "unit_interest") {
-  if (unit === "chapeco") return `${column}.ilike.%chapec%`;
+  if (unit === "chapeco") {
+    // Tudo, exceto legado de Passo Fundo.
+    return [
+      `${column}.not.ilike.%passo%`,
+      `${column}.is.null`,
+      `${column}.eq.`,
+    ].join(",");
+  }
   return [
     `${column}.ilike.%passo%`,
     `${column}.ilike.%online%`,

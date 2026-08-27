@@ -68,9 +68,11 @@ export function closerPhoneForLead(
   operations: OperationsSettings,
   unitInterest?: string | null,
 ) {
+  // Sistema exclusivo de Chapecó: presencial e online são do closer de
+  // Chapecó. Só lead legado marcado Passo Fundo cai no telefone antigo.
   const value = (unitInterest || "").toLowerCase();
-  if (value.includes("chapec")) {
-    return operations.closer_phone_chapeco || operations.closer_phone || operations.closer_phone_passo_fundo;
+  if (value.includes("passo")) {
+    return operations.closer_phone_passo_fundo || operations.closer_phone || operations.closer_phone_chapeco;
   }
-  return operations.closer_phone_passo_fundo || operations.closer_phone || operations.closer_phone_chapeco;
+  return operations.closer_phone_chapeco || operations.closer_phone || operations.closer_phone_passo_fundo;
 }

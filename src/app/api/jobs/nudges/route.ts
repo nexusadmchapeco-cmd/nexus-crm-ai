@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ANTHROPIC_DEFAULT_MODEL, anthropicToolCall, resolveAnthropicKey } from "@/lib/ai/anthropic";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
+import { isAnyWhatsAppChannelReady, isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export const maxDuration = 60;
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
-  if (!isWhatsAppConfigured()) {
+  if (!(await isAnyWhatsAppChannelReady())) {
     return NextResponse.json({ ok: true, sent: 0, reason: "WhatsApp não configurado" });
   }
 

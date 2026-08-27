@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { parseOperationsSettings } from "@/lib/operations";
 import { cancelPendingFollowups, reguaConfigFor, sendReguaTemplate } from "@/lib/regua";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isWhatsAppConfigured } from "@/lib/whatsapp";
+import { isAnyWhatsAppChannelReady, isWhatsAppConfigured } from "@/lib/whatsapp";
 
 export const maxDuration = 60;
 
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
-  if (!isWhatsAppConfigured()) {
+  if (!(await isAnyWhatsAppChannelReady())) {
     return NextResponse.json({ ok: true, sent: 0, reason: "WhatsApp não configurado" });
   }
 

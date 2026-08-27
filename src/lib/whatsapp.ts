@@ -1,10 +1,27 @@
+import {
+  renderButtonsAsText,
+  renderTemplateAsText,
+  zapiActive,
+  zapiSendAudio,
+  zapiSendText,
+} from "@/lib/zapi";
+
 export function isWhatsAppConfigured() {
   return Boolean(
     process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID,
   );
 }
 
+// Canal-agnóstico: há ALGUM canal de envio pronto (Cloud API oficial ou
+// Z-API não oficial ligada)? Use nas rotas que decidem se enviam de verdade.
+export async function isAnyWhatsAppChannelReady() {
+  if (isWhatsAppConfigured()) return true;
+  return zapiActive();
+}
+
 export async function sendWhatsAppMessage(phone: string, message: string) {
+  // Canal não oficial ligado? Tudo sai pela Z-API (sem janela de 24h).
+  if (await zapiActive()) return zapiSendText(phone, message);
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
@@ -32,6 +49,8 @@ export async function sendWhatsAppMessage(phone: string, message: string) {
  * text. O indicador some sozinho ao enviar a resposta, ou após ~25s.
  */
 export async function sendTypingIndicator(messageId: string, mode: "text" | "audio" = "text") {
+  // Z-API não tem indicador equivalente pro id de mensagem da Meta.
+  if (await zapiActive()) return null;
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
@@ -86,6 +105,9 @@ export async function downloadWhatsAppMedia(mediaId: string) {
 
 /** Envia um áudio (voz da Nina): sobe a mídia e dispara a mensagem de áudio. */
 export async function sendWhatsAppAudio(phone: string, audio: ArrayBuffer, mimeType: string) {
+  if (await zapiActive()) {
+    return zapiSendAudio(phone, Buffer.from(audio).toString("base64"));
+  }
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
@@ -144,6 +166,11 @@ export async function sendWhatsAppTemplate(
   // (CONFIRMAR_PRESENCA, HANDOFF_CONSULTOR...) funciona.
   buttonPayloads?: string[],
 ) {
+  // No canal não oficial não há templates: o modelo vira texto puro (e os
+  // botões de quick reply viram opções numeradas dentro do texto).
+  if (await zapiActive()) {
+    return zapiSendText(phone, renderTemplateAsText(templateName.trim(), bodyParameters));
+  }
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";
@@ -196,6 +223,9 @@ export async function sendWhatsAppButtons(
   bodyText: string,
   buttons: { id: string; title: string }[],
 ) {
+  if (await zapiActive()) {
+    return zapiSendText(phone, renderButtonsAsText(bodyText, buttons));
+  }
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v25.0";

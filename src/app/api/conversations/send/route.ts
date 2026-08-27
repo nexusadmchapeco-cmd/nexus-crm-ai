@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isWithin24hWindow } from "@/lib/whatsapp-window";
-import { isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
+import { isAnyWhatsAppChannelReady, isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -24,6 +24,7 @@ export async function POST(request: Request) {
 
     // Regra das 24h: fora da janela, texto livre é recusado pela Meta (131047).
     // Avisa o atendente com 409 para ele usar um modelo aprovado.
+    // Janela de 24h só existe no canal oficial da Meta.
     if (isWhatsAppConfigured() && !(await isWithin24hWindow(supabase, lead_id))) {
       return NextResponse.json(
         {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     let whatsappMessageId: string | null = null;
-    if (isWhatsAppConfigured()) {
+    if (await isAnyWhatsAppChannelReady()) {
       const sent = await sendWhatsAppMessage(lead.phone, message.trim());
       whatsappMessageId = sent?.messages?.[0]?.id || null;
     }
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       sender_type: "human",
       content: message.trim(),
       whatsapp_message_id: whatsappMessageId,
-      status: isWhatsAppConfigured() ? "sent" : "saved",
+      status: (await isAnyWhatsAppChannelReady()) ? "sent" : "saved",
       is_ai: false,
     }).select().single();
     if (error) throw error;

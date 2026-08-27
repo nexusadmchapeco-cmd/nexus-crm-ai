@@ -51,7 +51,7 @@ export function ParceriasBoard() {
 
   // Busca no Google Places
   const [segmento, setSegmento] = useState("");
-  const [cidade, setCidade] = useState("Passo Fundo, RS");
+  const [cidade, setCidade] = useState("Chapecó, SC");
   const [soComTelefone, setSoComTelefone] = useState(true);
   const [buscando, setBuscando] = useState(false);
   const [resultados, setResultados] = useState<PlaceResult[]>([]);
@@ -221,8 +221,8 @@ export function ParceriasBoard() {
             onKeyDown={(event) => event.key === "Enter" && void buscar()}
           />
           <select value={cidade} onChange={(event) => setCidade(event.target.value)}>
-            <option>Passo Fundo, RS</option>
             <option>Chapecó, SC</option>
+            <option>Passo Fundo, RS</option>
           </select>
           <button type="button" className="pv-btn" onClick={() => void buscar()} disabled={buscando || !segmento.trim()}>
             {buscando ? "Buscando..." : "Buscar"}

@@ -1,4 +1,5 @@
 import { WhatsappConnection } from "@/components/forms/whatsapp-connection";
+import { ZapiConnection } from "@/components/forms/zapi-connection";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export default async function WhatsappSettingsPage() {
         }
         tokenApplied={isConnected}
       />
+      <ZapiConnection />
     </>
   );
 }
