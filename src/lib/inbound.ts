@@ -157,7 +157,31 @@ export async function processInbound(payload: InboundPayload) {
     .replace(/[^a-z]/g, "");
   // Cliques de botão com payload fixo (lembretes de reunião, régua de
   // follow-up). Roteia pela constante, nunca pelo texto visível.
-  if (payload.button_payload === "CONFIRMAR_PRESENCA") {
+  //
+  // Canal não oficial: os botões viram opções numeradas — um dígito solto de
+  // um lead JÁ QUALIFICADO é interpretado pelo contexto da última mensagem
+  // que a Nina mandou (lembrete → confirmar/remarcar; régua → consultor/
+  // dúvida/adiar). Em qualificação, o dígito é resposta de botão e fica.
+  let buttonPayload = payload.button_payload || null;
+  const bareDigit = payload.message.trim();
+  if (!buttonPayload && /^[123]$/.test(bareDigit) && lead.qualification_step === "done") {
+    const { data: lastAi } = await supabase
+      .from("messages")
+      .select("content")
+      .eq("conversation_id", conversation.id)
+      .eq("sender_type", "ai")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const contexto = lastAi?.content || "";
+    if (/Preciso remarcar/i.test(contexto)) {
+      buttonPayload = bareDigit === "1" ? "CONFIRMAR_PRESENCA" : bareDigit === "2" ? "REMARCAR" : null;
+    } else if (/Falar com consultor/i.test(contexto)) {
+      buttonPayload =
+        bareDigit === "1" ? "HANDOFF_CONSULTOR" : bareDigit === "2" ? "DUVIDA_IA" : "ADIAR";
+    }
+  }
+  if (buttonPayload === "CONFIRMAR_PRESENCA") {
     const { data: nextAppointment } = await supabase
       .from("appointments")
       .select("id")
@@ -189,7 +213,7 @@ export async function processInbound(payload: InboundPayload) {
     });
     return { lead_id: lead.id, ai_reply: confirmReply, ai_reply_parts: [confirmReply] };
   }
-  if (payload.button_payload === "REMARCAR") {
+  if (buttonPayload === "REMARCAR") {
     const { data: upcoming } = await supabase
       .from("appointments")
       .select("id")
@@ -225,7 +249,7 @@ export async function processInbound(payload: InboundPayload) {
 
 
   // Botões da régua de follow-up (payloads fixos — briefing §6.3).
-  if (payload.button_payload === "HANDOFF_CONSULTOR") {
+  if (buttonPayload === "HANDOFF_CONSULTOR") {
     const hotStage = stageByRole.get("hot_lead");
     if (hotStage && lead.stage_id !== hotStage.id) {
       await supabase
@@ -281,7 +305,7 @@ export async function processInbound(payload: InboundPayload) {
       skipped_ai: true,
     };
   }
-  if (payload.button_payload === "ADIAR") {
+  if (buttonPayload === "ADIAR") {
     await cancelPendingFollowups(supabase, lead.id, "cancelado");
     const nqStage = stageByRole.get("not_qualified");
     if (nqStage) {
@@ -320,7 +344,7 @@ export async function processInbound(payload: InboundPayload) {
       skipped_ai: true,
     };
   }
-  if (payload.button_payload === "OPTOUT") {
+  if (buttonPayload === "OPTOUT") {
     await Promise.all([
       supabase.from("leads").update({ blocked_at: new Date().toISOString() }).eq("id", lead.id),
       cancelPendingFollowups(supabase, lead.id, "cancelado"),
@@ -381,7 +405,7 @@ export async function processInbound(payload: InboundPayload) {
     const result = advanceQualification(
       lead,
       payload.message,
-      payload.button_payload || null,
+      buttonPayload,
       !alreadyAsked,
     );
     if (Object.keys(result.updates).length) {
@@ -525,6 +549,9 @@ export async function processInbound(payload: InboundPayload) {
         .select("title, category, content, unit, valid_from, valid_until, priority")
         .eq("status", "published")
         .eq("visibility", "customer")
+        // Sistema exclusivo de Chapecó: artigos legados de Passo Fundo ficam
+        // fora do contexto da IA (unit nula continua valendo pra todos).
+        .or("unit.is.null,unit.not.ilike.%passo%")
         .order("priority", { ascending: false })
         .limit(30),
       supabase
@@ -587,6 +614,11 @@ export async function processInbound(payload: InboundPayload) {
     });
     const stageRole = resolveSuggestedStage(decision, lead);
     const targetStage = stageByRole.get(stageRole) || stageByRole.get("ai_service")!;
+    // Sistema exclusivo de Chapecó: mesmo que o modelo escorregue, nunca
+    // gravamos outra cidade como unidade.
+    if (/passo/i.test(String(decision.extracted?.unit_interest || ""))) {
+      decision.extracted.unit_interest = null;
+    }
     const updates = {
       ...removeNulls(decision.extracted),
       temperature: decision.temperature,

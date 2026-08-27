@@ -171,6 +171,7 @@ export async function POST(request: Request) {
       .select("title, category, content, unit, valid_from, valid_until, priority")
       .eq("status", "published")
       .eq("visibility", "customer")
+      .or("unit.is.null,unit.not.ilike.%passo%")
       .order("priority", { ascending: false })
       .limit(30),
     supabase

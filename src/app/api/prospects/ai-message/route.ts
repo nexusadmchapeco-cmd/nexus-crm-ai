@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       model: process.env.CONVERSATION_MODEL || ANTHROPIC_DEFAULT_MODEL,
       system:
         "Você escreve mensagens curtas de WhatsApp para o vendedor da Nexus English Center " +
-        "(escola de inglês em Chapecó-SC e Passo Fundo-RS) abrir conversa com empresas locais e " +
+        "(escola de inglês em Chapecó-SC (presencial e online)" +
         "propor convênio corporativo: desconto em inglês para os funcionários, sem custo para a empresa. " +
         "Tom humano, direto, brasileiro, sem parecer spam; no máximo 3 frases curtas e uma pergunta final. " +
         "Personalize pelo segmento da empresa (por que inglês ajuda esse time). Não invente números nem descontos específicos." +

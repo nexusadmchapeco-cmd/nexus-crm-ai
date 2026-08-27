@@ -30,16 +30,19 @@ type ZapiInbound = {
   listResponseMessage?: { message?: string };
 };
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const config = await getZapiConfig();
     if (!config) return NextResponse.json({ ignored: "zapi não configurada" });
-    if (config.webhookSecret) {
-      const secret = new URL(request.url).searchParams.get("secret");
-      if (secret !== config.webhookSecret) {
-        return NextResponse.json({ error: "segredo inválido" }, { status: 403 });
-      }
+    // Fail-closed: sem segredo configurado ou sem match, descarta.
+    const secret = new URL(request.url).searchParams.get("secret");
+    if (!config.webhookSecret || secret !== config.webhookSecret) {
+      return NextResponse.json({ error: "segredo inválido" }, { status: 403 });
     }
+    // Canal desligado = instância pausada: não processa nem responde.
+    if (!config.enabled) return NextResponse.json({ ignored: "canal desligado" });
 
     const body = (await request.json()) as ZapiInbound;
     // Só mensagens recebidas de conversas individuais.
@@ -57,6 +60,18 @@ export async function POST(request: Request) {
           "";
         const isAudio = Boolean(body.audio?.audioUrl);
         if (isAudio) {
+          // Só baixa mídia de hosts plausíveis da Z-API/S3 — nunca IP interno.
+          const audioHost = (() => {
+            try {
+              const url = new URL(body.audio!.audioUrl!);
+              return url.protocol === "https:" ? url.hostname : null;
+            } catch {
+              return null;
+            }
+          })();
+          if (!audioHost || /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(audioHost)) {
+            return;
+          }
           const media = await fetch(body.audio!.audioUrl!, { cache: "no-store" });
           if (!media.ok) return;
           const buffer = await media.arrayBuffer();

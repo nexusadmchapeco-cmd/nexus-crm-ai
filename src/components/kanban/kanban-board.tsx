@@ -266,7 +266,7 @@ export function KanbanBoard({ initialLeads, stages, followups, events, authorNam
     name: "",
     phone: "",
     modalidade: "presencial",
-    unit_interest: "Passo Fundo",
+    unit_interest: "Chapecó",
     course_interest: "",
     source: "Indicação",
     note: "",

@@ -3,6 +3,7 @@ import { parseOperationsSettings } from "@/lib/operations";
 import { cancelPendingFollowups, reguaConfigFor, sendReguaTemplate } from "@/lib/regua";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAnyWhatsAppChannelReady, isWhatsAppConfigured } from "@/lib/whatsapp";
+import { renderTemplateAsText, zapiActive } from "@/lib/zapi";
 
 export const maxDuration = 60;
 
@@ -136,6 +137,28 @@ export async function GET(request: Request) {
           followup.attempt,
           operations.language_code,
         );
+        // Registra o texto na conversa: o lead vê essa mensagem, e no canal
+        // não oficial ela é o contexto que traduz respostas "1/2/3".
+        const { data: reguaConversation } = await supabase
+          .from("conversations")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .maybeSingle();
+        if (reguaConversation) {
+          await supabase.from("messages").insert({
+            conversation_id: reguaConversation.id,
+            lead_id: lead.id,
+            sender_type: "ai",
+            content: (await zapiActive())
+              ? renderTemplateAsText(template, [
+                  lead.name?.split(" ")[0] || "tudo bem",
+                  String(lead.objective || "no seu dia a dia"),
+                ])
+              : `📋 Follow-up automático enviado (modelo ${template}).`,
+            status: "sent",
+            is_ai: true,
+          });
+        }
         await Promise.all([
           supabase
             .from("followups")

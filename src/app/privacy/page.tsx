@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     >
       <section>
         <h2>1. Quem controla os dados</h2>
-        <p>A Nexus English Center é responsável pelo tratamento descrito nesta política. A operação atende interessados nas modalidades presencial, em Chapecó e Passo Fundo, e online.</p>
+        <p>A Nexus English Center é responsável pelo tratamento descrito nesta política. A operação atende interessados nas modalidades presencial, em Chapecó, e online.</p>
       </section>
 
       <section>

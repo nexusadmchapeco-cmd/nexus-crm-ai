@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isWithin24hWindow } from "@/lib/whatsapp-window";
 import { isAnyWhatsAppChannelReady, isWhatsAppConfigured, sendWhatsAppMessage, sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { renderTemplateAsText, zapiActive } from "@/lib/zapi";
 import { parseOperationsSettings } from "@/lib/operations";
 
 export const maxDuration = 60;
@@ -119,6 +120,26 @@ export async function GET(request: Request) {
               [lead.name?.split(" ")[0] || "tudo bem", quando],
               ["CONFIRMAR_PRESENCA", "REMARCAR"],
             );
+            const { data: reminderConversation } = await supabase
+              .from("conversations")
+              .select("id")
+              .eq("lead_id", lead.id)
+              .maybeSingle();
+            if (reminderConversation) {
+              await supabase.from("messages").insert({
+                conversation_id: reminderConversation.id,
+                lead_id: lead.id,
+                sender_type: "ai",
+                content: (await zapiActive())
+                  ? renderTemplateAsText("confirmacao_reuniao", [
+                      lead.name?.split(" ")[0] || "tudo bem",
+                      quando,
+                    ])
+                  : `📅 Lembrete de confirmação enviado (modelo confirmacao_reuniao).`,
+                status: "sent",
+                is_ai: true,
+              });
+            }
           }
           await supabase.from("lead_events").insert({
             lead_id: lead.id,

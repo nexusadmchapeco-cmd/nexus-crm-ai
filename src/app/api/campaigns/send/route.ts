@@ -3,7 +3,8 @@ import { getSessionUser } from "@/lib/session";
 import { scopedUnit, unitVisibleTo } from "@/lib/units";
 import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { sendWhatsAppTemplate, sendWhatsAppMessage } from "@/lib/whatsapp";
+import { zapiActive } from "@/lib/zapi";
 
 export async function POST(request: Request) {
   try {
@@ -55,12 +56,16 @@ export async function POST(request: Request) {
         .replaceAll("{{nome}}", lead.name || "tudo bem")
         .slice(0, 1000);
       try {
-        const sent = await sendWhatsAppTemplate(
-          lead.phone,
-          body.template_name,
-          body.language_code || operations.language_code,
-          [lead.name || "tudo bem"],
-        );
+        // Canal não oficial: não existem templates — vai o texto real da
+        // campanha (personalizado). No oficial, segue o modelo aprovado.
+        const sent = (await zapiActive())
+          ? await sendWhatsAppMessage(lead.phone, personalizedText)
+          : await sendWhatsAppTemplate(
+              lead.phone,
+              body.template_name,
+              body.language_code || operations.language_code,
+              [lead.name || "tudo bem"],
+            );
         const whatsappMessageId = sent?.messages?.[0]?.id || null;
         const { data: conversation } = await supabase
           .from("conversations")

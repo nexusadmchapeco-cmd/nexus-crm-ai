@@ -35,7 +35,7 @@ export function LegalShell({
       </main>
       <footer className="legal-footer">
         <span>© 2026 Nexus English Center</span>
-        <span>Chapecó · Passo Fundo · Online</span>
+        <span>Chapecó · Online</span>
       </footer>
     </div>
   );

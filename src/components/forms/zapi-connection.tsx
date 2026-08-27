@@ -166,7 +166,24 @@ export function ZapiConnection() {
             <button type="button" className="pv-btn-green pv-btn-sm" disabled={busy !== null} onClick={() => void gerarQr()}>
               {busy === "qr" ? "Gerando..." : "Gerar QR Code"}
             </button>
-            <button type="button" className="pv-btn-ghost pv-btn-sm" disabled={busy !== null} onClick={() => void call("set-webhook").then(() => setNotice({ text: "Webhook reapontado pro CRM.", ok: true }))}>
+            <button
+              type="button"
+              className="pv-btn-ghost pv-btn-sm"
+              disabled={busy !== null}
+              onClick={() =>
+                void call("set-webhook").then((data) => {
+                  if (!data) return;
+                  setNotice(
+                    data.ok
+                      ? { text: "Webhook reapontado pro CRM. ✅", ok: true }
+                      : {
+                          text: `A Z-API recusou o webhook: ${JSON.stringify(data.body || data).slice(0, 160)}`,
+                          ok: false,
+                        },
+                  );
+                })
+              }
+            >
               Reapontar webhook
             </button>
             <button

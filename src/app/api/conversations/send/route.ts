@@ -3,6 +3,7 @@ import { guardLead } from "@/lib/lead-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isWithin24hWindow } from "@/lib/whatsapp-window";
 import { isAnyWhatsAppChannelReady, isWhatsAppConfigured, sendWhatsAppMessage } from "@/lib/whatsapp";
+import { zapiActive } from "@/lib/zapi";
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     // Regra das 24h: fora da janela, texto livre é recusado pela Meta (131047).
     // Avisa o atendente com 409 para ele usar um modelo aprovado.
     // Janela de 24h só existe no canal oficial da Meta.
-    if (isWhatsAppConfigured() && !(await isWithin24hWindow(supabase, lead_id))) {
+    if (isWhatsAppConfigured() && !(await zapiActive()) && !(await isWithin24hWindow(supabase, lead_id))) {
       return NextResponse.json(
         {
           error:
