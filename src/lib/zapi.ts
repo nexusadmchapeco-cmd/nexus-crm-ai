@@ -102,6 +102,62 @@ export async function zapiSendText(phone: string, message: string) {
   return result.body as { messageId?: string; zaapId?: string };
 }
 
+// Botões de verdade (como no canal oficial). O clique volta no webhook como
+// buttonsResponseMessage.buttonId — o mesmo roteamento por payload funciona.
+// Nem todo aparelho renderiza botões vindos de canal não oficial; quem chama
+// deve cair para as opções numeradas se esta chamada falhar.
+export async function zapiSendButtonList(
+  phone: string,
+  message: string,
+  buttons: { id: string; title: string }[],
+) {
+  const config = await getZapiConfig();
+  if (!config) throw new Error("Z-API não configurada");
+  const result = await zapiFetch(config, "send-button-list", {
+    method: "POST",
+    body: JSON.stringify({
+      phone: phone.replace(/\D/g, ""),
+      message,
+      buttonList: {
+        buttons: buttons.slice(0, 3).map((button) => ({ id: button.id, label: button.title.slice(0, 20) })),
+      },
+    }),
+  });
+  if (!result.ok) {
+    throw new Error(`Z-API recusou os botões (${result.status}): ${JSON.stringify(result.body).slice(0, 160)}`);
+  }
+  return result.body as { messageId?: string };
+}
+
+// Templates com botões conhecidos → versão com botões reais no canal não
+// oficial (null = template sem botões, vai como texto puro).
+export function renderTemplateAsButtons(
+  templateName: string,
+  params: string[],
+): { message: string; buttons: { id: string; title: string }[] } | null {
+  const p = (index: number) => params[index] ?? "";
+  if (templateName === "confirmacao_reuniao") {
+    return {
+      message: `Oi, ${p(0)}! Passando pra confirmar seu horário na Nexus English Center: ${p(1)}. Podemos confirmar? 😊`,
+      buttons: [
+        { id: "CONFIRMAR_PRESENCA", title: "Sim, confirmado" },
+        { id: "REMARCAR", title: "Preciso remarcar" },
+      ],
+    };
+  }
+  if (templateName.startsWith("followup_")) {
+    return {
+      message: `Oi, ${p(0)}! Aqui é a Nina, da Nexus English Center. 😊 Retomando nosso papo sobre o seu inglês ${p(1)}. Como prefere seguir?`,
+      buttons: [
+        { id: "HANDOFF_CONSULTOR", title: "Falar com consultor" },
+        { id: "DUVIDA_IA", title: "Tenho uma dúvida" },
+        { id: "ADIAR", title: "Agora não" },
+      ],
+    };
+  }
+  return null;
+}
+
 export async function zapiSendAudio(phone: string, base64Audio: string) {
   const config = await getZapiConfig();
   if (!config) throw new Error("Z-API não configurada");

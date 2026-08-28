@@ -1,8 +1,10 @@
 import {
   renderButtonsAsText,
+  renderTemplateAsButtons,
   renderTemplateAsText,
   zapiActive,
   zapiSendAudio,
+  zapiSendButtonList,
   zapiSendText,
 } from "@/lib/zapi";
 
@@ -166,9 +168,18 @@ export async function sendWhatsAppTemplate(
   // (CONFIRMAR_PRESENCA, HANDOFF_CONSULTOR...) funciona.
   buttonPayloads?: string[],
 ) {
-  // No canal não oficial não há templates: o modelo vira texto puro (e os
-  // botões de quick reply viram opções numeradas dentro do texto).
+  // No canal não oficial não há templates: modelos com botões conhecidos
+  // viram mensagens com botões REAIS (clique volta como payload no webhook);
+  // se o envio com botões falhar, cai no texto com opções numeradas.
   if (await zapiActive()) {
+    const withButtons = renderTemplateAsButtons(templateName.trim(), bodyParameters);
+    if (withButtons) {
+      try {
+        return await zapiSendButtonList(phone, withButtons.message, withButtons.buttons);
+      } catch {
+        // aparelho/instância sem suporte a botões — segue como texto
+      }
+    }
     return zapiSendText(phone, renderTemplateAsText(templateName.trim(), bodyParameters));
   }
   const token = process.env.WHATSAPP_TOKEN;
@@ -224,7 +235,13 @@ export async function sendWhatsAppButtons(
   buttons: { id: string; title: string }[],
 ) {
   if (await zapiActive()) {
-    return zapiSendText(phone, renderButtonsAsText(bodyText, buttons));
+    // Botões de verdade quando o aparelho aceita; senão, opções numeradas
+    // (os dígitos 1/2/3 são interpretados de qualquer jeito).
+    try {
+      return await zapiSendButtonList(phone, bodyText, buttons);
+    } catch {
+      return zapiSendText(phone, renderButtonsAsText(bodyText, buttons));
+    }
   }
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
