@@ -89,6 +89,46 @@ async function zapiFetch(
   return { ok: response.ok, status: response.status, body };
 }
 
+// Grava uma falha do canal não oficial no mesmo diagnóstico dos retornos da
+// Meta (/api/settings/ai/whatsapp-status) — os logs da Vercel não indexam
+// console.error, então sem isso o motivo some.
+export async function zapiLogIssue(detalhe: string, para?: string) {
+  try {
+    const supabase = createAdminClient();
+    const { data: row } = await supabase
+      .from("app_secrets")
+      .select("value")
+      .eq("name", "whatsapp_delivery_log")
+      .maybeSingle();
+    let anteriores: unknown[] = [];
+    try {
+      anteriores = JSON.parse(row?.value || "[]");
+    } catch {
+      anteriores = [];
+    }
+    await supabase.from("app_secrets").upsert(
+      {
+        name: "whatsapp_delivery_log",
+        value: JSON.stringify(
+          [
+            {
+              quando: new Date().toISOString(),
+              status: "falha_zapi",
+              para: para || null,
+              erro: { mensagem: detalhe.slice(0, 400) },
+            },
+            ...anteriores,
+          ].slice(0, 30),
+        ),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "name" },
+    );
+  } catch {
+    // diagnóstico nunca derruba o fluxo
+  }
+}
+
 export async function zapiSendText(phone: string, message: string) {
   const config = await getZapiConfig();
   if (!config) throw new Error("Z-API não configurada");

@@ -6,7 +6,7 @@ import { parseOperationsSettings } from "@/lib/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { synthesizeNinaVoice } from "@/lib/voice-server";
 import { sendWhatsAppAudio, sendWhatsAppMessage } from "@/lib/whatsapp";
-import { getZapiConfig } from "@/lib/zapi";
+import { getZapiConfig, zapiLogIssue } from "@/lib/zapi";
 
 // Webhook do canal NÃO OFICIAL (Z-API, pareado por QR Code). Recebe o
 // ReceivedCallback da instância e injeta a mensagem no MESMO pipeline do
@@ -139,6 +139,10 @@ export async function POST(request: Request) {
         }
       } catch (error) {
         console.error("[zapi] erro no processamento", error);
+        await zapiLogIssue(
+          error instanceof Error ? error.message : JSON.stringify(error),
+          body.phone,
+        );
       }
     });
 
