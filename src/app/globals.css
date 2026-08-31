@@ -2274,6 +2274,17 @@ button.lead-card-link { display: block; width: 100%; text-align: left; backgroun
 }
 .sim-buttons button:hover:not(:disabled) { background: #dff5eb; transform: translateY(-1px); }
 .sim-buttons button:disabled { opacity: .45; cursor: default; }
+/* Conversa: aviso de novas mensagens quando o usuário está lendo acima. */
+.messages-wrap { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.messages-wrap .messages { flex: 1; }
+.messages-new {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  border: 0; border-radius: 20px; padding: 8px 16px; cursor: pointer;
+  background: var(--ink, #1d1e20); color: #fff; font-size: 12px; font-weight: 700;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .25);
+}
+.messages-new:hover { filter: brightness(1.15); }
+
 /* Canal não oficial (Z-API) na página Conectar WhatsApp. */
 .zapi-card { margin-top: 18px; }
 .zapi-status { margin: 10px 0 4px; font-size: 12.5px; color: var(--muted); }
