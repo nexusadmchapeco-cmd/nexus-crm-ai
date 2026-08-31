@@ -230,6 +230,10 @@ export type AiDecision = {
     availability: string | null;
     urgency: string | null;
     objection: string | null;
+    // Coleta conversacional (sem botões): a IA descobre no papo.
+    modalidade: "presencial" | "online" | null;
+    para_quem: "propria" | "outra" | null;
+    idade_aluno: string | null;
   };
   temperature: Temperature;
   should_handoff: boolean;

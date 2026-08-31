@@ -5,7 +5,6 @@ import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { parseOperationsSettings } from "@/lib/operations";
 import {
   DEFAULT_POST_QUALIFICATION_PROMPT,
-  advanceQualification,
   renderPostQualificationPrompt,
 } from "@/lib/qualification";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -125,34 +124,6 @@ export async function POST(request: Request) {
     qualification_step: source.qualification_step ?? null,
   });
 
-  // ── Qualificação por botões: o simulador passa pela MESMA sequência do
-  // WhatsApp (funções puras — fiel ao fluxo real, sem tocar no banco).
-  if (lead.qualification_step !== "done") {
-    const firstContact =
-      !lead.qualification_step && !history.some((message) => message.sender_type === "ai");
-    const lastText = history[history.length - 1].content.trim();
-    const result = advanceQualification(lead, lastText, payload.button_payload || null, firstContact);
-    lead = { ...lead, ...result.updates } as Lead;
-    if (result.question) {
-      return NextResponse.json({
-        reply: result.question.body,
-        reply_messages: [result.question.body],
-        buttons: result.question.buttons,
-        qualification: true,
-        understood: result.understood,
-        stage_role: payload.stage_role || "new_lead",
-        stage_name: currentStage.name,
-        lead: simLeadResponse(lead),
-        flags: {
-          should_handoff: false,
-          should_disqualify: false,
-          disqualify_reason: null,
-          appointment: null,
-        },
-      });
-    }
-    // Sequência concluída — a IA assume nesta mesma rodada, como no WhatsApp.
-  }
 
   const stagePromptKey = `__stage__:${currentStage.id}`;
   const now = new Date().toISOString().slice(0, 10);
@@ -229,14 +200,13 @@ export async function POST(request: Request) {
     const operations = parseOperationsSettings(operationsRow?.global_prompt);
     const basePrompt =
       stagePromptRow?.global_prompt || defaultStagePrompts[currentStage.role || ""] || "";
-    const stagePrompt =
-      lead.qualification_step === "done"
-        ? `${renderPostQualificationPrompt(
-            operations.post_qualification_prompt || DEFAULT_POST_QUALIFICATION_PROMPT,
-            lead,
-            operations.situational_prompts,
-          )}\n\n${basePrompt}`
-        : basePrompt || null;
+    // Coleta conversacional: o bloco de dados + engenharia situacional entram
+    // SEMPRE (mesma regra do WhatsApp real).
+    const stagePrompt = `${renderPostQualificationPrompt(
+      operations.post_qualification_prompt || DEFAULT_POST_QUALIFICATION_PROMPT,
+      lead,
+      operations.situational_prompts,
+    )}\n\n${basePrompt}`;
 
     const decision = await runSdr({
       lead,

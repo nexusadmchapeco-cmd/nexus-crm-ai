@@ -203,16 +203,7 @@ export function SimulatorChat() {
           <span>Temperatura</span>
           <strong>{lead ? temperatureLabels[lead.temperature] || lead.temperature : "—"}</strong>
         </div>
-        <div className="simulator-panel-row">
-          <span>Qualificação</span>
-          <strong>
-            {lead?.qualification_step === "done"
-              ? "Concluída ✓"
-              : lead?.qualification_step
-                ? `Perguntando: ${lead.qualification_step}`
-                : "Não iniciada"}
-          </strong>
-        </div>
+
         {flags?.should_handoff && (
           <div className="simulator-flag">🔥 A IA acionaria o closer agora (resumo_closer).</div>
         )}

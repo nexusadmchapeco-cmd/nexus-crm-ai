@@ -37,9 +37,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Assinatura de quem envia (pedido do diretor): o lead sabe com quem
+    // está falando, e a equipe vê no histórico quem respondeu.
+    const firstName = (guard.session?.name || "").split(" ")[0];
+    const signedMessage = firstName ? `*${firstName} · Nexus:*\n${message.trim()}` : message.trim();
+
     let whatsappMessageId: string | null = null;
-    if (await isAnyWhatsAppChannelReady()) {
-      const sent = await sendWhatsAppMessage(lead.phone, message.trim());
+    const channelReady = await isAnyWhatsAppChannelReady();
+    if (channelReady) {
+      const sent = await sendWhatsAppMessage(lead.phone, signedMessage);
       whatsappMessageId = sent?.messages?.[0]?.id || null;
     }
 
@@ -47,9 +53,9 @@ export async function POST(request: Request) {
       conversation_id: conversation.id,
       lead_id,
       sender_type: "human",
-      content: message.trim(),
+      content: signedMessage,
       whatsapp_message_id: whatsappMessageId,
-      status: (await isAnyWhatsAppChannelReady()) ? "sent" : "saved",
+      status: channelReady ? "sent" : "saved",
       is_ai: false,
     }).select().single();
     if (error) throw error;

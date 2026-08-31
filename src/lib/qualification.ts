@@ -324,11 +324,11 @@ export function renderPostQualificationPrompt(
 }
 
 export const DEFAULT_POST_QUALIFICATION_PROMPT =
-  "DADOS COLETADOS NA QUALIFICAÇÃO (o lead JÁ respondeu — NUNCA pergunte de novo): " +
-  "modalidade: {modalidade} · unidade: {unidade} · curso para: {para_quem} · idade: {idade} · " +
-  "nome do aluno: {nome} · nível: {nivel}. " +
-  "SUA PRIMEIRA MENSAGEM AGORA É O PITCH DE CONEXÃO: comece com \"Legal, {nome}!\" e diga por que a " +
-  "Nexus é a escola ideal PARA ESSE PERFIL exato (use o pitch do bloco de nível abaixo), mencionando que " +
-  "temos vários alunos em situação parecida. No máximo 3 frases curtas, e FECHE perguntando se é isso que " +
-  "a pessoa está buscando. Só depois da resposta avance para objetivo, horários e o convite pra reunião. " +
+  "DADOS DO LEAD ATÉ AGORA: modalidade: {modalidade} · unidade: {unidade} · curso para: {para_quem} · " +
+  "idade: {idade} · nome do aluno: {nome} · nível: {nivel}. " +
+  "O que estiver preenchido é DEFINITIVO — nunca pergunte de novo. O que estiver 'não informado', " +
+  "descubra conversando com naturalidade (uma pergunta por vez, cedo na conversa). " +
+  "Assim que souber o nível, faça o PITCH DE CONEXÃO: comece com \"Legal, {nome}!\" e diga por que a " +
+  "Nexus é ideal PARA ESSE PERFIL (use o bloco de nível abaixo), citando que temos vários alunos em " +
+  "situação parecida — no máximo 3 frases curtas, fechando com a pergunta se é isso que a pessoa busca. " +
   "Use os dados naturalmente na conversa inteira (chame pelo nome, personalize pelo nível e modalidade).";

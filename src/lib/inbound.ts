@@ -4,7 +4,6 @@ import { removeNulls, resolveSuggestedStage } from "@/lib/ai/stages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isBlocked, slotRulesPrompt, validateSlotRules } from "@/lib/agenda-rules";
 import {
-  advanceQualification,
   DEFAULT_POST_QUALIFICATION_PROMPT,
   renderPostQualificationPrompt,
 } from "@/lib/qualification";
@@ -12,7 +11,7 @@ import { buildCloserNotification } from "@/lib/closer-notify";
 import { parseOperationsSettings } from "@/lib/operations";
 import { cancelPendingFollowups } from "@/lib/regua";
 import type { Lead, Message, PipelineStage } from "@/lib/types";
-import { isAnyWhatsAppChannelReady, sendWhatsAppButtons, sendWhatsAppTemplate } from "@/lib/whatsapp";
+import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 
 export type InboundPayload = {
   phone: string;
@@ -54,24 +53,21 @@ export async function processInbound(payload: InboundPayload) {
 
   let lead: Lead;
   if (!existingLead) {
-    // Lead novo entra na sequência de qualificação por botões (briefing §1).
-    // Se a coluna ainda não existir (migração 015 pendente), refaz sem ela.
-    const baseInsert = {
+    // Lead novo cai direto na IA: a coleta (modalidade, pra quem, nome,
+    // nível) acontece CONVERSANDO — sem botões, sem formulário (decisão do
+    // diretor, 28/08).
+    const created = await supabase
+      .from("leads")
+      .insert({
         phone,
         name: payload.name?.trim() || null,
         stage_id: newStage.id,
         source: payload.source || "simulador",
         campaign: payload.campaign || null,
         ad_name: payload.ad_name || null,
-      };
-    let created = await supabase
-      .from("leads")
-      .insert({ ...baseInsert, qualification_step: "modalidade" })
+      })
       .select()
       .single();
-    if (created.error) {
-      created = await supabase.from("leads").insert(baseInsert).select().single();
-    }
     if (created.error) throw created.error;
     lead = created.data;
   } else {
@@ -164,7 +160,7 @@ export async function processInbound(payload: InboundPayload) {
   // dúvida/adiar). Em qualificação, o dígito é resposta de botão e fica.
   let buttonPayload = payload.button_payload || null;
   const bareDigit = payload.message.trim();
-  if (!buttonPayload && /^[123]$/.test(bareDigit) && lead.qualification_step === "done") {
+  if (!buttonPayload && /^[123]$/.test(bareDigit)) {
     const { data: lastAi } = await supabase
       .from("messages")
       .select("content")
@@ -390,82 +386,6 @@ export async function processInbound(payload: InboundPayload) {
     };
   }
 
-  // ── Qualificação por botões (briefing §1): enquanto a sequência não
-  // terminar, quem conversa é o fluxo fixo — a IA só assume depois.
-  const qualStep = lead.qualification_step;
-  if (qualStep && qualStep !== "done") {
-    // Primeira interação = ainda não enviamos nenhuma pergunta.
-    const { data: alreadyAsked } = await supabase
-      .from("lead_events")
-      .select("id")
-      .eq("lead_id", lead.id)
-      .eq("event_type", "qualification_question_sent")
-      .limit(1)
-      .maybeSingle();
-    const result = advanceQualification(
-      lead,
-      payload.message,
-      buttonPayload,
-      !alreadyAsked,
-    );
-    if (Object.keys(result.updates).length) {
-      const { data: updatedLead, error: qualError } = await supabase
-        .from("leads")
-        .update({ ...result.updates, updated_at: new Date().toISOString() })
-        .eq("id", lead.id)
-        .select()
-        .single();
-      if (!qualError && updatedLead) lead = updatedLead;
-    }
-    if (result.question) {
-      const optionsSuffix = result.question.buttons.length
-        ? `\n${result.question.buttons.map((b) => `▫️ ${b.title}`).join("  ")}`
-        : "";
-      if (await isAnyWhatsAppChannelReady()) {
-        try {
-          if (result.question.buttons.length) {
-            await sendWhatsAppButtons(lead.phone, result.question.body, result.question.buttons);
-          } else {
-            const { sendWhatsAppMessage } = await import("@/lib/whatsapp");
-            await sendWhatsAppMessage(lead.phone, result.question.body);
-          }
-        } catch (sendError) {
-          // Falha de envio não derruba o fluxo, mas deixa rastro no
-          // diagnóstico (/api/settings/ai/whatsapp-status).
-          const { zapiLogIssue } = await import("@/lib/zapi");
-          await zapiLogIssue(
-            `pergunta de qualificação não enviada: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
-            lead.phone,
-          );
-        }
-      }
-      await Promise.all([
-        supabase.from("messages").insert({
-          conversation_id: conversation.id,
-          lead_id: lead.id,
-          sender_type: "ai",
-          content: `${result.question.body}${optionsSuffix}`,
-          status: "sent",
-          is_ai: true,
-        }),
-        supabase.from("lead_events").insert({
-          lead_id: lead.id,
-          event_type: "qualification_question_sent",
-          metadata: { step: lead.qualification_step || qualStep, understood: result.understood },
-        }),
-      ]);
-      return {
-        lead,
-        conversation,
-        ai_reply: null,
-        ai_reply_parts: [] as string[],
-        stage: newStage,
-        skipped_ai: true,
-      };
-    }
-    // Sequência concluída neste turno: a IA assume já com os dados coletados.
-  }
-
   if (!lead.ai_enabled || lead.human_takeover) {
     return {
       lead,
@@ -600,15 +520,11 @@ export async function processInbound(payload: InboundPayload) {
       lead,
       settings,
       messages: orderedMessages,
-      stagePrompt: `${
-        lead.qualification_step === "done"
-          ? `${renderPostQualificationPrompt(
-              operationsForPrompt.post_qualification_prompt || DEFAULT_POST_QUALIFICATION_PROMPT,
-              lead,
-              operationsForPrompt.situational_prompts,
-            )}\n\n`
-          : ""
-      }${
+      stagePrompt: `${renderPostQualificationPrompt(
+        operationsForPrompt.post_qualification_prompt || DEFAULT_POST_QUALIFICATION_PROMPT,
+        lead,
+        operationsForPrompt.situational_prompts,
+      )}\n\n${
         stagePromptRow?.global_prompt ||
         defaultStagePrompts[
           (stages as PipelineStage[]).find((stage) => stage.id === lead.stage_id)?.role || ""
@@ -624,6 +540,26 @@ export async function processInbound(payload: InboundPayload) {
     // gravamos outra cidade como unidade.
     if (/passo/i.test(String(decision.extracted?.unit_interest || ""))) {
       decision.extracted.unit_interest = null;
+    }
+    // Constraints do banco: modalidade/para_quem só aceitam os valores fixos.
+    const rawModalidade = String(decision.extracted?.modalidade || "").toLowerCase();
+    decision.extracted.modalidade = rawModalidade.includes("online")
+      ? "online"
+      : rawModalidade.includes("presen")
+        ? "presencial"
+        : null;
+    const rawParaQuem = String(decision.extracted?.para_quem || "").toLowerCase();
+    decision.extracted.para_quem = rawParaQuem.includes("outra")
+      ? "outra"
+      : rawParaQuem.includes("propria") || rawParaQuem.includes("própria")
+        ? "propria"
+        : null;
+    // Modalidade definida também amarra a unidade (Chapecó exclusivo).
+    if (decision.extracted.modalidade === "presencial" && !decision.extracted.unit_interest) {
+      decision.extracted.unit_interest = "Chapecó";
+    }
+    if (decision.extracted.modalidade === "online" && !decision.extracted.unit_interest) {
+      decision.extracted.unit_interest = "Online";
     }
     const updates = {
       ...removeNulls(decision.extracted),
