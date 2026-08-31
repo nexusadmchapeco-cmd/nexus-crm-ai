@@ -429,8 +429,14 @@ export async function processInbound(payload: InboundPayload) {
             const { sendWhatsAppMessage } = await import("@/lib/whatsapp");
             await sendWhatsAppMessage(lead.phone, result.question.body);
           }
-        } catch {
-          // falha de envio não derruba o fluxo; fica registrado na conversa
+        } catch (sendError) {
+          // Falha de envio não derruba o fluxo, mas deixa rastro no
+          // diagnóstico (/api/settings/ai/whatsapp-status).
+          const { zapiLogIssue } = await import("@/lib/zapi");
+          await zapiLogIssue(
+            `pergunta de qualificação não enviada: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
+            lead.phone,
+          );
         }
       }
       await Promise.all([

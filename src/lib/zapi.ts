@@ -16,6 +16,7 @@ export type ZapiConfig = {
   clientToken: string;
   enabled: boolean;
   webhookSecret: string;
+  buttonsEnabled: boolean;
 };
 
 const SECRET_NAMES = [
@@ -24,6 +25,10 @@ const SECRET_NAMES = [
   "zapi_client_token",
   "zapi_enabled",
   "zapi_webhook_secret",
+  // Botões reais (send-button-list) são experimentais: a Z-API aceita o
+  // envio mas muitos aparelhos DESCARTAM a mensagem em silêncio. Padrão
+  // desligado — as opções numeradas são o formato garantido.
+  "zapi_buttons_enabled",
 ] as const;
 
 // Cache curtíssimo: o canal é consultado a cada envio; 15s evita uma ida ao
@@ -50,6 +55,7 @@ export async function getZapiConfig(): Promise<ZapiConfig | null> {
             clientToken: (map.get("zapi_client_token") || "").trim(),
             enabled: map.get("zapi_enabled") === "1",
             webhookSecret: (map.get("zapi_webhook_secret") || "").trim(),
+            buttonsEnabled: map.get("zapi_buttons_enabled") === "1",
           }
         : null;
     cache = { config, at: Date.now() };
@@ -60,6 +66,13 @@ export async function getZapiConfig(): Promise<ZapiConfig | null> {
 }
 
 // O canal Z-API está LIGADO como via de envio?
+
+// Botões reais estão liberados? (experimental — ver SECRET_NAMES)
+export async function zapiButtonsEnabled(): Promise<boolean> {
+  const config = await getZapiConfig();
+  return Boolean(config?.buttonsEnabled);
+}
+
 export async function zapiActive(): Promise<boolean> {
   const config = await getZapiConfig();
   return Boolean(config?.enabled && config.instanceId && config.instanceToken);

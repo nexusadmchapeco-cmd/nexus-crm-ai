@@ -3,6 +3,7 @@ import {
   renderTemplateAsButtons,
   renderTemplateAsText,
   zapiActive,
+  zapiButtonsEnabled,
   zapiSendAudio,
   zapiSendButtonList,
   zapiSendText,
@@ -172,12 +173,14 @@ export async function sendWhatsAppTemplate(
   // viram mensagens com botões REAIS (clique volta como payload no webhook);
   // se o envio com botões falhar, cai no texto com opções numeradas.
   if (await zapiActive()) {
-    const withButtons = renderTemplateAsButtons(templateName.trim(), bodyParameters);
-    if (withButtons) {
-      try {
-        return await zapiSendButtonList(phone, withButtons.message, withButtons.buttons);
-      } catch {
-        // aparelho/instância sem suporte a botões — segue como texto
+    if (await zapiButtonsEnabled()) {
+      const withButtons = renderTemplateAsButtons(templateName.trim(), bodyParameters);
+      if (withButtons) {
+        try {
+          return await zapiSendButtonList(phone, withButtons.message, withButtons.buttons);
+        } catch {
+          // instância sem suporte — segue como texto
+        }
       }
     }
     return zapiSendText(phone, renderTemplateAsText(templateName.trim(), bodyParameters));
@@ -235,13 +238,17 @@ export async function sendWhatsAppButtons(
   buttons: { id: string; title: string }[],
 ) {
   if (await zapiActive()) {
-    // Botões de verdade quando o aparelho aceita; senão, opções numeradas
-    // (os dígitos 1/2/3 são interpretados de qualquer jeito).
-    try {
-      return await zapiSendButtonList(phone, bodyText, buttons);
-    } catch {
-      return zapiSendText(phone, renderButtonsAsText(bodyText, buttons));
+    // Formato numerado é o GARANTIDO no canal não oficial (a Z-API aceita
+    // send-button-list mas muitos aparelhos descartam a mensagem em
+    // silêncio). Botões reais só com a flag experimental ligada.
+    if (await zapiButtonsEnabled()) {
+      try {
+        return await zapiSendButtonList(phone, bodyText, buttons);
+      } catch {
+        // cai pro numerado
+      }
     }
+    return zapiSendText(phone, renderButtonsAsText(bodyText, buttons));
   }
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
